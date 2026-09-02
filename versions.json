@@ -1,0 +1,8 @@
+{
+  "releaseLine": "0.0",
+  "packages": {
+    "host": "0.0.6",
+    "csharp": "0.0.9",
+    "flutter": "0.0.0"
+  }
+}

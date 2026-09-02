@@ -1,0 +1,18 @@
+name: lightning_chart_flutter_package_example
+description: Example Flutter application for LightningChart LA.
+publish_to: none
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lightning_chart_flutter:
+    path: ..
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

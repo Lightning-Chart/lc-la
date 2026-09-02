@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "name": "lcla",
+  "description": "LightningChart LA - Language Agnostic data visualization",
+  "workspaces": [
+    "packages/host"
+  ],
+  "scripts": {
+    "test": "npm run test:host && npm run test:csharp && npm run test:flutter",
+    "test:host": "cd packages/host && npm run validate",
+    "test:csharp": "cd packages/clients/csharp && dotnet build && dotnet test",
+    "prepare:flutter": "cd packages/clients/flutter/lightning_chart_flutter && flutter pub get && cd example && flutter pub get && cd ../../../../../examples/flutter && flutter pub get",
+    "format:flutter": "dart format packages/clients/flutter/lightning_chart_flutter/lib packages/clients/flutter/lightning_chart_flutter/test packages/clients/flutter/lightning_chart_flutter/example/lib examples/flutter/lib",
+    "analyze:flutter": "cd packages/clients/flutter/lightning_chart_flutter && flutter analyze && cd ../../../../examples/flutter && flutter analyze lib",
+    "test:flutter": "cd packages/clients/flutter/lightning_chart_flutter && flutter test",
+    "release:flutter:check": "npm run build:host && npm run prepare:flutter && npm run format:flutter && npm run analyze:flutter && npm run test:flutter && npm run publish:flutter:dry-run",
+    "publish:flutter:dry-run": "cd packages/clients/flutter/lightning_chart_flutter && flutter pub publish --dry-run",
+    "docs:start": "cd website && npm run start",
+    "docs:build": "cd website && npm run build",
+    "build:host": "cd packages/host && npm run build && cd ../.. && npm run copy:host",
+    "copy:host": "node scripts/copy-host.mjs",
+    "dev": "node scripts/run-example.mjs"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^1.7.0"
+  }
+}

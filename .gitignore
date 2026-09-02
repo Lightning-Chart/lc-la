@@ -1,0 +1,9 @@
+node_modules/
+dist/
+bin/
+obj/
+*.user
+.vs/
+.claude
+.env
+examples/flutter/pubspec_overrides.yaml

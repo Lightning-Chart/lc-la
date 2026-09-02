@@ -1,0 +1,17 @@
+name: lightning_chart_flutter_example
+description: Technical marketing example for LightningChart Flutter.
+publish_to: none
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lightning_chart_flutter: ^0.0.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

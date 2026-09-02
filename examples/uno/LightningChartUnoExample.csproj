@@ -1,0 +1,21 @@
+<Project Sdk="Uno.Sdk/6.6.29">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041</TargetFramework>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <RootNamespace>LightningChartUnoExample</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LclaSourceProject Condition="'$(LclaSourceProject)' == ''">..\..\packages\clients\csharp\LightningChart.LA\LightningChart.LA.csproj</LclaSourceProject>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(LclaUseLocalSource)' != 'true'">
+    <PackageReference Include="LCLA" Version="0.0.9" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
+    <ProjectReference Include="$(LclaSourceProject)" />
+  </ItemGroup>
+</Project>

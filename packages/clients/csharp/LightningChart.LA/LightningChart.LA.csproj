@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Versioning — updated by the C# release preparation step. -->
+    <Version>0.0.9</Version>
+    <AssemblyVersion>0.0.1</AssemblyVersion>
+    <FileVersion>0.0.1</FileVersion>
+
+    <!-- NuGet packaging -->
+    <PackageId>LCLA</PackageId>
+    <AssemblyName>LCLA</AssemblyName>
+    <Title>LCLA</Title>
+    <Description>Interactive, high-performance XY charts for C# applications targeting .NET 8 or later.</Description>
+    <Authors>LCLA</Authors>
+    <PackageTags>chart;visualization;blazor;maui;uno;webview;aspnetcore</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="CHANGELOG.md" Pack="true" PackagePath="\" />
+    <EmbeddedResource Include="Host\lcla-host.js" LogicalName="LightningChart.LA.Host.lcla-host.js" />
+  </ItemGroup>
+
+</Project>

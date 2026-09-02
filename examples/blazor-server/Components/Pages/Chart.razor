@@ -1,0 +1,316 @@
+@page "/chart"
+@rendermode InteractiveServer
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@inject IJSRuntime JSRuntime
+@inject LclaLicense License
+@implements IAsyncDisposable
+
+<PageTitle>LCLA Multi-Chart Demo</PageTitle>
+
+<h3>LCLA Multi-Chart Demo</h3>
+
+@* Two charts — layout controlled by Blazor *@
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div id="lcla-chart-1" style="height: 500px; border: 1px solid #ccc;"></div>
+    <div id="lcla-chart-2" style="height: 400px; border: 1px solid #ccc;"></div>
+</div>
+
+<div style="margin-top: 1rem;">
+    <button class="btn btn-primary" @onclick="LoadHistoricalData" disabled="@(!_ready || _isStreaming)">Load Historical Data (1M points)</button>
+    <button class="btn btn-primary" @onclick="StartStreaming" disabled="@(!_ready || _isStreaming)">Start Streaming</button>
+    <button class="btn btn-secondary" @onclick="StopStreaming" disabled="@(!_isStreaming)">Stop Streaming</button>
+</div>
+
+<p style="margin-top: 0.5rem; color: #666;">
+    @if (_isStreaming)
+    {
+        <span>Streaming... @_sampleCount samples sent</span>
+    }
+    else
+    {
+        <span>Chart 1: DateTime X axis, shared timestamps, stacked axes. Chart 2: numeric signal analysis.</span>
+    }
+</p>
+
+@code {
+    private BlazorTransport? _transport;
+    private LclaContext? _context;
+    private LclaChart? _chart1;
+    private LclaChart? _chart2;
+    private bool _ready;
+    private volatile bool _isStreaming;
+    private int _sampleCount;
+    private double _nextTimestamp;
+    private double _nextSig;
+    private CancellationTokenSource? _streamCts;
+    private Task? _streamTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _transport = new BlazorTransport(JSRuntime);
+        _context = new LclaContext(_transport, License);
+
+        // Chart 1: sensor monitor with DateTime X axis and stacked Y axes
+        _chart1 = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "lcla-chart-1",
+            Title = "Sensor Monitor — DateTime Axis, Stacked",
+            AnimationsEnabled = false,
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "sensors",
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "temperature" },
+                        new DataSetColumnConfig { Id = "humidity" },
+                        new DataSetColumnConfig { Id = "pressure" },
+                    ],
+                    MaxSampleCount = 2_000_000,
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig { Id = "temp", DataSetId = "sensors", Column = "temperature", Name = "Temperature (°C)", Color = "#F44336", StackIndex = 0 },
+                new ChannelConfig { Id = "humid", DataSetId = "sensors", Column = "humidity", Name = "Humidity (%)", Color = "#2196F3", StackIndex = 1 },
+                new ChannelConfig { Id = "press", DataSetId = "sensors", Column = "pressure", Name = "Pressure (hPa)", Color = "#4CAF50", StackIndex = 2 },
+            ],
+        });
+
+        // X axis displays timestamps
+        _chart1.SetTickStrategy(new SetTickStrategyOptions { Axis = AxisTarget.X, Strategy = TickStrategy.DateTime });
+
+        // Chart 2: signal analysis with numeric axes
+        _chart2 = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "lcla-chart-2",
+            Title = "Signal Analysis",
+            AnimationsEnabled = false,
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "signals",
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "raw" },
+                        new DataSetColumnConfig { Id = "filtered" },
+                    ],
+                    MaxSampleCount = 2_000_000,
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig { Id = "raw", DataSetId = "signals", Column = "raw", Name = "Raw Signal", Color = "#9E9E9E" },
+                new ChannelConfig { Id = "filtered", DataSetId = "signals", Column = "filtered", Name = "Filtered", Color = "#FF9800" },
+            ],
+        });
+
+        _ready = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static double NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private void LoadHistoricalData()
+    {
+        if (_chart1 == null || _chart2 == null) return;
+
+        _chart1.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Fitting });
+        _chart2.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Fitting });
+
+        const int pointCount = 1_000_000;
+        var rng = new Random(42);
+
+        // Chart 1: timestamps as UNIX ms, covering ~2.8 hours at 10ms intervals
+        var baseTime = NowMs() - pointCount * 10.0;
+        var x1 = new double[pointCount];
+        var temperature = new double[pointCount];
+        var humidity = new double[pointCount];
+        var pressure = new double[pointCount];
+
+        for (int i = 0; i < pointCount; i++)
+        {
+            x1[i] = baseTime + i * 10.0;
+            var t = i * 0.01;
+            temperature[i] = 22 + 5 * Math.Sin(t * 0.05) + rng.NextDouble() * 0.5;
+            humidity[i] = 55 + 15 * Math.Cos(t * 0.03) + rng.NextDouble() * 2;
+            pressure[i] = 1013 + 5 * Math.Sin(t * 0.02) + rng.NextDouble() * 0.3;
+        }
+
+        _chart1.SetData(new SetDataOptions
+        {
+            DataSetId = "sensors",
+            X = x1,
+            Columns = new Dictionary<string, double[]>
+            {
+                ["temperature"] = temperature,
+                ["humidity"] = humidity,
+                ["pressure"] = pressure,
+            },
+        });
+
+        // Set axis interval to show last 10 minutes of historical data
+        var tenMinMs = 10 * 60 * 1000.0;
+        var endTime = x1[^1];
+        _chart1.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.X, Start = endTime - tenMinMs, End = endTime });
+
+        // Chart 2: numeric X axis
+        var x2 = new double[pointCount];
+        var raw = new double[pointCount];
+        var filtered = new double[pointCount];
+
+        for (int i = 0; i < pointCount; i++)
+        {
+            x2[i] = i * 0.001;
+            raw[i] = Math.Sin(x2[i] * 10) + rng.NextDouble() * 0.8 - 0.4;
+            filtered[i] = Math.Sin(x2[i] * 10);
+        }
+
+        _chart2.SetData(new SetDataOptions
+        {
+            DataSetId = "signals",
+            X = x2,
+            Columns = new Dictionary<string, double[]>
+            {
+                ["raw"] = raw,
+                ["filtered"] = filtered,
+            },
+        });
+
+        _nextTimestamp = endTime;
+    }
+
+    private async Task StartStreaming()
+    {
+        if (_chart1 == null || _chart2 == null || _isStreaming) return;
+
+        await StopStreamingInternal();
+
+        // Scrolling mode with 30-second trailing window for datetime chart
+        _chart1.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
+        _chart1.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 30_000 });
+
+        _chart2.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
+        _chart2.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 5 });
+
+        _isStreaming = true;
+        _sampleCount = 0;
+        _streamCts = new CancellationTokenSource();
+        var token = _streamCts.Token;
+
+        _streamTask = Task.Run(async () =>
+        {
+            var rng = new Random();
+            double ts = _nextTimestamp > 0 ? _nextTimestamp : NowMs();
+            double sig = _nextSig;
+            const int batchSize = 10_000;
+            const int intervalMs = 16;
+            const double timestampStepMs = 1.0;
+
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    var xTime = new double[batchSize];
+                    var temperature = new double[batchSize];
+                    var humidity = new double[batchSize];
+                    var pressure = new double[batchSize];
+                    var xSig = new double[batchSize];
+                    var raw = new double[batchSize];
+                    var filtered = new double[batchSize];
+
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        xTime[i] = ts;
+                        var t = ts * 0.001;
+                        temperature[i] = 22 + 5 * Math.Sin(t * 0.05) + rng.NextDouble() * 0.5;
+                        humidity[i] = 55 + 15 * Math.Cos(t * 0.03) + rng.NextDouble() * 2;
+                        pressure[i] = 1013 + 5 * Math.Sin(t * 0.02) + rng.NextDouble() * 0.3;
+
+                        xSig[i] = sig;
+                        raw[i] = Math.Sin(sig * 10) + rng.NextDouble() * 0.8 - 0.4;
+                        filtered[i] = Math.Sin(sig * 10);
+
+                        ts += timestampStepMs;
+                        sig += 0.001;
+                    }
+
+                    _chart1!.AppendData(new AppendDataOptions
+                    {
+                        DataSetId = "sensors",
+                        X = xTime,
+                        Columns = new Dictionary<string, double[]>
+                        {
+                            ["temperature"] = temperature,
+                            ["humidity"] = humidity,
+                            ["pressure"] = pressure,
+                        },
+                    });
+
+                    _chart2!.AppendData(new AppendDataOptions
+                    {
+                        DataSetId = "signals",
+                        X = xSig,
+                        Columns = new Dictionary<string, double[]>
+                        {
+                            ["raw"] = raw,
+                            ["filtered"] = filtered,
+                        },
+                    });
+
+                    _sampleCount += batchSize;
+
+                    if (_sampleCount % 100_000 == 0)
+                    {
+                        await InvokeAsync(StateHasChanged);
+                    }
+
+                    await Task.Delay(intervalMs, token);
+                }
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                _nextTimestamp = ts;
+                _nextSig = sig;
+            }
+        }, token);
+    }
+
+    private async Task StopStreaming()
+    {
+        await StopStreamingInternal();
+        _isStreaming = false;
+    }
+
+    private async Task StopStreamingInternal()
+    {
+        if (_streamCts != null)
+        {
+            await _streamCts.CancelAsync();
+            if (_streamTask != null)
+            {
+                await _streamTask;
+                _streamTask = null;
+            }
+            _streamCts.Dispose();
+            _streamCts = null;
+        }
+        // Discard any messages queued but not yet sent — prevents stale batches from
+        // continuing to process after stop, which caused lag and stop-button unreliability.
+        _transport?.DiscardPending();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopStreamingInternal();
+        if (_chart1 != null) await _chart1.DisposeAsync();
+        if (_chart2 != null) await _chart2.DisposeAsync();
+        if (_context != null) await _context.DisposeAsync();
+    }
+}

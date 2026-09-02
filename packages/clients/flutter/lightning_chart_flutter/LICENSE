@@ -1,0 +1,11 @@
+Copyright (c) LightningChart Ltd. All rights reserved.
+
+LightningChart Flutter is distributed by LightningChart Ltd. for use with a
+free LightningChart JS trial key or an existing commercial LightningChart JS
+license key.
+
+The package includes LightningChart JS runtime assets. Applications must supply
+a LightningChart JS license key at runtime before rendering charts.
+
+Redistribution, modification, and use of this package and the bundled runtime
+assets are governed by the applicable LightningChart license terms.
