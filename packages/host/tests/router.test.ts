@@ -85,21 +85,22 @@ beforeEach(async () => {
 })
 
 /** Helper: create a chart and return its chartId */
-function createChart(): string {
+function createChart(clientId = 'default'): string {
   const buf = bijEncode({
-    meta: { id: '0', category: 'lifecycle', action: 'create', params: { type: 'xy' } },
+    meta: { id: '0', category: 'lifecycle', action: 'create', clientId, params: { type: 'xy' } },
   })
   const res = handleMessage(buf)
   return (res.result as any).chartId
 }
 
 /** Helper: configure a dataset on a chart */
-function configureDataSet(chartId: string, dsId: string, columns: string[]) {
+function configureDataSet(chartId: string, dsId: string, columns: string[], clientId = 'default') {
   const buf = bijEncode({
     meta: {
       id: '0',
       category: 'config',
       action: 'datasets',
+      clientId,
       chartId,
       params: {
         datasets: [
@@ -228,6 +229,51 @@ describe('Message Router', () => {
     ])
 
     expect(hostState.getDataSet('default', 'sensors')).toBeDefined()
+  })
+
+  it('preserves client datasets until its final chart is disposed', () => {
+    const clientId = 'dataset-lifecycle-test'
+    const firstChartId = createChart(clientId)
+    const secondChartId = createChart(clientId)
+
+    configureDataSet(firstChartId, 'sensors', ['temperature'], clientId)
+    configureDataSet(secondChartId, 'signals', ['value'], clientId)
+
+    // Configuring the second chart must not remove the first dataset
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+    expect(hostState.getDataSet(clientId, 'signals')).toBeDefined()
+
+    const firstDisposeResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-1',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+        chartId: firstChartId,
+      },
+    }))
+
+    expect(firstDisposeResponse.type).toBe('response')
+
+    // Another chart from this client still exists, so retain its datasets
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+    expect(hostState.getDataSet(clientId, 'signals')).toBeDefined()
+
+    const secondDisposeResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-2',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+        chartId: secondChartId,
+      },
+    }))
+
+    expect(secondDisposeResponse.type).toBe('response')
+
+    // The final client chart is gone, so its datasets are released
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeUndefined()
+    expect(hostState.getDataSet(clientId, 'signals')).toBeUndefined()
   })
 
   it('handles config/channels with stacked axes', () => {

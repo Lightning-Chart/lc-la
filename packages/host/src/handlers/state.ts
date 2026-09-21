@@ -65,7 +65,16 @@ export class HostState {
   }
 
   removeChart(id: string): boolean {
-    return this.charts.delete(id)
+    const removedChart = this.charts.get(id)
+    if (!removedChart) return false
+
+    this.charts.delete(id)
+    const clientStillHasCharts = [...this.charts.values()]
+      .some((chart) => chart.clientId === removedChart.clientId)
+
+    if (!clientStillHasCharts) this.dataSetsByClient.delete(removedChart.clientId)
+
+    return true
   }
 
   getDataSets(clientId: string): Map<string, DataSetState> {

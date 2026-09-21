@@ -51,6 +51,8 @@
         if (!firstRender) return;
 
         _transport = new BlazorTransport(JSRuntime);
+        // Create one context, then create as many charts as your application needs
+        // The license was created and registered in Program.cs
         _context = new LclaContext(_transport, License);
 
         // Chart 1: sensor monitor with DateTime X axis and stacked Y axes

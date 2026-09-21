@@ -18,7 +18,7 @@ The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example
 
 ## License key
 
-LightningChart Flutter requires a license key. Get a free trial key or use your commercial key. A `--dart-define` keeps the key out of source code:
+LightningChart Flutter requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key. One way to keep the key out of source code is to provide it with `--dart-define`:
 
 ```bash
 flutter run -d chrome --dart-define=LCJS_LICENSE_KEY=your-license-key

@@ -6,4 +6,4 @@ obj/
 .vs/
 .claude
 .env
-examples/flutter/pubspec_overrides.yaml
+/artifacts/

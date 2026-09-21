@@ -1,0 +1,245 @@
+@page "/chart"
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@inject IJSRuntime JSRuntime
+@inject LclaLicense License
+@implements IAsyncDisposable
+
+<PageTitle>LCLA Blazor WebAssembly Demo</PageTitle>
+
+<h3>LCLA Blazor WebAssembly Demo</h3>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1rem;">
+    <section>
+        <div id="wasm-history-chart" style="height: 450px; border: 1px solid #ccc;"></div>
+        <button class="btn btn-primary mt-3" @onclick="LoadHistoricalData" disabled="@(!_ready)">
+            Load Historical Data
+        </button>
+        <p style="margin-top: 0.5rem; color: #666;">@_historicalStatus</p>
+    </section>
+
+    <section>
+        <div id="wasm-streaming-chart" style="height: 450px; border: 1px solid #ccc;"></div>
+        <button class="btn btn-primary mt-3" @onclick="ToggleStreaming" disabled="@(!_ready)">
+            @(_isStreaming ? "Pause" : "Run")
+        </button>
+        <p style="margin-top: 0.5rem; color: #666;">
+            @if (_isStreaming)
+            {
+                <span>Streaming... @_sampleCount samples sent</span>
+            }
+            else
+            {
+                <span>Streaming paused. @_sampleCount samples sent</span>
+            }
+        </p>
+    </section>
+</div>
+
+@code {
+    private BlazorTransport? _transport;
+    private LclaContext? _context;
+    private LclaChart? _historicalChart;
+    private LclaChart? _streamingChart;
+    private bool _ready;
+    private bool _isStreaming;
+    private int _sampleCount;
+    private double _nextX;
+    private string _historicalStatus = "Historical data has not been loaded.";
+    private CancellationTokenSource? _streamCts;
+    private Task? _streamTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _transport = new BlazorTransport(JSRuntime);
+        // Create one context, then create as many charts as your application needs
+        // The license was created and registered in Program.cs
+        _context = new LclaContext(_transport, License);
+
+        _historicalChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "wasm-history-chart",
+            Title = "Historical Sine and Cosine Signals",
+            AnimationsEnabled = false,
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "historical-signals",
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "sine" },
+                        new DataSetColumnConfig { Id = "cosine" },
+                    ],
+                    MaxSampleCount = 1_000_000,
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig { Id = "sine", DataSetId = "historical-signals", Column = "sine", Name = "Sine", Color = "#29B6F6" },
+                new ChannelConfig { Id = "cosine", DataSetId = "historical-signals", Column = "cosine", Name = "Cosine", Color = "#FFA726" },
+            ],
+        });
+
+        _streamingChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "wasm-streaming-chart",
+            Title = "Streaming Signal",
+            AnimationsEnabled = false,
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "streaming-signal",
+                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                    MaxSampleCount = 1_000_000,
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig { Id = "streaming-value", DataSetId = "streaming-signal", Column = "value", Name = "Value", Color = "#66BB6A" },
+            ],
+        });
+
+        _ready = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadHistoricalData()
+    {
+        if (_historicalChart == null) return;
+
+        _historicalChart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Fitting });
+
+        const int pointCount = 250_000;
+        const double sampleStep = 0.001;
+        var x = new double[pointCount];
+        var sine = new double[pointCount];
+        var cosine = new double[pointCount];
+
+        for (var i = 0; i < pointCount; i++)
+        {
+            x[i] = i * sampleStep;
+            sine[i] = Math.Sin(x[i] * 2 * Math.PI);
+            cosine[i] = Math.Cos(x[i] * 2 * Math.PI);
+        }
+
+        _historicalChart.SetData(new SetDataOptions
+        {
+            DataSetId = "historical-signals",
+            X = x,
+            Columns = new Dictionary<string, double[]>
+            {
+                ["sine"] = sine,
+                ["cosine"] = cosine,
+            },
+        });
+
+        _historicalStatus = $"Historical data loaded: {pointCount:N0} points per channel.";
+    }
+
+    private async Task ToggleStreaming()
+    {
+        if (_isStreaming) await StopStreaming();
+        else await StartStreaming();
+    }
+
+    private async Task StartStreaming()
+    {
+        if (_streamingChart == null || _isStreaming) return;
+
+        await StopStreamingInternal();
+
+        _streamingChart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
+        _streamingChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 5 });
+
+        _isStreaming = true;
+        _streamCts = new CancellationTokenSource();
+        var token = _streamCts.Token;
+
+        _streamTask = Task.Run(async () =>
+        {
+            var xValue = _nextX;
+            const int batchSize = 16;
+            const int intervalMs = 16;
+            const double sampleStep = 0.001;
+            var batchesSinceRender = 0;
+
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    var x = new double[batchSize];
+                    var values = new double[batchSize];
+
+                    for (var i = 0; i < batchSize; i++)
+                    {
+                        x[i] = xValue;
+                        values[i] = Math.Sin(xValue * 2 * Math.PI)
+                            + 0.15 * Math.Sin(xValue * 18 * Math.PI);
+                        xValue += sampleStep;
+                    }
+
+                    _streamingChart.AppendData(new AppendDataOptions
+                    {
+                        DataSetId = "streaming-signal",
+                        X = x,
+                        Columns = new Dictionary<string, double[]> { ["value"] = values },
+                    });
+
+                    _sampleCount += batchSize;
+                    batchesSinceRender++;
+
+                    if (batchesSinceRender == 10)
+                    {
+                        batchesSinceRender = 0;
+                        await InvokeAsync(StateHasChanged);
+                    }
+
+                    await Task.Delay(intervalMs, token);
+                }
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                _nextX = xValue;
+            }
+        }, token);
+    }
+
+    private async Task StopStreaming()
+    {
+        await StopStreamingInternal();
+        _isStreaming = false;
+    }
+
+    private async Task StopStreamingInternal()
+    {
+        if (_streamCts != null)
+        {
+            await _streamCts.CancelAsync();
+
+            if (_streamTask != null)
+            {
+                await _streamTask;
+                _streamTask = null;
+            }
+
+            _streamCts.Dispose();
+            _streamCts = null;
+        }
+
+        _transport?.DiscardPending();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopStreamingInternal();
+
+        if (_historicalChart != null) await _historicalChart.DisposeAsync();
+        if (_streamingChart != null) await _streamingChart.DisposeAsync();
+        if (_context != null) await _context.DisposeAsync();
+    }
+}

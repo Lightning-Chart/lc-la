@@ -146,8 +146,9 @@ public class LclaChart : IAsyncDisposable
     }
 
     /// <summary>
-    /// Configure datasets on this chart. Datasets that exist in the host
-    /// but are not in the provided list will be removed.
+    /// Create or update datasets available to charts in this context.
+    /// Dataset IDs must be unique within the context unless a dataset
+    /// is intentionally shared by multiple charts.
     /// </summary>
     public void ConfigureDataSets(IReadOnlyList<DataSetConfig> dataSets)
     {

@@ -14,11 +14,13 @@ namespace LightningChart.LA.Blazor;
 public class BlazorTransport : ILclaTransport, ILclaErrorSource
 {
     private readonly IJSRuntime _jsRuntime;
+    private readonly Lazy<Task> _hostLoad;
     private readonly Channel<byte[]> _queue = Channel.CreateUnbounded<byte[]>();
 
     public BlazorTransport(IJSRuntime jsRuntime)
     {
         _jsRuntime = jsRuntime;
+        _hostLoad = new Lazy<Task>(LoadHostAsync);
         _ = ProcessQueueAsync();
     }
 
@@ -28,6 +30,7 @@ public class BlazorTransport : ILclaTransport, ILclaErrorSource
     {
         try
         {
+            await EnsureHostLoadedAsync();
             return await _jsRuntime.InvokeAsync<byte[]>(
                 "window.__lcla_blazor.processMessage", ct, message);
         }
@@ -47,12 +50,23 @@ public class BlazorTransport : ILclaTransport, ILclaErrorSource
         while (_queue.Reader.TryRead(out _)) { }
     }
 
+    private Task EnsureHostLoadedAsync() => _hostLoad.Value;
+
+    private async Task LoadHostAsync()
+    {
+        await using var module =
+            await _jsRuntime.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./_content/LCLA/lcla-host.js");
+    }
+
     private async Task ProcessQueueAsync()
     {
         await foreach (var message in _queue.Reader.ReadAllAsync())
         {
             try
             {
+                await EnsureHostLoadedAsync();
                 await _jsRuntime.InvokeVoidAsync("window.__lcla_blazor.processMessageFireAndForget", message);
             }
             catch (Exception exception)

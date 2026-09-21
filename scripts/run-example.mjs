@@ -71,6 +71,7 @@ const target = await select({
     message: 'Choose an example to run with local library sources',
     options: [
         { value: 'blazor-server', label: 'Blazor Server', hint: 'C# client' },
+        { value: 'blazor-wasm', label: 'Blazor WebAssembly', hint: 'C# client' },
         { value: 'maui', label: '.NET MAUI', hint: 'C# client' },
         { value: 'uno', label: 'Uno Platform', hint: 'C# client' },
         { value: 'flutter', label: 'Flutter', hint: 'Flutter client' },
@@ -101,6 +102,14 @@ if (target === 'blazor-server') {
     outro('Starting Blazor Server with the local C# client.')
     try {
         run(dotnetCommand, ['run', '--project', 'examples/blazor-server', '-p:LclaUseLocalSource=true'], { env })
+    } catch (error) {
+        cancel(error instanceof Error ? error.message : String(error))
+        process.exitCode = 1
+    }
+} else if (target === 'blazor-wasm') {
+    outro('Starting Blazor WebAssembly with the local C# client.')
+    try {
+        run(dotnetCommand, ['run', '--project', 'examples/blazor-wasm', '-p:LclaUseLocalSource=true'], { env })
     } catch (error) {
         cancel(error instanceof Error ? error.message : String(error))
         process.exitCode = 1

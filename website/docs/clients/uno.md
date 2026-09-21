@@ -16,19 +16,26 @@ The [Uno Platform example on GitHub](https://github.com/Lightning-Chart/lc-la/tr
 
 ## License key
 
-Get a free trial key or use your commercial key, then load the chart into a `WebView2`:
+LightningChart for Uno requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key. Load the key through the configuration method used by your application. In the example below, `licenseKey` represents that configured value.
+
+
+Create one license and use it when initializing the shared context after the `WebView2` has loaded:
 
 ```csharp
-var transport = await WebViewTransport.StartAsync();
-webView.Source = transport.Uri;
-
-var context = new LclaContext(transport, new LclaLicense
+var license = new LclaLicense
 {
     Key = licenseKey,
     AppTitle = "My Uno App",
     Company = "My Company",
-});
+};
+
+var transport = await WebViewTransport.StartAsync();
+webView.Source = transport.Uri;
+
+var context = new LclaContext(transport, license);
 ```
+
+Create the context once and use it to create additional charts.
 
 `AppTitle` and `Company` default to trial values. Set both for app deployment licenses.
 

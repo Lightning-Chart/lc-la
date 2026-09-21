@@ -77,6 +77,7 @@ const prepareCsharp = async () => {
     )
     for (const example of [
         'examples/blazor-server/BlazorServerExample.csproj',
+        'examples/blazor-wasm/BlazorWasmExample.csproj',
         'examples/maui/LightningChartMauiExample.csproj',
         'examples/uno/LightningChartUnoExample.csproj',
     ]) {
