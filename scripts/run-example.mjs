@@ -118,10 +118,10 @@ if (target === 'blazor-server') {
     outro('Starting .NET MAUI with the local C# client.')
     try {
         run(dotnetCommand, [
-            'build',
+            'run',
+            '--project',
             'examples/maui/LightningChartMauiExample.csproj',
-            '-t:Run',
-            '-f',
+            '--framework',
             'net10.0-windows10.0.19041.0',
             '-p:LclaUseLocalSource=true',
         ], { env })

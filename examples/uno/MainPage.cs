@@ -32,7 +32,7 @@ public sealed class MainPage : Page, IAsyncDisposable
         _streamButton.Click += async (_, _) => await ToggleStreamingAsync();
 
         var header = new Grid { ColumnSpacing = 16, ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }, new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = GridLength.Auto } } };
-        header.Children.Add(new TextBlock { Text = "Signal monitor", FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        header.Children.Add(new TextBlock { Text = "LightningChart Uno", FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         Grid.SetColumn(_loadButton, 1);
         Grid.SetColumn(_streamButton, 2);
         header.Children.Add(_loadButton);

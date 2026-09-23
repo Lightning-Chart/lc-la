@@ -26,4 +26,10 @@
     <AssemblyMetadata Include="LCJS_COMPANY" Value="$(LCJS_COMPANY)" Condition="'$(LCJS_COMPANY)' != ''" />
   </ItemGroup>
 
+<ItemGroup>
+  <EmbeddedResource
+      Include="..\data\tesla_trackmode_laguna_seca_synced60s.csv"
+      LogicalName="BlazorWasmExample.Data.tesla_trackmode_laguna_seca_synced60s.csv" />
+</ItemGroup>
+
 </Project>

@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lightning_chart_flutter/lightning_chart_flutter.dart';
 
 const _lightningChartLicenseKey = String.fromEnvironment(
@@ -36,24 +35,23 @@ class LightningChartFlutterExample extends StatelessWidget {
 
 class SignalMonitorPage extends StatefulWidget {
   const SignalMonitorPage({required this.licenseKey, super.key});
-
   final String licenseKey;
-
   @override
   State<SignalMonitorPage> createState() => _SignalMonitorPageState();
 }
 
 class _SignalMonitorPageState extends State<SignalMonitorPage> {
-  static const _historicalPointCount = 1000000;
-  static const _streamBatchSize = 10000;
-  static const _streamPeriod = Duration(milliseconds: 16);
-
-  final _random = Random(42);
+  static const _sampleRate = 1000;
+  static const _streamBatchSize = 20;
+  static const _streamPeriod = Duration(milliseconds: 20);
+  static const _visibleWindowSeconds = 2.0;
   LightningChartController? _chart;
+  Float64List? _ecgSamples;
   Timer? _streamTimer;
   var _isStreaming = false;
   var _historicalLoaded = false;
   var _sampleCount = 0;
+  var _streamIndex = 0;
   var _nextX = 0.0;
   Object? _lastError;
 
@@ -74,7 +72,7 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
           ),
           IconButton(
             tooltip: _isStreaming ? 'Stop streaming' : 'Start streaming',
-            onPressed: _chart == null
+            onPressed: _chart == null || _ecgSamples == null
                 ? null
                 : (_isStreaming ? _stopStreaming : _startStreaming),
             icon: Icon(_isStreaming ? Icons.stop : Icons.play_arrow),
@@ -96,32 +94,22 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
                 appTitle: 'LightningChart JS Trial',
                 company: 'LightningChart Ltd.',
               ),
-              title: 'High-Rate Signal Monitor',
+              title: 'ECG Signal Monitor — 1,000 Hz',
               animationsEnabled: false,
               dataSets: const [
                 DataSetConfig(
-                  id: 'signals',
+                  id: 'ecg',
                   maxSampleCount: 2000000,
-                  columns: [
-                    DataSetColumnConfig(id: 'raw'),
-                    DataSetColumnConfig(id: 'filtered'),
-                  ],
+                  columns: [DataSetColumnConfig(id: 'lead')],
                 ),
               ],
               channels: const [
                 ChannelConfig(
-                  id: 'raw',
-                  dataSetId: 'signals',
-                  column: 'raw',
-                  name: 'Raw Signal',
-                  color: '#9E9E9E',
-                ),
-                ChannelConfig(
-                  id: 'filtered',
-                  dataSetId: 'signals',
-                  column: 'filtered',
-                  name: 'Filtered',
-                  color: '#00A6FF',
+                  id: 'lead',
+                  dataSetId: 'ecg',
+                  column: 'lead',
+                  name: 'ECG lead',
+                  color: '#65D18A',
                 ),
               ],
               onChartCreated: (chart) {
@@ -130,7 +118,7 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
                 });
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
-                    _loadHistoricalData();
+                    unawaited(_loadHistoricalData());
                   }
                 });
               },
@@ -152,7 +140,7 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
     super.dispose();
   }
 
-  void _loadHistoricalData() {
+  Future<void> _loadHistoricalData() async {
     final chart = _chart;
     if (chart == null) {
       return;
@@ -161,47 +149,61 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
     _streamTimer?.cancel();
     _streamTimer = null;
 
-    final x = Float64List(_historicalPointCount);
-    final raw = Float64List(_historicalPointCount);
-    final filtered = Float64List(_historicalPointCount);
+    try {
+      final csv = await rootBundle.loadString('assets/ecg_1000.csv');
+      final values = csv
+          .split(RegExp(r'\r?\n'))
+          .skip(1)
+          .where((line) => line.trim().isNotEmpty)
+          .map((line) => double.parse(line.trim()))
+          .toList();
 
-    for (var i = 0; i < _historicalPointCount; i++) {
-      final t = i * 0.001;
-      x[i] = t;
-      raw[i] =
-          sin(t * 10) +
-          0.35 * sin(t * 77) +
-          _random.nextDouble() * 0.35 -
-          0.175;
-      filtered[i] = sin(t * 10);
+      if (values.isEmpty) {
+        throw const FormatException('The ECG dataset is empty.');
+      }
+
+      final samples = Float64List.fromList(values);
+      final x = Float64List(samples.length);
+      for (var i = 0; i < x.length; i++) {
+        x[i] = i / _sampleRate;
+      }
+
+      chart.setScrollStrategy(
+        const SetScrollStrategyOptions(axisX: ScrollStrategy.fitting),
+      );
+      chart.setData(
+        SetDataOptions(dataSetId: 'ecg', x: x, columns: {'lead': samples}),
+      );
+      chart.setAxisInterval(
+        SetAxisIntervalOptions(axis: AxisTarget.x, start: 0, end: x.last),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _ecgSamples = samples;
+        _historicalLoaded = true;
+        _isStreaming = false;
+        _sampleCount = samples.length;
+        _streamIndex = 0;
+        _nextX = x.last + 1 / _sampleRate;
+        _lastError = null;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _lastError = error;
+        });
+      }
     }
-
-    chart.setScrollStrategy(
-      const SetScrollStrategyOptions(axisX: ScrollStrategy.fitting),
-    );
-    chart.setData(
-      SetDataOptions(
-        dataSetId: 'signals',
-        x: x,
-        columns: {'raw': raw, 'filtered': filtered},
-      ),
-    );
-    chart.setAxisInterval(
-      const SetAxisIntervalOptions(axis: AxisTarget.x, start: 980, end: 1000),
-    );
-
-    setState(() {
-      _historicalLoaded = true;
-      _isStreaming = false;
-      _sampleCount = _historicalPointCount;
-      _nextX = x.last;
-      _lastError = null;
-    });
   }
 
   void _startStreaming() {
     final chart = _chart;
-    if (chart == null || _isStreaming) {
+    final samples = _ecgSamples;
+    if (chart == null || samples == null || _isStreaming) {
       return;
     }
 
@@ -209,7 +211,10 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
       const SetScrollStrategyOptions(axisX: ScrollStrategy.scrolling),
     );
     chart.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(axis: AxisTarget.x, length: 5),
+      const SetDefaultAxisIntervalOptions(
+        axis: AxisTarget.x,
+        length: _visibleWindowSeconds,
+      ),
     );
 
     setState(() {
@@ -219,31 +224,23 @@ class _SignalMonitorPageState extends State<SignalMonitorPage> {
 
     _streamTimer = Timer.periodic(_streamPeriod, (_) {
       final x = Float64List(_streamBatchSize);
-      final raw = Float64List(_streamBatchSize);
-      final filtered = Float64List(_streamBatchSize);
+      final lead = Float64List(_streamBatchSize);
 
       for (var i = 0; i < _streamBatchSize; i++) {
-        final t = _nextX;
-        x[i] = t;
-        raw[i] =
-            sin(t * 10) +
-            0.35 * sin(t * 77) +
-            _random.nextDouble() * 0.35 -
-            0.175;
-        filtered[i] = sin(t * 10);
-        _nextX += 0.001;
+        x[i] = _nextX;
+        lead[i] = samples[_streamIndex];
+        _nextX += 1 / _sampleRate;
+        _streamIndex = (_streamIndex + 1) % samples.length;
       }
 
       chart.appendData(
-        AppendDataOptions(
-          dataSetId: 'signals',
-          x: x,
-          columns: {'raw': raw, 'filtered': filtered},
-        ),
+        AppendDataOptions(dataSetId: 'ecg', x: x, columns: {'lead': lead}),
       );
 
+      final previousSampleCount = _sampleCount;
       _sampleCount += _streamBatchSize;
-      if (_sampleCount % 100000 == 0 && mounted) {
+      if (_sampleCount ~/ _sampleRate != previousSampleCount ~/ _sampleRate &&
+          mounted) {
         setState(() {});
       }
     });
@@ -287,7 +284,7 @@ class _StatusStrip extends StatelessWidget {
           _Metric(label: 'Mode', value: isStreaming ? 'Live' : 'Historical'),
           _Metric(label: 'Samples', value: _formatCount(sampleCount)),
           _Metric(
-            label: 'Historical',
+            label: 'Recording',
             value: historicalLoaded ? 'Loaded' : 'Empty',
           ),
           const Spacer(),
@@ -320,7 +317,6 @@ class _StatusStrip extends StatelessWidget {
 
 class _Metric extends StatelessWidget {
   const _Metric({required this.label, required this.value});
-
   final String label;
   final String value;
 

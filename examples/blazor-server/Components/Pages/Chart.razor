@@ -6,9 +6,9 @@
 @inject LclaLicense License
 @implements IAsyncDisposable
 
-<PageTitle>LCLA Multi-Chart Demo</PageTitle>
+<PageTitle>LC Blazor Server</PageTitle>
 
-<h3>LCLA Multi-Chart Demo</h3>
+<h3>LightningChart Blazor Multi-Chart Demo</h3>
 
 @* Two charts — layout controlled by Blazor *@
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -22,7 +22,7 @@
     <button class="btn btn-secondary" @onclick="StopStreaming" disabled="@(!_isStreaming)">Stop Streaming</button>
 </div>
 
-<p style="margin-top: 0.5rem; color: #666;">
+<p class="chart-status" style="margin-top: 0.5rem; color: #666;">
     @if (_isStreaming)
     {
         <span>Streaming... @_sampleCount samples sent</span>
@@ -183,8 +183,8 @@
                 ["filtered"] = filtered,
             },
         });
-
-        _nextTimestamp = endTime;
+        _nextTimestamp = endTime + 1.0;
+        _nextSig = x2[^1] + 0.001;
     }
 
     private async Task StartStreaming()
