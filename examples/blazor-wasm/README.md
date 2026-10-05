@@ -1,6 +1,6 @@
 # LCLA Blazor WebAssembly Example
 
-Historical XY chart with sine/cosine data and a real-time scrolling XY chart.
+Six charts replay recorded Laguna Seca vehicle telemetry from `examples/data/tesla_trackmode_laguna_seca_synced60s.csv`. They all share one shared dataset.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
@@ -30,8 +30,6 @@ cd lc-la-example-blazor-wasm
    LCJS_LICENSE_KEY="your-license-key" dotnet run
    ```
 
-2. Open the URL shown in terminal and navigate to "LCLA Chart".
+2. Open the URL shown in terminal and navigate to "LightningChart Blazor".
 
-3. Click "Load Historical Data" to display the historical chart data.
-
-4. Click "Run" to start the real-time scrolling chart. Click "Pause" to stop it.
+3. Click **Run** to replay the recording using its timestamps. Click **Pause** to pause, then **Run** to resume. When playback completes, select **Run** to replay from the beginning.

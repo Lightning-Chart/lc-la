@@ -12,7 +12,7 @@ dotnet add package LCLA
 
 ## Example
 
-The [Uno Platform example on GitHub](https://github.com/Lightning-Chart/lc-la/tree/master/examples/uno) loads 1,000,000 historical samples and lets you start or stop 10,000-sample real-time batches. Its README walks through running it locally.
+The [Uno Platform example on GitHub](https://github.com/Lightning-Chart/lc-la/tree/master/examples/uno) replays a recorded drone flight. One chart shows altitude, horizontal speed, and vertical speed, and a second chart draws the route reached so far and marks the current position. The dashboard also displays GPS coordinates, distance, and camera metadata. The example's README walks through running it locally.
 
 ## License key
 

@@ -14,7 +14,7 @@ Tested with Flutter 3.44.
 
 ## Example
 
-The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example-flutter) loads 1,000,000 historical samples and lets you start or stop 10,000-sample real-time batches. Its README walks through running it locally in Chrome and on native targets.
+The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example-flutter) displays a patient dashboard with ECG, blood pressure, oxygen saturation, and respiratory rate. Monitor mode replays the recordings with Play/Pause controls and current measurements. Review mode displays the complete recordings and summary statistics. The example's README walks through running it locally in Chrome and on native targets.
 
 ## License key
 

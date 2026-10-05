@@ -1,8 +1,7 @@
 # LightningChart Flutter Example
 
 This is a Flutter application that consumes the published
-`lightning_chart_flutter` package from pub.dev. It demonstrates a
-1,000,000-point historical load and 10,000-sample streaming batches.
+`lightning_chart_flutter` package from pub.dev. It displays a patient monitoring dashboard using two datasets. The chart displays ECG, blood pressure, oxygen saturation, and respiratory rate. Metric cards show the current measurements in Monitor mode and recording statistics in Review mode.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
@@ -54,11 +53,9 @@ network-security configuration that allows `127.0.0.1`.
 
 ## Using the Demo
 
-1. Select the data icon to load the 1M-point historical dataset.
-2. Select play to start 10k-sample streaming batches.
-3. Select stop to pause streaming.
-
-The status strip reports the mode, sample count, load state, and runtime errors.
+1. Monitor mode starts replay automatically after the recordings load. Select **Pause** to pause, then **Play** to resume.
+2. Select **Review** to pause replay and display the complete recordings.
+3. Return to **Monitor** to continue from the previous playback position. Playback resumes automatically if it was running before **Review**.
 
 ## Troubleshooting
 

@@ -22,6 +22,6 @@
     <ProjectReference Include="$(LclaSourceProject)" />
   </ItemGroup>
   <ItemGroup>
-    <MauiAsset Include="..\data\patient_10.csv" LogicalName="patient_10.csv" />
+    <MauiAsset Include="Data\patient_10.csv" LogicalName="patient_10.csv" />
   </ItemGroup>
 </Project>

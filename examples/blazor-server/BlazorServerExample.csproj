@@ -14,4 +14,9 @@
     <ProjectReference Include="..\..\packages\clients\csharp\LightningChart.LA\LightningChart.LA.csproj" />
   </ItemGroup>
 
+    <ItemGroup>
+    <EmbeddedResource
+        Include="Data\ecg_1000.csv"
+        LogicalName="BlazorServerExample.Data.ecg_1000.csv" />
+    </ItemGroup>
 </Project>
