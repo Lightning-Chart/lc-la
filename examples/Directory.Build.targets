@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Monorepo-only. Not copied to the standalone example repositories.
+    With -p:LclaUseLocalSource=true, build against the library source instead of the LCLA NuGet package.
+  -->
+  <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
+    <PackageReference Remove="LCLA" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\packages\clients\csharp\LightningChart.LA\LightningChart.LA.csproj" />
+  </ItemGroup>
+</Project>

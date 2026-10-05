@@ -6,12 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(LclaUseLocalSource)' != 'true'">
-    <PackageReference Include="LCLA" Version="0.0.9" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
-    <ProjectReference Include="..\..\packages\clients\csharp\LightningChart.LA\LightningChart.LA.csproj" />
+  <ItemGroup>
+    <PackageReference Include="LCLA" Version="0.0.10" />
   </ItemGroup>
 
     <ItemGroup>

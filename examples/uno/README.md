@@ -16,7 +16,7 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 3. Run the project:
 
    ```powershell
-   dotnet run --project .\LightningChartUnoExample.csproj -p:LclaUseLocalSource=true
+   dotnet run --project .\LightningChartUnoExample.csproj
    ```
 
 4. Playback starts automatically after both charts initialize. Select **Pause** to pause, then **Play** to resume.

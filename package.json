@@ -19,7 +19,9 @@
     "docs:build": "cd website && npm run build",
     "build:host": "cd packages/host && npm run build && cd ../.. && npm run copy:host",
     "copy:host": "node scripts/copy-host.mjs",
-    "dev": "node scripts/run-example.mjs"
+    "dev": "node scripts/run-example.mjs",
+    "verify:examples": "node scripts/verify-examples.mjs",
+    "sync:examples": "node scripts/sync-examples.mjs"
   },
   "devDependencies": {
     "@clack/prompts": "^1.7.0"

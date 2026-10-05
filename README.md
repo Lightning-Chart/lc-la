@@ -18,8 +18,23 @@ npm run dev
 
 The interactive runner asks which example to launch, builds the local host,
 selects the matching local client library, and supplies the license only to
-that process. This workflow is for repository development; example projects
-remain configured to consume their released packages by default.
+that process. Example projects always reference the released packages; for
+C# examples, `examples/Directory.Build.targets` swaps in the local library when
+`-p:LclaUseLocalSource=true` is passed (the runner does this).
+
+### Examples
+
+Each example is also a standalone repository (`Lightning-Chart/lc-la-example-*`) and must build from a plain clone.
+
+```bash
+npm run dev                                  # run an example against local source
+npm run verify:examples -- --local           # clean-copy build against the local, unpublished packages
+npm run verify:examples                      # clean-copy build against the published packages
+npm run sync:examples                        # dry run: what would change in the standalone repos
+npm run sync:examples -- --push              # verify against published packages, then push
+```
+
+The release scripts do not touch the example repositories. Run these by hand.
 
 ## Release
 

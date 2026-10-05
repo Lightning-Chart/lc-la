@@ -104,6 +104,11 @@ const prepareFlutter = async () => {
         /^version:\s*.*$/m,
         `version: ${version}`,
     )
+    replaceFile(
+        resolve(root, 'examples/flutter/pubspec.yaml'),
+        /(lightning_chart_flutter:\s*)\^[\w.+-]+/,
+        `$1^${version}`,
+    )
     return version
 }
 
