@@ -12,14 +12,15 @@ Tested with .NET 10.
 dotnet add package LCLA
 ```
 
-## Example
+## Examples
 
-The [Blazor example on GitHub](https://github.com/Lightning-Chart/lc-la-example-blazor-server) loads historical data and streams live batches. Its README walks through running it locally.
+The [Blazor Server example](https://github.com/Lightning-Chart/lc-la-example-blazor-server) displays the same ECG recording in twelve charts sharing one dataset. The [Blazor WebAssembly example](https://github.com/Lightning-Chart/lc-la-example-blazor-wasm) replays recorded vehicle telemetry in six charts covering performance, driver inputs, vehicle dynamics, tire pressure, tire slip, and brake temperature. Each example's README walks through running it locally.
 
 ## License key
 
-LightningChart for Blazor requires a license key. Get a free trial key or use your commercial key, then configure it in your application before creating a chart:
+LightningChart for Blazor requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key. Load the key through the configuration method used by your application.
 
+Create and register the `LclaLicense` in `Program.cs`:
 ```csharp
 var license = new LclaLicense
 {
@@ -27,15 +28,18 @@ var license = new LclaLicense
     AppTitle = "My Blazor App",
     Company = "My Company",
 };
+
+builder.Services.AddSingleton(license);
 ```
 
-`AppTitle` and `Company` default to trial values. Set both for app deployment licenses. In a Blazor component, create the context after the chart container has rendered:
+`AppTitle` and `Company` default to trial values when omitted. Set both for app deployment licenses.
 
+Inject the license into the component that owns the chart context. Create the context after the chart containers have rendered:
 ```csharp
 @using LightningChart.LA.Api
 @using LightningChart.LA.Blazor
 @inject IJSRuntime JS
-@inject IConfiguration Configuration
+@inject LclaLicense License
 
 <div id="signal-chart" style="height: 480px"></div>
 
@@ -46,15 +50,13 @@ var license = new LclaLicense
     {
         if (firstRender)
         {
-            var license = new LclaLicense
-            {
-                Key = Configuration["LCJS_LICENSE_KEY"]!,
-            };
-            _context = new LclaContext(new BlazorTransport(JS), license);
+            _context = new LclaContext(new BlazorTransport(JS), License);
         }
     }
 }
 ```
+
+Create the context once and use it to create additional charts; see [LCLA Context](../features/context).
 
 ## Historical data
 

@@ -12,23 +12,29 @@ dotnet add package LCLA
 
 ## Example
 
-The [MAUI example on GitHub](https://github.com/Lightning-Chart/lc-la/tree/master/examples/maui) loads 1,000,000 historical samples and lets you start or stop 10,000-sample real-time batches. Its README walks through running it locally.
+The [MAUI example on GitHub](https://github.com/Lightning-Chart/lc-la/tree/master/examples/maui) displays recorded patient vital signs, including heart rate, blood pressure, oxygen saturation, and respiratory rate. It opens with the complete historical recording and lets you replay the measurements in a scrolling chart, pause, resume, or return to historical viewing. The example's README walks through running it locally.
 
 ## License key
 
-Get a free trial key or use your commercial key, then create the chart when the WebView has loaded:
+LightningChart for MAUI requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key. Load the key through the configuration method used by your application. In the example below, `licenseKey` represents that configured value.
+
+Create one license and use it when initializing the shared context after the WebView has loaded:
 
 ```csharp
-var transport = await WebViewTransport.StartAsync();
-webView.Source = transport.Uri.AbsoluteUri;
-
-var context = new LclaContext(transport, new LclaLicense
+var license = new LclaLicense
 {
     Key = licenseKey,
     AppTitle = "My MAUI App",
     Company = "My Company",
-});
+};
+
+var transport = await WebViewTransport.StartAsync();
+webView.Source = transport.Uri.AbsoluteUri;
+
+var context = new LclaContext(transport, license);
 ```
+
+Create the context once and use it to create additional charts.
 
 `AppTitle` and `Company` default to trial values. Set both for app deployment licenses.
 

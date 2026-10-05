@@ -21,4 +21,7 @@
   <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
     <ProjectReference Include="$(LclaSourceProject)" />
   </ItemGroup>
+  <ItemGroup>
+    <MauiAsset Include="Data\patient_10.csv" LogicalName="patient_10.csv" />
+  </ItemGroup>
 </Project>

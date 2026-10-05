@@ -64,14 +64,6 @@ function handleDataSets(envelope: MessageEnvelope): ResponseEnvelope {
   }
 
   const dataSets = hostState.getDataSets(envelope.clientId ?? 'default')
-  const requestedIds = new Set(params.datasets.map((ds) => ds.id))
-
-  // Remove datasets no longer in config
-  for (const [id] of dataSets) {
-    if (!requestedIds.has(id)) {
-      dataSets.delete(id)
-    }
-  }
 
   // Create or update datasets
   for (const dsConfig of params.datasets) {

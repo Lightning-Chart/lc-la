@@ -15,3 +15,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/patient_10.csv
+    - assets/ecg_patient10.csv

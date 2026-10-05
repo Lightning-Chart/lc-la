@@ -1,6 +1,6 @@
 # LCLA Blazor Server Example
 
-Real-time XY chart with streaming sine/cosine data.
+Twelve charts display the same ECG stream from `examples/data/ecg_1000.csv`. All charts share one dataset, with each streaming batch appended once. Playback loops through the CSV at a target rate of 1,000 samples per second. Each chart shows a one-second scrolling window.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
@@ -30,6 +30,6 @@ cd lc-la-example-blazor-server
    LCJS_LICENSE_KEY="your-license-key" dotnet run
    ```
 
-2. Open https://localhost:5001 (or the URL shown in terminal) and navigate to "LCLA Chart".
+2. Open https://localhost:5001 (or the URL shown in terminal) and navigate to "LightningChart Blazor".
 
-3. Click "Start Streaming" to see real-time data.
+3. Click **Play** to start ECG playback. Click **Pause** to pause playback, then **Play** to resume. Use the chart's mouse interactions to zoom and pan.

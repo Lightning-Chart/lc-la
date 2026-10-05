@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(LclaUseLocalSource)' != 'true'">
+    <PackageReference Include="LCLA" Version="0.0.9" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
+    <ProjectReference Include="..\..\packages\clients\csharp\LightningChart.LA\LightningChart.LA.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="LCJS_LICENSE_KEY" Value="$(LCJS_LICENSE_KEY)" Condition="'$(LCJS_LICENSE_KEY)' != ''" />
+    <AssemblyMetadata Include="LCJS_APP_TITLE" Value="$(LCJS_APP_TITLE)" Condition="'$(LCJS_APP_TITLE)' != ''" />
+    <AssemblyMetadata Include="LCJS_COMPANY" Value="$(LCJS_COMPANY)" Condition="'$(LCJS_COMPANY)' != ''" />
+  </ItemGroup>
+
+<ItemGroup>
+  <EmbeddedResource
+      Include="Data\tesla_trackmode_laguna_seca_synced60s.csv"
+      LogicalName="BlazorWasmExample.Data.tesla_trackmode_laguna_seca_synced60s.csv" />
+</ItemGroup>
+
+</Project>

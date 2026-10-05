@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -23,10 +23,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.JSInterop" Version="8.0.0" />
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="CHANGELOG.md" Pack="true" PackagePath="\" />
-    <EmbeddedResource Include="Host\lcla-host.js" LogicalName="LightningChart.LA.Host.lcla-host.js" />
+    <EmbeddedResource Include="wwwroot\lcla-host.js" LogicalName="LightningChart.LA.Host.lcla-host.js" />
   </ItemGroup>
 
 </Project>

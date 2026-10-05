@@ -4,7 +4,6 @@
 .flutter-plugins-dependencies
 build/
 pubspec.lock
-android/
 ios/
 macos/
-web/
+/pubspec_overrides.yaml

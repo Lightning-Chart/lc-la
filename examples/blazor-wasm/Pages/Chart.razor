@@ -1,0 +1,441 @@
+@page "/chart"
+@using BlazorWasmExample.Data
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@inject IJSRuntime JSRuntime
+@inject LclaLicense License
+@implements IAsyncDisposable
+
+<PageTitle>LC Blazor WebAssembly</PageTitle>
+
+<div class="telemetry-page">
+    <header class="telemetry-header">
+        <div>
+            <span class="telemetry-kicker">BLAZOR WEBASSEMBLY · RECORDED TRACK TELEMETRY</span>
+            <h1>Laguna Seca Telemetry</h1>
+        </div>
+        <div class="telemetry-actions">
+            <span class="telemetry-state @(_isStreaming ? "is-streaming" : null)">
+                <i></i>
+                @_status
+            </span>
+            <button class="telemetry-control" @onclick="ToggleStreamingAsync" disabled="@(!_ready)">
+                @(_isStreaming ? "Pause" : "Run")
+            </button>
+        </div>
+    </header>
+    <section class="telemetry-metrics" aria-label="Current vehicle telemetry">
+    <article>
+        <span>Elapsed time</span>
+        <strong>@ElapsedTimeText</strong>
+        <small>of @DurationText</small>
+    </article>
+    <article>
+        <span>Distance</span>
+        <strong>@DistanceText</strong>
+        <small>km</small>
+    </article>
+    <article>
+        <span>Speed</span>
+        <strong>@SpeedText</strong>
+        <small>km/h</small>
+    </article>
+    <article>
+        <span>Max speed</span>
+        <strong>@MaxSpeedText</strong>
+        <small>km/h</small>
+    </article>
+    <article>
+        <span>Battery SOC</span>
+        <strong>@BatteryText</strong>
+        <small>%</small>
+    </article>
+    <article>
+        <span>Power</span>
+        <strong>@PowerText</strong>
+        <small>kW</small>
+    </article>
+    </section>
+    <div class="telemetry-line" aria-hidden="true"><span></span></div>
+    <main class="telemetry-chart-grid">
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">01</span>
+                    <div><h2>Performance</h2></div>
+                </div>
+                <span>km/h · kW</span>
+            </header>
+            <div id="performance-chart" class="telemetry-chart-host"></div>
+        </section>
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">02</span>
+                    <div><h2>Driver inputs</h2></div>
+                </div>
+                <span>% · bar · deg</span>
+            </header>
+            <div id="driver-input-chart" class="telemetry-chart-host"></div>
+        </section>
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">03</span>
+                    <div><h2>Vehicle dynamics</h2></div>
+                </div>
+                <span>m/s² · rad/s</span>
+            </header>
+            <div id="dynamics-chart" class="telemetry-chart-host"></div>
+        </section>
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">04</span>
+                    <div><h2>Tire pressure</h2></div>
+                </div>
+                <span>psi</span>
+            </header>
+            <div id="tire-pressure-chart" class="telemetry-chart-host"></div>
+        </section>
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">05</span>
+                    <div><h2>Tire slip</h2></div>
+                </div>
+                <span>normalized</span>
+            </header>
+            <div id="tire-slip-chart" class="telemetry-chart-host"></div>
+        </section>
+        <section class="telemetry-card">
+            <header>
+                <div>
+                    <span class="telemetry-card-index">06</span>
+                    <div><h2>Brake temperature</h2></div>
+                </div>
+                <span>normalized</span>
+            </header>
+            <div id="brake-temperature-chart" class="telemetry-chart-host"></div>
+        </section>
+    </main>
+</div>
+
+@code {
+    private BlazorTransport? _transport;
+    private LclaContext? _context;
+    private readonly List<LclaChart> _charts = [];
+    private LclaChart? _performanceChart;
+    private LclaChart? _driverInputChart;
+    private LclaChart? _dynamicsChart;
+    private LclaChart? _tirePressureChart;
+    private LclaChart? _tireSlipChart;
+    private LclaChart? _brakeTemperatureChart;
+    private TelemetryData? _telemetry;
+    private TelemetrySample? _currentSample;
+    private CancellationTokenSource? _streamCancellation;
+    private Task? _streamTask;
+    private bool _ready;
+    private bool _isStreaming;
+    private int _sampleIndex;
+    private double _maxSpeed;
+    private string _status = "Loading";
+
+    private const double VisibleWindowSeconds = 10;
+    private const string DataSetId = "telemetry";
+    private string ElapsedTimeText => _currentSample is null ? "0.0 s" : $"{_currentSample.TimeSeconds:F1} s";
+    private string DurationText => _telemetry is null ? "—" : $"{_telemetry.DurationSeconds:F0} s";
+    private string DistanceText => _currentSample is null ? "—" : $"{_currentSample.DistanceKm:F2}";
+    private string SpeedText => _currentSample is null ? "—" : $"{_currentSample.SpeedKmh:F0}";
+    private string MaxSpeedText => _currentSample is null ? "—" : $"{_maxSpeed:F0}";
+    private string BatteryText => _currentSample is null ? "—" : $"{_currentSample.BatterySocPercent:F1}";
+    private string PowerText => _currentSample is null ? "—" : $"{_currentSample.PowerKw:F0}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _telemetry = await TelemetryData.LoadAsync();
+            _transport = new BlazorTransport(JSRuntime);
+            // Create one context, then create as many charts as your application needs
+            // The license was created and registered in Program.cs
+            _context = new LclaContext(_transport, License);
+            await CreateChartsAsync();
+            ConfigureAxes();
+            _ready = true;
+            _status = "Ready";
+        }
+        catch (Exception exception){ _status = $"Initialization failed: {exception.Message}"; }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CreateChartsAsync()
+    {
+        // A shared DataSet
+        _context!.ConfigureDataSets(
+        [
+            new DataSetConfig
+            {
+                Id = DataSetId,
+                XDataPattern = DataPattern.Progressive,
+                MaxSampleCount = 2_000,
+                Columns =
+                [
+                    new() { Id = "speed" },
+                    new() { Id = "power" },
+                    new() { Id = "throttle" },
+                    new() { Id = "brake" },
+                    new() { Id = "steering" },
+                    new() { Id = "lateral" },
+                    new() { Id = "longitudinal" },
+                    new() { Id = "yaw" },
+                    new() { Id = "pressure-fl" },
+                    new() { Id = "pressure-fr" },
+                    new() { Id = "pressure-rl" },
+                    new() { Id = "pressure-rr" },
+                    new() { Id = "slip-fl" },
+                    new() { Id = "slip-fr" },
+                    new() { Id = "slip-rl" },
+                    new() { Id = "slip-rr" },
+                    new() { Id = "brake-temp-fl" },
+                    new() { Id = "brake-temp-fr" },
+                    new() { Id = "brake-temp-rl" },
+                    new() { Id = "brake-temp-rr" },
+                ],
+            },
+        ]);
+        // Charts
+        _performanceChart = await _context!.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "performance-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("speed", "Speed", "#f4b942"),
+                Channel("power", "Power", "#e879f9", stackIndex: -1),
+            ],
+        });
+        _driverInputChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "driver-input-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("throttle", "Throttle", "#a3e635"),
+                Channel("brake", "Brake pressure", "#fb7185", stackIndex: -1),
+                Channel("steering", "Steering angle", "#c084fc", stackIndex: -2),
+            ],
+        });
+        _dynamicsChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "dynamics-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("lateral", "Lateral acceleration", "#e879f9"),
+                Channel("longitudinal", "Longitudinal acceleration", "#a3e635"),
+                Channel("yaw", "Yaw rate", "#f4b942", stackIndex: -1),
+            ],
+        });
+        _tirePressureChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "tire-pressure-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("pressure-fl", "Front left", "#f4b942"),
+                Channel("pressure-fr", "Front right", "#c084fc"),
+                Channel("pressure-rl", "Rear left", "#a3e635"),
+                Channel("pressure-rr", "Rear right", "#fb7185"),
+            ],
+        });
+        _tireSlipChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "tire-slip-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("slip-fl", "Front left", "#f4b942"),
+                Channel("slip-fr", "Front right", "#c084fc"),
+                Channel("slip-rl", "Rear left", "#a3e635"),
+                Channel("slip-rr", "Rear right", "#fb7185"),
+            ],
+        });
+        _brakeTemperatureChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "brake-temperature-chart",
+            Title = "",
+            Channels =
+            [
+                Channel("brake-temp-fl", "Front left", "#f4b942"),
+                Channel("brake-temp-fr", "Front right", "#fb923c"),
+                Channel("brake-temp-rl", "Rear left", "#c084fc"),
+                Channel("brake-temp-rr", "Rear right", "#fb7185"),
+            ],
+        });
+        _charts.AddRange(
+        [
+            _performanceChart!,
+            _driverInputChart!,
+            _dynamicsChart!,
+            _tirePressureChart!,
+            _tireSlipChart!,
+            _brakeTemperatureChart!,
+        ]);
+    }
+
+    // Channel configuration
+    private static ChannelConfig Channel(
+        string id,
+        string name,
+        string color,
+        int? stackIndex = null) =>
+        new()
+        {
+            Id = id,
+            DataSetId = DataSetId,
+            Column = id,
+            Name = name,
+            Color = color,
+            Type = ChannelType.Line,
+            StackIndex = stackIndex,
+        };
+
+    // Axes configuration
+    private void ConfigureAxes()
+    {
+        foreach (var chart in _charts)
+        {
+            chart.SetScrollStrategy(new SetScrollStrategyOptions{ AxisX = ScrollStrategy.Scrolling });
+            chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions{ Axis = AxisTarget.X, Length = VisibleWindowSeconds });
+        }
+        _performanceChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 40, End = 180 });
+        _performanceChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -150, End = 400, StackIndex = -1 });
+        _driverInputChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -5, End = 105 });
+        _driverInputChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -2, End = 40, StackIndex = -1 });
+        _driverInputChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -110, End = 70, StackIndex = -2 });
+        _dynamicsChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -12, End = 12 });
+        _dynamicsChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -0.60, End = 0.80, StackIndex = -1 });
+        _tirePressureChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 43.5, End = 45.2 });
+        _brakeTemperatureChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 0.35, End = 0.60 });
+        _tireSlipChart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -0.10, End = 0.70 });
+    }
+
+    private async Task ToggleStreamingAsync()
+    {
+        if (_isStreaming)
+        {
+            await StopStreamingAsync();
+            return;
+        }
+        if (_streamCancellation is not null) await StopStreamingAsync();
+        if (_telemetry is null) return;
+        if (_sampleIndex >= _telemetry.Samples.Count) ResetStream();
+        _isStreaming = true;
+        _status = "Running";
+        _streamCancellation = new CancellationTokenSource();
+        _streamTask = StreamTelemetryAsync(_streamCancellation.Token);
+    }
+
+    private async Task StreamTelemetryAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (_telemetry is not null && _sampleIndex < _telemetry.Samples.Count)
+            {
+                var sample = _telemetry.Samples[_sampleIndex];
+                AppendSample(sample);
+                _currentSample = sample;
+                _maxSpeed = Math.Max(_maxSpeed, sample.SpeedKmh);
+                _sampleIndex++;
+
+                if (_sampleIndex % 10 == 0 || _sampleIndex == _telemetry.Samples.Count)
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+
+                if (_sampleIndex < _telemetry.Samples.Count)
+                {
+                    var nextTime = _telemetry.Samples[_sampleIndex].TimeSeconds;
+                    var delay = TimeSpan.FromSeconds(Math.Max(0, nextTime - sample.TimeSeconds));
+                    await Task.Delay(delay, cancellationToken);
+                }
+            }
+            _status = "Complete";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested){
+            _status = "Paused";
+        }
+        finally
+        {
+            _isStreaming = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void AppendSample(TelemetrySample sample)
+    {
+        _context!.AppendData(new AppendDataOptions
+        {
+            DataSetId = DataSetId,
+            X = [sample.TimeSeconds],
+            Columns = new Dictionary<string, double[]>
+            {
+                ["speed"] = [sample.SpeedKmh],
+                ["power"] = [sample.PowerKw],
+                ["throttle"] = [sample.ThrottlePercent],
+                ["brake"] = [sample.BrakePressureBar],
+                ["steering"] = [sample.SteeringAngleDegrees],
+                ["lateral"] = [sample.LateralAccelerationMs2],
+                ["longitudinal"] = [sample.LongitudinalAccelerationMs2],
+                ["yaw"] = [sample.YawRateRadiansPerSecond],
+                ["pressure-fl"] = [sample.TirePressureFrontLeftPsi],
+                ["pressure-fr"] = [sample.TirePressureFrontRightPsi],
+                ["pressure-rl"] = [sample.TirePressureRearLeftPsi],
+                ["pressure-rr"] = [sample.TirePressureRearRightPsi],
+                ["slip-fl"] = [sample.TireSlipFrontLeft],
+                ["slip-fr"] = [sample.TireSlipFrontRight],
+                ["slip-rl"] = [sample.TireSlipRearLeft],
+                ["slip-rr"] = [sample.TireSlipRearRight],
+                ["brake-temp-fl"] = [sample.BrakeTemperatureFrontLeft],
+                ["brake-temp-fr"] = [sample.BrakeTemperatureFrontRight],
+                ["brake-temp-rl"] = [sample.BrakeTemperatureRearLeft],
+                ["brake-temp-rr"] = [sample.BrakeTemperatureRearRight],
+            },
+        });
+    }
+
+    private void ResetStream()
+    {
+        _context!.ClearData(new ClearDataOptions{ DataSetId = DataSetId });
+        _sampleIndex = 0;
+        _maxSpeed = 0;
+        _currentSample = null;
+    }
+
+    private async Task StopStreamingAsync()
+    {
+        if (_streamCancellation is null) return;
+        var cancellation = _streamCancellation;
+        var streamTask = _streamTask;
+        _streamCancellation = null;
+        _streamTask = null;
+        await cancellation.CancelAsync();
+        if (streamTask is not null) await streamTask;
+        cancellation.Dispose();
+        _isStreaming = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopStreamingAsync();
+        _transport?.DiscardPending();
+        foreach (var chart in _charts)
+        {
+            await chart.DisposeAsync();
+        }
+        if (_context is not null) await _context.DisposeAsync();
+    }
+}

@@ -71,6 +71,7 @@ const target = await select({
     message: 'Choose an example to run with local library sources',
     options: [
         { value: 'blazor-server', label: 'Blazor Server', hint: 'C# client' },
+        { value: 'blazor-wasm', label: 'Blazor WebAssembly', hint: 'C# client' },
         { value: 'maui', label: '.NET MAUI', hint: 'C# client' },
         { value: 'uno', label: 'Uno Platform', hint: 'C# client' },
         { value: 'flutter', label: 'Flutter', hint: 'Flutter client' },
@@ -105,14 +106,22 @@ if (target === 'blazor-server') {
         cancel(error instanceof Error ? error.message : String(error))
         process.exitCode = 1
     }
+} else if (target === 'blazor-wasm') {
+    outro('Starting Blazor WebAssembly with the local C# client.')
+    try {
+        run(dotnetCommand, ['run', '--project', 'examples/blazor-wasm', '-p:LclaUseLocalSource=true'], { env })
+    } catch (error) {
+        cancel(error instanceof Error ? error.message : String(error))
+        process.exitCode = 1
+    }
 } else if (target === 'maui') {
     outro('Starting .NET MAUI with the local C# client.')
     try {
         run(dotnetCommand, [
-            'build',
+            'run',
+            '--project',
             'examples/maui/LightningChartMauiExample.csproj',
-            '-t:Run',
-            '-f',
+            '--framework',
             'net10.0-windows10.0.19041.0',
             '-p:LclaUseLocalSource=true',
         ], { env })
