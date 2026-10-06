@@ -5,7 +5,7 @@ This is a Flutter application that consumes the published
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
-![Flutter example](/examples/flutter/web/lcla_flutter.png)
+![Flutter example](./images/lcla_flutter.png)
 
 ## Requirements
 

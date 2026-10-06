@@ -4,7 +4,7 @@ Twelve charts display the same ECG stream from `examples/data/ecg_1000.csv`. All
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
-![Blazor Server example](/examples/blazor-server/wwwroot/lcla_blazorserver.png)
+![Blazor Server example](./images/lcla_blazorserver.png)
 
 ## Prerequisites
 

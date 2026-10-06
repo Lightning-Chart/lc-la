@@ -4,7 +4,7 @@ Six charts replay recorded Laguna Seca vehicle telemetry from `examples/data/tes
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
-![Blazor WASM example](/examples/blazor-wasm/wwwroot/lcla_blazorwasm.png)
+![Blazor WASM example](./images/lcla_blazorwasm.png)
 
 ## Prerequisites
 
