@@ -1,15 +1,10 @@
 # LCLA Blazor WebAssembly Example
 
-Six charts replay recorded Laguna Seca vehicle telemetry from `examples/data/tesla_trackmode_laguna_seca_synced60s.csv`. They all share one shared dataset.
+Six charts replay recorded Laguna Seca vehicle telemetry from `examples/data/tesla_trackmode_laguna_seca_synced60s.csv`. They all share one telemetry dataset.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
-Clone this standalone example with:
-
-```bash
-git clone https://github.com/Lightning-Chart/lc-la-example-blazor-wasm.git
-cd lc-la-example-blazor-wasm
-```
+![Blazor WASM example](/examples/blazor-wasm/wwwroot/lcla_blazorwasm.png)
 
 ## Prerequisites
 
@@ -18,7 +13,14 @@ cd lc-la-example-blazor-wasm
 
 ## Build and Run
 
-1. Run the example:
+1. Clone this standalone example with:
+
+    ```bash
+    git clone https://github.com/Lightning-Chart/lc-la-example-blazor-wasm.git
+    cd lc-la-example-blazor-wasm
+    ```
+
+2. Run the example:
 
    ```
    # PowerShell:
@@ -30,6 +32,6 @@ cd lc-la-example-blazor-wasm
    LCJS_LICENSE_KEY="your-license-key" dotnet run
    ```
 
-2. Open the URL shown in terminal and navigate to "LightningChart Blazor".
+3. Open the URL shown in terminal and navigate to "LightningChart Blazor".
 
-3. Click **Run** to replay the recording using its timestamps. Click **Pause** to pause, then **Run** to resume. When playback completes, select **Run** to replay from the beginning.
+4. Click **Run** to replay the recording using its timestamps. Click **Pause** to pause, then **Run** to resume. When playback completes, select **Run** to replay from the beginning.

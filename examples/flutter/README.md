@@ -5,6 +5,8 @@ This is a Flutter application that consumes the published
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
+![Flutter example](/examples/flutter/web/lcla_flutter.png)
+
 ## Requirements
 
 - Flutter 3.44 or newer.

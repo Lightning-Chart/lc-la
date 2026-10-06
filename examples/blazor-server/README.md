@@ -4,12 +4,7 @@ Twelve charts display the same ECG stream from `examples/data/ecg_1000.csv`. All
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
-Clone this standalone example with:
-
-```bash
-git clone https://github.com/Lightning-Chart/lc-la-example-blazor-server.git
-cd lc-la-example-blazor-server
-```
+![Blazor Server example](/examples/blazor-server/wwwroot/lcla_blazorserver.png)
 
 ## Prerequisites
 
@@ -17,8 +12,14 @@ cd lc-la-example-blazor-server
 - LightningChart JS license key ([get one here](https://lightningchart.com/js-charts/))
 
 ## Build and Run
+1. Clone this standalone example with:
 
-1. Run the example:
+    ```bash
+    git clone https://github.com/Lightning-Chart/lc-la-example-blazor-server.git
+    cd lc-la-example-blazor-server
+    ```
+
+2. Run the example:
 
    ```
    # PowerShell:
@@ -30,6 +31,6 @@ cd lc-la-example-blazor-server
    LCJS_LICENSE_KEY="your-license-key" dotnet run
    ```
 
-2. Open https://localhost:5001 (or the URL shown in terminal) and navigate to "LightningChart Blazor".
+3. Open https://localhost:5001 (or the URL shown in terminal) and navigate to "LightningChart Blazor".
 
-3. Click **Play** to start ECG playback. Click **Pause** to pause playback, then **Play** to resume. Use the chart's mouse interactions to zoom and pan.
+4. Click **Play** to start ECG playback. Click **Pause** to pause playback, then **Play** to resume. Use the chart's mouse interactions to zoom and pan.
