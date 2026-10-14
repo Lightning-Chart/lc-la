@@ -1,0 +1,189 @@
+@page "/chart"
+@rendermode InteractiveServer
+@using System.Globalization
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@inject IJSRuntime JSRuntime
+@inject LclaLicense License
+@implements IAsyncDisposable
+
+<PageTitle>LightningChart Blazor Server</PageTitle>
+
+<div class="ecg-page">
+    <div class="ecg-toolbar">
+        <h1>ECG displays</h1>
+        <button class="btn btn-primary"
+                @onclick="ToggleStreaming"
+                disabled="@(!_ready)">
+            @(_isStreaming ? "Pause" : "Play")
+        </button>
+    </div>
+    @if (_error != null)
+    {
+        <p role="alert">@_error</p>
+    }
+    <div class="ecg-grid">
+        @for (var i = 1; i <= 12; i++)
+        {
+            <div class="chart" id="lcla-chart-@i"></div>
+        }
+    </div>
+</div>
+
+@code {
+    private LclaContext? _context;
+    private readonly List<LclaChart> _charts = [];
+    private double[] _values = [];
+    private long _position;
+    private bool _ready;
+    private bool _isStreaming;
+    private bool _disposed;
+    private string? _error;
+    private CancellationTokenSource? _streamCts;
+    private Task? _streamTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            using var stream = GetType().Assembly.GetManifestResourceStream("BlazorServerEcg.Data.ecg_1000.csv")
+                ?? throw new InvalidOperationException("CSV file is missing.");
+
+            using var reader = new StreamReader(stream);
+            await reader.ReadLineAsync();
+            var values = new List<double>();
+
+            while (await reader.ReadLineAsync() is { } row)
+            {
+                if (!string.IsNullOrWhiteSpace(row))
+                {
+                    values.Add(double.Parse(row.Trim(), CultureInfo.InvariantCulture));
+                }
+            }
+
+            if (values.Count == 0)
+                throw new InvalidOperationException("CSV contains no samples.");
+
+            _values = values.ToArray();
+            if (_disposed) return;
+
+            _context = new LclaContext(new BlazorTransport(JSRuntime), License);
+
+            for (var i = 1; i <= 12; i++)
+            {
+                var chart = await _context.CreateChartAsync(new XYChartConfig
+                {
+                    ContainerId = $"lcla-chart-{i}",
+                    Title = $"ECG {i}",
+                    AnimationsEnabled = true,
+                });
+
+                if (_disposed)
+                {
+                    await chart.DisposeAsync();
+                    return;
+                }
+
+                _charts.Add(chart);
+            }
+
+            _context.ConfigureDataSets([
+                new DataSetConfig { Id = "ecg", MaxSampleCount = 10_000, Columns = [new DataSetColumnConfig { Id = "lead" }]}
+            ]);
+
+            foreach (var chart in _charts)
+            {
+                chart.ConfigureChannels([
+                    new ChannelConfig { Id = "ecg", DataSetId = "ecg", Column = "lead", Name = "ECG lead", Color = "#7AC9B4" }
+                ]);
+                chart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
+                chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 1_000 });
+            }
+
+            _ready = true;
+        }
+        catch (Exception exception) { _error = exception.Message; }
+        if (!_disposed) await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleStreaming()
+    {
+        if (!_ready || _disposed) return;
+
+        if (_isStreaming)
+        {
+            await PauseStreaming();
+            return;
+        }
+
+        await PauseStreaming();
+        if (_disposed) return;
+
+        _error = null;
+        _isStreaming = true;
+        _streamCts = new CancellationTokenSource();
+        _streamTask = StreamAsync(_streamCts.Token);
+    }
+
+    private async Task StreamAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(
+            TimeSpan.FromMilliseconds(40));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var x = new double[40];
+                var lead = new double[40];
+
+                for (var i = 0; i < x.Length; i++)
+                {
+                    var sample = _position + i;
+                    x[i] = sample;
+                    lead[i] = _values[(int)(sample % _values.Length)];
+                }
+
+                _context!.AppendData(new AppendDataOptions
+                {
+                    DataSetId = "ecg",
+                    X = x,
+                    Columns = new Dictionary<string, double[]>{ ["lead"] = lead },
+                });
+
+                _position += x.Length;
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested){ }
+        catch (Exception exception) { _error = exception.Message; }
+        finally
+        {
+            _isStreaming = false;
+            if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task PauseStreaming()
+    {
+        if (_streamCts != null)
+        {
+            await _streamCts.CancelAsync();
+            if (_streamTask != null) await _streamTask;
+            _streamCts.Dispose();
+            _streamCts = null;
+            _streamTask = null;
+        }
+        _isStreaming = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        await PauseStreaming();
+        foreach (var chart in _charts) await chart.DisposeAsync();
+        _charts.Clear();
+        if (_context != null) await _context.DisposeAsync();
+    }
+}

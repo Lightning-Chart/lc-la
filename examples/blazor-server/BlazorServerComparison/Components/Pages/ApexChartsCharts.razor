@@ -1,0 +1,281 @@
+﻿@page "/apexcharts"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using global::ApexCharts
+@using BlazorServerComparison.Data
+@inject IJSRuntime JSRuntime
+
+
+<PageTitle>ApexCharts Performance Test</PageTitle>
+
+<div class="benchmark-page">
+    <header class="benchmark-header">
+        <div>
+            <span class="benchmark-kicker">BLAZOR SERVER · XY PERFORMANCE TEST</span>
+        </div>
+        <span class="benchmark-library-badge">Blazor ApexCharts</span>
+    </header>
+
+    <section class="benchmark-metrics" aria-label="Test configuration">
+        <article>
+            <span>Historical samples</span>
+            <strong>@_sampleCount.ToString("N0")</strong>
+        </article>
+        <article>
+            <span>Streaming rate</span>
+            <strong>100</strong>
+            <small>samples/s</small>
+        </article>
+        <article>
+            <span>Batch size</span>
+            <strong>@BatchSize</strong>
+            <small>samples</small>
+        </article>
+        <article>
+            <span>Live X interval</span>
+            <strong>5</strong>
+            <small>seconds</small>
+        </article>
+    </section>
+
+    <main class="benchmark-chart-grid">
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">01</span>
+                    <div>
+                        <h2>Historical dataset</h2>
+                        <p>High-volume static line series</p>
+                    </div>
+                </div>
+                <span class="benchmark-card-status">Loaded</span>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <ApexChart TItem="LinePoint"
+                           Options="_staticOptions"
+                           Height="@("100%")"
+                           Title="Static historical line chart"
+                           XAxisType="XAxisType.Numeric">
+                    <ApexPointSeries TItem="LinePoint"
+                                     Items="_staticPoints"
+                                     Name="Value"
+                                     SeriesType="SeriesType.Line"
+                                     XValue="point => point.X"
+                                     YValue="point => point.Y" />
+                </ApexChart>
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span>Dataset</span>
+                <strong>@_sampleCount.ToString("N0") points</strong>
+            </footer>
+        </section>
+
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">02</span>
+                    <div>
+                        <h2>Real-time stream</h2>
+                        <p>Continuously appended scrolling signal</p>
+                    </div>
+                </div>
+
+                <button class="benchmark-control" @onclick="ToggleAsync">
+                    @(_isRunning ? "Pause" : "Run")
+                </button>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <ApexChart TItem="LinePoint"
+                           @ref="_realtimeChart"
+                           Options="_realtimeOptions"
+                           Height="@("100%")"
+                           Title="Real-time scrolling line chart"
+                           XAxisType="XAxisType.Datetime">
+                    <ApexPointSeries TItem="LinePoint"
+                                     Items="_realtimePoints"
+                                     Name="Value"
+                                     SeriesType="SeriesType.Line"
+                                     XValue="point => point.X"
+                                     YValue="point => point.Y" />
+                </ApexChart>
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span class="benchmark-runtime-state @(_isRunning ? "is-running" : null)">
+                    <i></i>
+                    @(_isRunning ? "Running" : "Paused")
+                </span>
+                <strong>@_receivedSamples.ToString("N0") samples received</strong>
+            </footer>
+        </section>
+    </main>
+</div>
+
+@code {
+    private const int BatchSize = 10;
+    private readonly DataGenerator _generator = new(seed: 42);
+    private readonly List<LinePoint> _staticPoints = new();
+    private readonly List<LinePoint> _realtimePoints = new();
+
+    private readonly ApexChartOptions<LinePoint> _staticOptions = new()
+    {
+        Chart = new Chart
+        {
+            Animations = new Animations { Enabled = false },
+            ParentHeightOffset = 0,
+            RedrawOnParentResize = true,
+            Background = "transparent",
+            ForeColor = "#a9a297",
+            Toolbar = new Toolbar { Show = true, AutoSelected = ApexCharts.AutoSelected.Pan },
+            Zoom = new Zoom { Enabled = true, Type = ApexCharts.AxisType.X },
+        },
+        Legend = new ApexCharts.Legend { Show = true, ShowForSingleSeries = true },
+        Stroke = new Stroke { Width = 2, Curve = Curve.Straight },
+        Markers = new Markers { Size = 0 },
+        DataLabels = new DataLabels { Enabled = false },
+        Tooltip = new ApexCharts.Tooltip { Enabled = true, Shared = false, Intersect = false },
+        Colors = ["#f4b942"],
+        Grid = new Grid { BorderColor = "#35312a", StrokeDashArray = 3 },
+        Theme = new ApexCharts.Theme { Mode = ApexCharts.Mode.Dark },
+        Xaxis = new XAxis { DecimalsInFloat = 2 },
+        Yaxis = [new YAxis { Min = -1.25M, Max = 1.25M, DecimalsInFloat = 2 }],
+    };
+
+    private readonly ApexChartOptions<LinePoint> _realtimeOptions = new()
+    {
+        Chart = new Chart
+        {
+            Animations = new Animations
+            {
+                Enabled = true,
+                Speed = 100,
+                Easing = Easing.Linear,
+                AnimateGradually = new AnimateGradually { Enabled = false },
+                DynamicAnimation = new DynamicAnimation { Enabled = true, Speed = 100 }
+            },
+            ParentHeightOffset = 0,
+            RedrawOnParentResize = true,
+            Background = "transparent",
+            ForeColor = "#a9a297",
+            Toolbar = new Toolbar { Show = true, AutoSelected = ApexCharts.AutoSelected.Pan },
+            Zoom = new Zoom { Enabled = true, Type = ApexCharts.AxisType.X },
+        },
+        Legend = new ApexCharts.Legend { Show = true, ShowForSingleSeries = true },
+        Stroke = new Stroke { Width = 2, Curve = Curve.Straight },
+        Markers = new Markers { Size = 0 },
+        DataLabels = new DataLabels { Enabled = false },
+        Tooltip = new ApexCharts.Tooltip
+        {
+            Enabled = true,
+            Shared = false,
+            Intersect = false,
+            X = new TooltipX { Formatter = "function(value) { return (Number(value) / 1000).toFixed(2) + ' s'; }" }
+        },
+        Colors = ["#f4b942"],
+        Grid = new Grid { BorderColor = "#35312a", StrokeDashArray = 3 },
+        Theme = new ApexCharts.Theme { Mode = ApexCharts.Mode.Dark },
+        Xaxis = new XAxis
+        {
+            Min = -5000,
+            Max = 0,
+            Range = 5000,
+            DecimalsInFloat = 2,
+            Labels = new XAxisLabels
+            {
+                Rotate = 0,
+                HideOverlappingLabels = false,
+                Formatter = "function(value, timestamp) { return (timestamp / 1000).toFixed(1); }"
+            }
+        },
+        Yaxis = [new YAxis { Min = -1.25M, Max = 1.25M, DecimalsInFloat = 2 }],
+    };
+
+    private ApexChart<LinePoint>? _realtimeChart;
+    private CancellationTokenSource? _cancellation;
+    private Task? _streamTask;
+    private bool _isRunning;
+    private bool _realtimeAxesInitialized;
+    private int _sampleCount = 1_000_000;
+    private int _receivedSamples;
+
+    protected override void OnInitialized()
+    {
+        var historicalData = DataGenerator.CreateHistorical(_sampleCount);
+        _staticPoints.AddRange(ToPoints(historicalData));
+        _staticOptions.Xaxis.Min = historicalData.X[0];
+        _staticOptions.Xaxis.Max = historicalData.X[^1];
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (_isRunning)
+        {
+            await StopAsync();
+            return;
+        }
+        _isRunning = true;
+        _cancellation = new CancellationTokenSource();
+        _streamTask = StreamAsync(_cancellation.Token);
+    }
+
+    private async Task StreamAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var batch = _generator.NextBatch(BatchSize);
+                var points = batch.X
+                    .Select((x, i) => new LinePoint(x * 1000, (decimal)batch.Y[i]))
+                    .ToList();
+
+                await InvokeAsync(async () =>
+                {
+                    if (cancellationToken.IsCancellationRequested || _realtimeChart is null) return;
+                        await _realtimeChart.AppendDataAsync(points);
+                        if (!_realtimeAxesInitialized)
+                        {
+                            _realtimeOptions.Xaxis.Min = null;
+                            _realtimeOptions.Xaxis.Max = null;
+                            await JSRuntime.InvokeVoidAsync("ApexCharts.exec",
+                                _realtimeOptions.Chart.Id, "updateOptions",
+                                new { xaxis = new { min = (double?)null, max = (double?)null } },
+                                false, false, false);
+                            _realtimeAxesInitialized = true;
+                        }
+                        _receivedSamples += batch.X.Length;
+                        StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private async Task StopAsync()
+    {
+        if (_cancellation is null) return;
+        await _cancellation.CancelAsync();
+        if (_streamTask is not null) await _streamTask;
+        _cancellation.Dispose();
+        _cancellation = null;
+        _streamTask = null;
+        _isRunning = false;
+    }
+
+    private static List<LinePoint> ToPoints(LineChartData data) =>
+        data.X.Select((x, i) => new LinePoint(x, (decimal)data.Y[i])).ToList();
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+    }
+
+    private sealed record LinePoint(double X, decimal Y);
+}

@@ -1,0 +1,285 @@
+﻿@page "/lc-charts"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@using BlazorServerComparison.Data
+@inject IJSRuntime JSRuntime
+@inject LclaLicense License
+
+<PageTitle>LightningChart Blazor Performance Test</PageTitle>
+
+<div class="benchmark-page">
+    <header class="benchmark-header">
+        <div>
+            <span class="benchmark-kicker">BLAZOR SERVER · XY PERFORMANCE TEST</span>
+        </div>
+        <span class="benchmark-library-badge">LightningChart Blazor</span>
+    </header>
+
+    <section class="benchmark-metrics" aria-label="Test configuration">
+        <article>
+            <span>Historical samples</span>
+            <strong>@_sampleCount.ToString("N0")</strong>
+        </article>
+        <article>
+            <span>Streaming rate</span>
+            <strong>100</strong>
+            <small>samples/s</small>
+        </article>
+        <article>
+            <span>Batch size</span>
+            <strong>@BatchSize</strong>
+            <small>samples</small>
+        </article>
+        <article>
+            <span>Live X interval</span>
+            <strong>5</strong>
+            <small>seconds</small>
+        </article>
+    </section>
+
+    <main class="benchmark-chart-grid">
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">01</span>
+                    <div>
+                        <h2>Historical dataset</h2>
+                        <p>High-volume static line series</p>
+                    </div>
+                </div>
+                <span class="benchmark-card-status">@(_ready ? "Loaded" : "Loading")</span>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <div id="static-chart" style="height: 100%;"></div>
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span>Dataset</span>
+                <strong>@_sampleCount.ToString("N0") points</strong>
+            </footer>
+        </section>
+
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">02</span>
+                    <div>
+                        <h2>Real-time stream</h2>
+                        <p>Continuously appended scrolling signal</p>
+                    </div>
+                </div>
+
+                <button class="benchmark-control" @onclick="ToggleAsync" disabled="@(!_ready)">
+                    @(_isRunning ? "Pause" : "Run")
+                </button>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <div id="realtime-chart" style="height: 100%;"></div>
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span class="benchmark-runtime-state @(_isRunning ? "is-running" : null)">
+                    <i></i>
+                    @(_isRunning ? "Running" : "Paused")
+                </span>
+                <strong>@_receivedSamples.ToString("N0") samples received</strong>
+            </footer>
+        </section>
+    </main>
+</div>
+
+@code {
+    private const int BatchSize = 10;
+    private readonly DataGenerator _generator = new(seed: 42);
+    private BlazorTransport? _transport;
+    private LclaContext? _context;
+    private LclaChart? _staticChart;
+    private LclaChart? _realtimeChart;
+    private CancellationTokenSource? _cancellation;
+    private Task? _streamTask;
+    private bool _ready;
+    private bool _isRunning;
+    private int _sampleCount = 1_000_000;
+    private int _receivedSamples;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _transport = new BlazorTransport(JSRuntime);
+        _context = new LclaContext(_transport, License);
+
+        _staticChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "static-chart",
+            Title = "Static historical line chart",
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "static-data",
+                    XDataPattern = DataPattern.Progressive,
+                    MaxSampleCount = 2_000_000,
+                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig
+                {
+                    Id = "static-value",
+                    DataSetId = "static-data",
+                    Column = "value",
+                    Name = "Value",
+                    Type = ChannelType.Line,
+                    Color = "#f4b942",
+                },
+            ],
+        });
+
+        var historicalData = DataGenerator.CreateHistorical(_sampleCount);
+
+        _staticChart.SetData(new SetDataOptions
+        {
+            DataSetId = "static-data",
+            X = historicalData.X,
+            Columns = new Dictionary<string, double[]>
+            {
+                ["value"] = historicalData.Y,
+            },
+        });
+
+        _staticChart.SetTickStrategy(new SetTickStrategyOptions
+        {
+            Axis = AxisTarget.X,
+            Strategy = TickStrategy.Numeric,
+        });
+        _staticChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+        {
+            Axis = AxisTarget.X,
+            Length = 5,
+        });
+        _staticChart.SetAxisInterval(new SetAxisIntervalOptions
+        {
+            Axis = AxisTarget.Y,
+            Start = -1.25,
+            End = 1.25,
+            Animate = false,
+        });
+
+        _realtimeChart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "realtime-chart",
+            Title = "Real-time scrolling line chart",
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "realtime-data",
+                    XDataPattern = DataPattern.Progressive,
+                    MaxSampleCount = 2_000_000,
+                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                },
+            ],
+            Channels =
+            [
+                new ChannelConfig
+                {
+                    Id = "realtime-value",
+                    DataSetId = "realtime-data",
+                    Column = "value",
+                    Name = "Value",
+                    Type = ChannelType.Line,
+                    Color = "#f4b942",
+                },
+            ],
+        });
+        _realtimeChart.SetScrollStrategy(new SetScrollStrategyOptions
+        {
+            AxisX = ScrollStrategy.Scrolling,
+        });
+        _realtimeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+        {
+            Axis = AxisTarget.X,
+            Length = 5,
+        });
+        _realtimeChart.SetAxisInterval(new SetAxisIntervalOptions
+        {
+            Axis = AxisTarget.Y,
+            Start = -1.25,
+            End = 1.25,
+            Animate = true,
+        });
+
+        _ready = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (_isRunning)
+        {
+            await StopAsync();
+            return;
+        }
+        _isRunning = true;
+        _cancellation = new CancellationTokenSource();
+        _streamTask = StreamAsync(_cancellation.Token);
+    }
+
+    private async Task StreamAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var batch = _generator.NextBatch(BatchSize);
+
+                await InvokeAsync(() =>
+                {
+                    if (cancellationToken.IsCancellationRequested || _realtimeChart is null) return;
+                    _realtimeChart.AppendData(new AppendDataOptions
+                    {
+                        DataSetId = "realtime-data",
+                        X = batch.X,
+                        Columns = new Dictionary<string, double[]>
+                        {
+                            ["value"] = batch.Y,
+                        },
+                    });
+                    _receivedSamples += batch.X.Length;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private async Task StopAsync()
+    {
+        if (_cancellation is null) return;
+        await _cancellation.CancelAsync();
+        if (_streamTask is not null) await _streamTask;
+        _transport?.DiscardPending();
+        _cancellation.Dispose();
+        _cancellation = null;
+        _streamTask = null;
+        _isRunning = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+        if (_staticChart is not null) await _staticChart.DisposeAsync();
+        if (_realtimeChart is not null) await _realtimeChart.DisposeAsync();
+        if (_context is not null) await _context.DisposeAsync();
+    }
+}

@@ -1,0 +1,400 @@
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+a, .btn-link {
+    color: #006bb7;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid #e50000;
+}
+
+.validation-message {
+    color: #e50000;
+}
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.darker-border-checkbox.form-check-input {
+    border-color: #929292;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+:root {
+    --benchmark-bg: #11110f;
+    --benchmark-surface: #1b1a17;
+    --benchmark-surface-soft: #211f1b;
+    --benchmark-border: #373229;
+    --benchmark-text: #faf9f5;
+    --benchmark-muted: #aaa398;
+    --benchmark-accent: #f4b942;
+    --benchmark-accent-soft: rgba(244, 185, 66, 0.14);
+}
+
+html,
+body {
+    background: var(--benchmark-bg);
+}
+
+.benchmark-page {
+    min-height: 100vh;
+    margin: -1.1rem -1.5rem;
+    padding: clamp(1.25rem, 2.6vw, 2.75rem);
+    color: var(--benchmark-text);
+    background: radial-gradient(circle at 10% 0%, rgba(244, 185, 66, 0.09), transparent 28rem), var(--benchmark-bg);
+}
+
+.benchmark-header,
+.benchmark-metrics,
+.benchmark-chart-grid {
+    width: min(100%, 1560px);
+    margin-inline: auto;
+}
+
+.benchmark-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 1.4rem;
+}
+
+.benchmark-kicker {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--benchmark-accent);
+    font-size: 1.25rem;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+}
+
+.benchmark-library-badge,
+.benchmark-card-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(244, 185, 66, 0.25);
+    border-radius: 999px;
+    color: #f8d68d;
+    background: var(--benchmark-accent-soft);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.benchmark-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+    .benchmark-metrics article {
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--benchmark-border);
+        border-radius: 0.8rem;
+        background: rgba(27, 26, 23, 0.9);
+    }
+
+    .benchmark-metrics span {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: var(--benchmark-muted);
+        font-size: 0.72rem;
+    }
+
+    .benchmark-metrics strong {
+        margin-right: 0.25rem;
+        font-size: 1.45rem;
+        line-height: 1;
+    }
+
+    .benchmark-metrics small {
+        color: var(--benchmark-muted);
+        font-size: 0.72rem;
+    }
+
+.benchmark-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.benchmark-card {
+    display: grid;
+    grid-template-rows: auto calc(450px + 0.8rem) 2.25rem;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--benchmark-border);
+    border-radius: 1rem;
+    background: rgba(27, 26, 23, 0.94);
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22);
+}
+
+.benchmark-card-header,
+.benchmark-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+}
+
+.benchmark-card-header {
+    min-height: 4.5rem;
+    border-bottom: 1px solid var(--benchmark-border);
+}
+
+    .benchmark-card-header > div {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+.benchmark-card-index {
+    color: #71695e;
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.benchmark-card h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.benchmark-card-header p {
+    margin: 0.2rem 0 0;
+    color: var(--benchmark-muted);
+    font-size: 0.75rem;
+}
+
+.benchmark-card-status {
+    padding: 0.4rem 0.65rem;
+    color: #c9c3b8;
+    border-color: var(--benchmark-border);
+    background: var(--benchmark-surface-soft);
+}
+
+.benchmark-chart-frame {
+    height: calc(450px + 0.8rem);
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    min-width: 0;
+    padding: 0.4rem;
+    background: #151411;
+}
+
+.benchmark-card-footer {
+    min-height: 0;
+    height: 2.25rem;
+    padding: 0.35rem 1rem;
+    line-height: 1.2;
+    box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
+    border-top: 1px solid var(--benchmark-border);
+    color: var(--benchmark-muted);
+    font-size: 0.76rem;
+}
+
+    .benchmark-card-footer strong {
+        color: #d7d1c6;
+        font-weight: 650;
+    }
+
+.benchmark-control {
+    min-width: 5.5rem;
+    padding: 0.58rem 1rem;
+    border: 0;
+    border-radius: 0.58rem;
+    color: #211707;
+    background: var(--benchmark-accent);
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+    .benchmark-control:hover:not(:disabled) {
+        background: #ffd166;
+    }
+
+    .benchmark-control:disabled {
+        cursor: wait;
+        opacity: 0.45;
+    }
+
+.benchmark-runtime-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+    .benchmark-runtime-state i {
+        width: 0.48rem;
+        height: 0.48rem;
+        border-radius: 50%;
+        background: #71695e;
+    }
+
+    .benchmark-runtime-state.is-running i {
+        background: #a3e635;
+        box-shadow: 0 0 0 0.28rem rgba(163, 230, 53, 0.10);
+    }
+
+@media (max-width: 1050px) {
+    .benchmark-chart-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .benchmark-page {
+        margin-inline: -0.75rem;
+        padding: 1rem;
+    }
+
+    .benchmark-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .benchmark-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.benchmark-card-footer > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Fill the available content area, with compact metadata and bounded charts. */
+.benchmark-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: clamp(0.75rem, 1.4vw, 1.5rem);
+    overflow: hidden;
+}
+
+.benchmark-header, .benchmark-metrics, .benchmark-chart-grid {
+    width: 100%;
+    max-width: none;
+}
+
+.benchmark-header, .benchmark-metrics {
+    flex-shrink: 0;
+    margin-bottom: 0.75rem;
+}
+
+    .benchmark-metrics article {
+        padding: 0.6rem 0.8rem;
+    }
+
+.benchmark-chart-grid {
+    flex: 1;
+    min-height: 0;
+    grid-auto-rows: minmax(0, 1fr);
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.benchmark-card {
+    height: 100%;
+    max-height: none;
+    box-sizing: border-box;
+    grid-template-rows: 3.5rem minmax(0, 1fr) 2.25rem;
+}
+
+.benchmark-card-header {
+    height: 3.5rem;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 0.35rem 1rem;
+    overflow: hidden;
+}
+
+    .benchmark-card-header > div, .benchmark-card-header > div > div {
+        min-width: 0;
+    }
+
+    .benchmark-card-header h2, .benchmark-card-header p {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .benchmark-card-header > button, .benchmark-card-header > .benchmark-card-status {
+        flex-shrink: 0;
+    }
+
+.benchmark-chart-frame {
+    height: 100%;
+    min-height: 0;
+}
+
+    .benchmark-chart-frame > div {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        min-width: 0;
+    }
+
+main > article.content:has(> .benchmark-page) {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+/* Plotly.Blazor supplies an inline 350px minimum; let the frame size it. */
+.benchmark-chart-frame > .js-plotly-plot {
+    min-height: 0 !important;
+}

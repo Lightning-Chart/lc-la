@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { examples } from './examples.mjs'
 import { get } from 'node:https'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -75,15 +76,10 @@ const prepareCsharp = async () => {
         /<Version>.*?<\/Version>/,
         `<Version>${version}</Version>`,
     )
-    for (const example of [
-        'examples/blazor-server/BlazorServerExample.csproj',
-        'examples/blazor-wasm/BlazorWasmExample.csproj',
-        'examples/maui/LightningChartMauiExample.csproj',
-        'examples/uno/LightningChartUnoExample.csproj',
-    ]) {
+    for (const example of examples.filter(example => example.client !== 'flutter',)) {
         replaceFile(
-            resolve(root, example),
-            /(<PackageReference Include="LCLA" Version=")[^"]*(" \/>)/,
+            resolve(root, example.directory, example.project),
+            /(<PackageReference Include="LCLA" Version=")[^"]*(")/,
             `$1${version}$2`,
         )
     }
@@ -104,11 +100,13 @@ const prepareFlutter = async () => {
         /^version:\s*.*$/m,
         `version: ${version}`,
     )
-    replaceFile(
-        resolve(root, 'examples/flutter/pubspec.yaml'),
-        /(lightning_chart_flutter:\s*)\^[\w.+-]+/,
-        `$1^${version}`,
-    )
+    for (const example of examples.filter(example => example.client === 'flutter')) {
+        replaceFile(
+            resolve(root, example.directory, 'pubspec.yaml'),
+            /(lightning_chart_flutter:\s*)\^[\w.+-]+/,
+            `$1^${version}`,
+        )
+    }
     return version
 }
 

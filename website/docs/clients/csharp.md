@@ -14,7 +14,8 @@ dotnet add package LCLA
 
 ## Examples
 
-The [Blazor Server example](https://github.com/Lightning-Chart/lc-la-example-blazor-server) displays the same ECG recording in twelve charts sharing one dataset. The [Blazor WebAssembly example](https://github.com/Lightning-Chart/lc-la-example-blazor-wasm) replays recorded vehicle telemetry in six charts covering performance, driver inputs, vehicle dynamics, tire pressure, tire slip, and brake temperature. Each example's README walks through running it locally.
+Explore the [Blazor Server examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/blazor-server) and [Blazor WebAssembly examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/blazor-wasm). 
+Each example has its own README with instructions for running it locally.
 
 ## License key
 

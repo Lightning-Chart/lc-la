@@ -10,9 +10,9 @@ Tested with .NET 10 MAUI project.
 dotnet add package LCLA
 ```
 
-## Example
+## Examples
 
-The [MAUI example on GitHub](https://github.com/Lightning-Chart/lc-la/tree/master/examples/maui) displays recorded patient vital signs, including heart rate, blood pressure, oxygen saturation, and respiratory rate. It opens with the complete historical recording and lets you replay the measurements in a scrolling chart, pause, resume, or return to historical viewing. The example's README walks through running it locally.
+Explore the [MAUI examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/maui). Each example has its own README with instructions for running it locally.
 
 ## License key
 

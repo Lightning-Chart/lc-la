@@ -1,0 +1,278 @@
+﻿@page "/plotly-charts"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorServerComparison.Data
+@using Plotly.Blazor
+@using Plotly.Blazor.Traces
+
+<PageTitle>Plotly.Blazor Performance Test</PageTitle>
+
+<div class="benchmark-page">
+    <header class="benchmark-header">
+        <div>
+            <span class="benchmark-kicker">BLAZOR SERVER · XY PERFORMANCE TEST</span>
+        </div>
+        <span class="benchmark-library-badge">Plotly.Blazor</span>
+    </header>
+
+    <section class="benchmark-metrics" aria-label="Test configuration">
+        <article>
+            <span>Historical samples</span>
+            <strong>@_sampleCount.ToString("N0")</strong>
+        </article>
+        <article>
+            <span>Streaming rate</span>
+            <strong>100</strong>
+            <small>samples/s</small>
+        </article>
+        <article>
+            <span>Batch size</span>
+            <strong>@BatchSize</strong>
+            <small>samples</small>
+        </article>
+        <article>
+            <span>Live X interval</span>
+            <strong>5</strong>
+            <small>seconds</small>
+        </article>
+    </section>
+
+    @if (_error is not null)
+    {
+        <p role="alert" class="alert alert-danger">@_error</p>
+    }
+
+    <main class="benchmark-chart-grid">
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">01</span>
+                    <div>
+                        <h2>Historical dataset</h2>
+                        <p>High-volume static line series</p>
+                    </div>
+                </div>
+                <span class="benchmark-card-status">@(_ready ? "Loaded" : "Loading")</span>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <PlotlyChart @bind-Config="_staticConfig" @bind-Layout="_staticLayout" @bind-Data="_staticData"
+                             UseBasicVersion="false" AfterRender="StaticChartRendered" />
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span>Dataset</span>
+                <strong>@_sampleCount.ToString("N0") points</strong>
+            </footer>
+        </section>
+
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">02</span>
+                    <div>
+                        <h2>Real-time stream</h2>
+                        <p>Continuously appended scrolling signal</p>
+                    </div>
+                </div>
+
+                <button class="benchmark-control" @onclick="ToggleAsync" disabled="@(!_ready || _error is not null)">
+                    @(_isRunning ? "Pause" : "Run")
+                </button>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <PlotlyChart @ref="_realtimeChart" @bind-Config="_realtimeConfig" @bind-Layout="_realtimeLayout" @bind-Data="_realtimeData"
+                             UseBasicVersion="false" AfterRender="RealtimeChartRendered" />
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span class="benchmark-runtime-state @(_isRunning ? "is-running" : null)">
+                    <i></i>
+                    @(_isRunning ? "Running" : "Paused")
+                </span>
+                <strong>@_receivedSamples.ToString("N0") samples received</strong>
+            </footer>
+        </section>
+    </main>
+</div>
+
+@code {
+    private const int BatchSize = 10;
+    private readonly DataGenerator _generator = new(seed: 42);
+    private CancellationTokenSource? _cancellation;
+    private Task? _streamTask;
+    private bool _ready;
+    private bool _isRunning;
+    private bool _disposed;
+    private int _sampleCount = 1_000_000;
+    private int _receivedSamples;
+    private string? _error;
+    private PlotlyChart? _realtimeChart;
+    private bool _staticRendered;
+    private bool _realtimeRendered;
+    private Config _staticConfig = new()
+    {
+        Responsive = true,
+        DisplayModeBar = Plotly.Blazor.ConfigLib.DisplayModeBarEnum.True,
+        ScrollZoom = Plotly.Blazor.ConfigLib.ScrollZoomFlag.True
+    };
+    private Config _realtimeConfig = new()
+    {
+        Responsive = true,
+        DisplayModeBar = Plotly.Blazor.ConfigLib.DisplayModeBarEnum.True,
+        ScrollZoom = Plotly.Blazor.ConfigLib.ScrollZoomFlag.True
+    };
+    private Plotly.Blazor.Layout _staticLayout = CreateLayout(false);
+    private Plotly.Blazor.Layout _realtimeLayout = CreateLayout(true);
+    private IList<ITrace> _staticData = new List<ITrace>();
+    private IList<ITrace> _realtimeData = new List<ITrace>();
+
+    protected override void OnInitialized()
+    {
+        var historicalData = DataGenerator.CreateHistorical(_sampleCount);
+        _staticData.Add(CreateSeries(historicalData));
+        _staticLayout.XAxis[0].Range = new List<object> { historicalData.X[0], historicalData.X[^1] };
+        _realtimeData.Add(CreateSeries(new LineChartData([], [])));
+    }
+
+    private void StaticChartRendered()
+    {
+        _staticRendered = true;
+        UpdateReady();
+    }
+
+    private void RealtimeChartRendered()
+    {
+        _realtimeRendered = true;
+        UpdateReady();
+    }
+
+    private void UpdateReady()
+    {
+        if (_disposed || _ready || !_staticRendered || !_realtimeRendered) return;
+        _ready = true;
+        StateHasChanged();
+    }
+
+    private static ScatterGl CreateSeries(LineChartData data) => new()
+    {
+        Name = "Value",
+        ShowLegend = true,
+        Mode = Plotly.Blazor.Traces.ScatterGlLib.ModeFlag.Lines,
+        HoverInfo = Plotly.Blazor.Traces.ScatterGlLib.HoverInfoFlag.X | Plotly.Blazor.Traces.ScatterGlLib.HoverInfoFlag.Y,
+        X = data.X.Select(x => (object)x).ToList(),
+        Y = data.Y.Select(y => (object)y).ToList(),
+        Line = new Plotly.Blazor.Traces.ScatterGlLib.Line { Color = "#f4b942", Width = 2 }
+    };
+
+    private static Plotly.Blazor.Layout CreateLayout(bool realtime) => new()
+    {
+        AutoSize = true,
+        ShowLegend = true,
+        HoverMode = Plotly.Blazor.LayoutLib.HoverModeEnum.Closest,
+        DragMode = Plotly.Blazor.LayoutLib.DragModeEnum.Pan,
+        Margin = new Plotly.Blazor.LayoutLib.Margin { L = 50, R = 15, T = 15, B = 40 },
+        PaperBgColor = "rgba(0,0,0,0)",
+        PlotBgColor = "rgba(0,0,0,0)",
+        Font = new Plotly.Blazor.LayoutLib.Font { Color = "#a9a297" },
+        XAxis = new List<Plotly.Blazor.LayoutLib.XAxis>
+        {
+            new()
+            {
+                Type = Plotly.Blazor.LayoutLib.XAxisLib.TypeEnum.Linear,
+                AutoRange = Plotly.Blazor.LayoutLib.XAxisLib.AutoRangeEnum.False,
+                Range = realtime ? new List<object> { -5d, 0d } : null,
+                GridColor = "#35312a",
+                ZeroLine = false
+            }
+        },
+        YAxis = new List<Plotly.Blazor.LayoutLib.YAxis>
+        {
+            new()
+            {
+                AutoRange = Plotly.Blazor.LayoutLib.YAxisLib.AutoRangeEnum.False,
+                Range = new List<object> { -1.25d, 1.25d },
+                FixedRange = true,
+                GridColor = "#35312a",
+                ZeroLine = false
+            }
+        }
+    };
+
+    private async Task ToggleAsync()
+    {
+        if (!_ready || _disposed || _error is not null) return;
+        if (_isRunning)
+        {
+            await StopAsync();
+            return;
+        }
+        _isRunning = true;
+        _cancellation = new CancellationTokenSource();
+        _streamTask = StreamAsync(_cancellation.Token);
+    }
+
+    private async Task StreamAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var batch = _generator.NextBatch(BatchSize);
+                await InvokeAsync(async () =>
+                {
+                    if (_disposed || cancellationToken.IsCancellationRequested || _realtimeChart is null) return;
+                    await _realtimeChart.ExtendTrace(batch.X.Select(x => (object)x), batch.Y.Select(y => (object)y), 0);
+                    var end = batch.X[^1];
+                    _realtimeLayout.XAxis[0].Range = new List<object> { end - 5, end };
+                    await _realtimeChart.Relayout();
+                    _receivedSamples += batch.X.Length;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex)
+        {
+            if (!_disposed)
+            {
+                _error = $"Streaming stopped: {ex.Message}";
+                _isRunning = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        var cancellation = _cancellation;
+        if (cancellation is null) return;
+        var streamTask = _streamTask;
+        _cancellation = null;
+        _streamTask = null;
+        _isRunning = false;
+        await cancellation.CancelAsync();
+        try { if (streamTask is not null) await streamTask; }
+        finally { cancellation.Dispose(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        await StopAsync();
+        if (_realtimeRendered && _realtimeChart is not null)
+        {
+            try { await _realtimeChart.Purge(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}
+
+
+
+
