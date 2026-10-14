@@ -7,3 +7,16 @@ obj/
 .claude
 .env
 /artifacts/
+
+# Flutter examples: generated files
+/examples/flutter/**/.dart_tool/
+/examples/flutter/**/.packages
+/examples/flutter/**/.flutter-plugins
+/examples/flutter/**/.flutter-plugins-dependencies
+/examples/flutter/**/build/
+/examples/flutter/**/pubspec.lock
+/examples/flutter/**/pubspec_overrides.yaml
+/examples/flutter/**/android/.gradle/
+/examples/flutter/**/android/.cxx/
+/examples/flutter/**/android/local.properties
+/examples/flutter/**/android/**/GeneratedPluginRegistrant.java

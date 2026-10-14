@@ -1,7 +1,6 @@
 <Project>
   <!--
-    Monorepo-only. Not copied to the standalone example repositories.
-    With -p:LclaUseLocalSource=true, build against the library source instead of the LCLA NuGet package.
+    With -p:LclaUseLocalSource=true, examples build against the local C# client library instead of the LCLA NuGet package.
   -->
   <ItemGroup Condition="'$(LclaUseLocalSource)' == 'true'">
     <PackageReference Remove="LCLA" />

@@ -12,9 +12,10 @@ flutter pub add lightning_chart_flutter
 
 Tested with Flutter 3.44.
 
-## Example
+## Examples
 
-The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example-flutter) displays a patient dashboard with ECG, blood pressure, oxygen saturation, and respiratory rate. Monitor mode replays the recordings with Play/Pause controls and current measurements. Review mode displays the complete recordings and summary statistics. The example's README walks through running it locally in Chrome and on native targets.
+Explore the [Flutter examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/flutter). 
+Each example has its own README with instructions for running it locally.
 
 ## License key
 

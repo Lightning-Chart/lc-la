@@ -1,0 +1,328 @@
+﻿@page "/bootstrap-charts"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorServerComparison.Data
+@using BlazorBootstrap
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Blazor Bootstrap (Chart.js) Performance Test</PageTitle>
+
+<div class="benchmark-page">
+    <header class="benchmark-header">
+        <div>
+            <span class="benchmark-kicker">BLAZOR SERVER · XY PERFORMANCE TEST</span>
+        </div>
+        <span class="benchmark-library-badge">Blazor Bootstrap (Chart.js)</span>
+    </header>
+
+    <section class="benchmark-metrics" aria-label="Test configuration">
+        <article>
+            <span>Historical samples</span>
+            <strong>@_sampleCount.ToString("N0")</strong>
+        </article>
+        <article>
+            <span>Streaming rate</span>
+            <strong>100</strong>
+            <small>samples/s</small>
+        </article>
+        <article>
+            <span>Batch size</span>
+            <strong>@BatchSize</strong>
+            <small>samples</small>
+        </article>
+        <article>
+            <span>Live X interval</span>
+            <strong>5</strong>
+            <small>seconds</small>
+        </article>
+    </section>
+
+    @if (_error is not null)
+    {
+        <p role="alert" class="alert alert-danger">@_error</p>
+    }
+
+    <main class="benchmark-chart-grid">
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">01</span>
+                    <div>
+                        <h2>Historical dataset</h2>
+                        <p>High-volume static line series</p>
+                    </div>
+                </div>
+                <span class="benchmark-card-status">@(_ready ? "Loaded" : "Loading")</span>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <LineChart @ref="_staticChart" Height="100" HeightUnit="Unit.Percentage" />
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span>Dataset</span>
+                <strong>@_sampleCount.ToString("N0") points</strong>
+            </footer>
+        </section>
+
+        <section class="benchmark-card">
+            <header class="benchmark-card-header">
+                <div>
+                    <span class="benchmark-card-index">02</span>
+                    <div>
+                        <h2>Real-time stream</h2>
+                        <p>Continuously appended scrolling signal</p>
+                    </div>
+                </div>
+                <button class="benchmark-control" @onclick="ToggleAsync" disabled="@(!_ready || _error is not null)">
+                    @(_isRunning ? "Pause" : "Run")
+                </button>
+            </header>
+
+            <div class="benchmark-chart-frame">
+                <LineChart @ref="_realtimeChart" Height="100" HeightUnit="Unit.Percentage" />
+            </div>
+
+            <footer class="benchmark-card-footer">
+                <span class="benchmark-runtime-state @(_isRunning ? "is-running" : null)">
+                    <i></i>
+                    @(_isRunning ? "Running" : "Paused")
+                </span>
+                <strong>@_receivedSamples.ToString("N0") samples received</strong>
+            </footer>
+        </section>
+    </main>
+</div>
+
+@code {
+    private const int BatchSize = 10;
+    private readonly DataGenerator _generator = new(seed: 42);
+    private CancellationTokenSource? _cancellation;
+    private Task? _streamTask;
+    private bool _ready;
+    private bool _isRunning;
+    private bool _disposed;
+    private int _sampleCount = 1_000_000;
+    private int _receivedSamples;
+    private string? _error;
+    private LineChart? _staticChart;
+    private LineChart? _realtimeChart;
+    private IJSObjectReference? _nativeRealtimeChart;
+    private ChartData _staticData = new();
+    private ChartData _realtimeData = new();
+    private readonly LineChartDataset _realtimeSeries = CreateSeries([]);
+    private readonly BenchmarkChartOptions _staticOptions = CreateOptions(false);
+    private readonly BenchmarkChartOptions _realtimeOptions = CreateOptions(true);
+
+    protected override void OnInitialized()
+    {
+        var historicalData = DataGenerator.CreateHistorical(_sampleCount);
+        _staticData.Datasets = new List<IChartDataset> { CreateSeries(ToPoints(historicalData)) };
+        _staticData.Labels = ToLabels(historicalData);
+        _staticOptions.Scales!.X!.Min = historicalData.X[0];
+        _staticOptions.Scales.X.Max = historicalData.X[^1];
+        _realtimeData.Datasets = new List<IChartDataset> { _realtimeSeries };
+        _realtimeData.Labels = new List<string>();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _staticChart is null || _realtimeChart is null) return;
+        try
+        {
+            await _staticChart.InitializeAsync(_staticData, _staticOptions);
+            await _realtimeChart.InitializeAsync(_realtimeData, _realtimeOptions);
+            await EnableZoomAsync(_staticChart);
+            await EnableZoomAsync(_realtimeChart);
+            // Keep the native dataset object and its existing point elements.
+            // These are references to Chart.js objects, not new JavaScript files.
+            _nativeRealtimeChart = await JSRuntime.InvokeAsync<IJSObjectReference>("Chart.getChart", _realtimeChart.Id);
+            if (!_disposed) _ready = true;
+        }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex) { if (!_disposed) _error = $"Chart initialization failed: {ex.Message}"; }
+        if (!_disposed) StateHasChanged();
+    }
+
+    private static List<double?> ToPoints(LineChartData data) =>
+        data.Y.Select(y => (double?)y).ToList();
+
+    private static List<string> ToLabels(LineChartData data) =>
+        data.X.Select(x => x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).ToList();
+
+    private static LineChartDataset CreateSeries(List<double?> points) => new()
+    {
+        Label = "Value",
+        Data = points,
+        BorderColor = "#f4b942",
+        BorderWidth = 2,
+        PointRadius = new List<double> { 0 },
+        PointHoverRadius = new List<double> { 0 },
+        Fill = false,
+        Tension = 0
+    };
+
+    private static BenchmarkChartOptions CreateOptions(bool realtime) => new()
+    {
+        Animation = realtime ? new { duration = 100, easing = "linear" } : false,
+        Animations = realtime ? new
+        {
+            x = new { type = "number", properties = new[] { "x" }, duration = 100, easing = "linear" },
+            y = false,
+            colors = false,
+            numbers = false
+        } : null,
+        Interaction = new Interaction { Mode = InteractionMode.Nearest, Intersect = false },
+        Responsive = true,
+        MaintainAspectRatio = false,
+        Plugins = new LineChartPlugins
+        {
+            Legend = new ChartPluginsLegend { Display = true },
+            Tooltip = new ChartPluginsTooltip { Enabled = true }
+        },
+        Scales = new Scales
+        {
+            X = new ChartAxes
+            {
+                Type = "linear",
+                Min = realtime ? -5 : 0,
+                Max = realtime ? 0 : null,
+                Grid = new ChartAxesGrid { Color = "#35312a" },
+                Ticks = new ChartAxesTicks { Color = "#a9a297" },
+                Title = new ChartAxesTitle { Display = true, Text = "Time (s)", Color = "#a9a297" }
+            },
+            Y = new ChartAxes
+            {
+                Min = -1.25,
+                Max = 1.25,
+                Grid = new ChartAxesGrid { Color = "#35312a" },
+                Ticks = new ChartAxesTicks { Color = "#a9a297" }
+            }
+        }
+    };
+
+    // The wrapper passes this options object to Chart.js.
+    private sealed class BenchmarkChartOptions : LineChartOptions
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("animation")]
+        public object Animation { get; set; } = false;
+        [System.Text.Json.Serialization.JsonPropertyName("animations")]
+        public object? Animations { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("normalized")]
+        public bool Normalized { get; set; } = true;
+    }
+    private async Task EnableZoomAsync(LineChart chartComponent)
+    {
+        await using var chart = await JSRuntime.InvokeAsync<IJSObjectReference>("Chart.getChart", chartComponent.Id);
+        await using var config = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", chart, "config");
+        await using var options = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", config, "options");
+        await using var plugins = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", options, "plugins");
+
+        await JSRuntime.InvokeVoidAsync("Object.assign", plugins, new
+        {
+            zoom = new
+            {
+                pan = new { enabled = true, mode = "x" },
+                zoom = new
+                {
+                    wheel = new { enabled = true },
+                    pinch = new { enabled = true },
+                    mode = "x"
+                }
+            }
+        });
+        await chart.InvokeVoidAsync("update", "none");
+    }
+
+    private async Task ResetZoomAsync(LineChart? chartComponent)
+    {
+        if (!_ready || _disposed || chartComponent is null) return;
+        await using var chart = await JSRuntime.InvokeAsync<IJSObjectReference>("Chart.getChart", chartComponent.Id);
+        await chart.InvokeVoidAsync("resetZoom");
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (!_ready || _disposed || _error is not null) return;
+        if (_isRunning)
+        {
+            await StopAsync();
+            return;
+        }
+        _isRunning = true;
+        _cancellation = new CancellationTokenSource();
+        _streamTask = StreamAsync(_cancellation.Token);
+    }
+
+    private async Task StreamAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var batch = _generator.NextBatch(BatchSize);
+                await InvokeAsync(async () =>
+                {
+                    if (_disposed || cancellationToken.IsCancellationRequested || _realtimeChart is null) return;
+                    _realtimeSeries.Data!.AddRange(ToPoints(batch));
+                    _realtimeData.Labels!.AddRange(ToLabels(batch));
+                    var end = batch.X[^1];
+                    _realtimeOptions.Scales!.X!.Min = end - 5;
+                    _realtimeOptions.Scales!.X!.Max = end;
+                    if (_nativeRealtimeChart is null) return;
+                    await using var config = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", _nativeRealtimeChart, "config");
+                    await using var options = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", config, "options");
+                    await using var scales = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", options, "scales");
+                    await using var xAxis = await JSRuntime.InvokeAsync<IJSObjectReference>("Reflect.get", scales, "x");
+                    await JSRuntime.InvokeVoidAsync("Object.assign", xAxis, new { min = end - 5, max = end });
+                    await _realtimeChart.UpdateValuesAsync(_realtimeData);
+                    _receivedSamples += batch.X.Length;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex)
+        {
+            if (!_disposed)
+            {
+                _error = $"Streaming stopped: {ex.Message}";
+                _isRunning = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        var cancellation = _cancellation;
+        if (cancellation is null) return;
+        var streamTask = _streamTask;
+        _cancellation = null;
+        _streamTask = null;
+        _isRunning = false;
+        await cancellation.CancelAsync();
+        try { if (streamTask is not null) await streamTask; }
+        finally { cancellation.Dispose(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        await StopAsync();
+        if (_nativeRealtimeChart is not null)
+        {
+            try { await _nativeRealtimeChart.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}
+
+
+
+
+
