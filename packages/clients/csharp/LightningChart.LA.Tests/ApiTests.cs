@@ -225,4 +225,75 @@ public class ApiTests
         Assert.Equal("lifecycle", meta.GetProperty("category").GetString());
         Assert.Equal("dispose", meta.GetProperty("action").GetString());
     }
+
+    [Fact]
+    public async Task SetMatrixData_SendsFlatFloat32ValuesBySeriesId()
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        var values = new float[] { 1, 2, 3, 4, 5, 6 };
+        chart.SetMatrixData(new SetMatrixDataOptions { SeriesId = "heatmap", Values = values });
+
+        var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        Assert.Equal("data", meta.GetProperty("category").GetString());
+        Assert.Equal("setMatrix", meta.GetProperty("action").GetString());
+        Assert.Equal(chart.ChartId, meta.GetProperty("chartId").GetString());
+        Assert.Equal("heatmap", meta.GetProperty("seriesId").GetString());
+        Assert.Equal(values, (float[])decoded["values"]);
+    }
+
+    [Fact]
+    public async Task InvalidateMatrixData_SendsRegion()
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        chart.InvalidateMatrixData(new InvalidateMatrixDataOptions
+        {
+            SeriesId = "heatmap", IColumn = 10, IRow = 2, Columns = 2, Rows = 3, Values = new float[6],
+        });
+
+        var meta = (JsonElement)BijDecoder.Decode(transport.FireAndForgetMessages.Last())["meta"];
+        Assert.Equal("invalidateMatrix", meta.GetProperty("action").GetString());
+        var p = meta.GetProperty("params");
+        Assert.Equal(10, p.GetProperty("iColumn").GetInt32());
+        Assert.Equal(2, p.GetProperty("iRow").GetInt32());
+        Assert.Equal(2, p.GetProperty("columns").GetInt32());
+        Assert.Equal(3, p.GetProperty("rows").GetInt32());
+
+        Assert.Throws<ArgumentException>(() => chart.InvalidateMatrixData(new InvalidateMatrixDataOptions
+        {
+            SeriesId = "heatmap", IColumn = 0, IRow = 0, Columns = 2, Rows = 3, Values = new float[5],
+        }));
+    }
+
+    [Fact]
+    public async Task AppendMatrixData_FlattensSamplesIntoOnePart()
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        chart.AppendMatrixData(new AppendMatrixDataOptions
+        {
+            SeriesId = "spectrogram",
+            Samples = [[1, 2, 3], [4, 5, 6]],
+        });
+
+        var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        Assert.Equal("appendMatrix", meta.GetProperty("action").GetString());
+        Assert.Equal(3, meta.GetProperty("params").GetProperty("sampleLength").GetInt32());
+        Assert.Equal(new float[] { 1, 2, 3, 4, 5, 6 }, (float[])decoded["values"]);
+
+        Assert.Throws<ArgumentException>(() => chart.AppendMatrixData(new AppendMatrixDataOptions
+        {
+            SeriesId = "spectrogram",
+            Samples = [[1, 2, 3], [4, 5]],
+        }));
+    }
 }

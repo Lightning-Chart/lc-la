@@ -7,6 +7,7 @@
 import type { DataSetXY } from '@lightningchart/lcjs'
 import type { MessageEnvelope, ResponseEnvelope } from '../types.js'
 import { hostState } from './state.js'
+import { handleMatrixData } from './matrix.js'
 
 function increaseMaxSampleCountIfNeeded(dataSet: DataSetXY, requested: number) {
   const current = dataSet.getMaxSampleCount()
@@ -37,6 +38,10 @@ export function handleData(envelope: MessageEnvelope, binaryParts: Record<string
       return handleAppend(envelope, binaryParts)
     case 'clear':
       return handleClear(envelope)
+    case 'setMatrix':
+    case 'invalidateMatrix':
+    case 'appendMatrix':
+      return handleMatrixData(envelope, binaryParts)
     default:
       return { id: envelope.id, type: 'error', error: `Unknown data action: ${envelope.action}` }
   }

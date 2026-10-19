@@ -317,6 +317,76 @@ public class LclaChart : IAsyncDisposable
         _client.SendFireAndForget(message);
     }
 
+    /// <summary>
+    /// Replace all matrix data of a heatmap series.
+    /// Values is a flat Columns × Rows matrix in the data order the series was created with.
+    /// </summary>
+    public void SetMatrixData(SetMatrixDataOptions options)
+    {
+        ThrowIfDisposed();
+        SendMatrixData("setMatrix", options.SeriesId, null, options.Values);
+    }
+
+    /// <summary>
+    /// Replace a rectangular region of a heatmap series' matrix data.
+    /// Values is a flat Columns × Rows region in the data order the series was created with.
+    /// </summary>
+    public void InvalidateMatrixData(InvalidateMatrixDataOptions options)
+    {
+        ThrowIfDisposed();
+        if (options.Values.Length != options.Columns * options.Rows)
+        {
+            throw new ArgumentException($"Values must contain Columns * Rows ({options.Columns * options.Rows}) items.", nameof(options));
+        }
+        SendMatrixData("invalidateMatrix", options.SeriesId, new
+        {
+            iColumn = options.IColumn,
+            iRow = options.IRow,
+            columns = options.Columns,
+            rows = options.Rows,
+        }, options.Values);
+    }
+
+    /// <summary>
+    /// Append samples (columns or rows, along the scroll dimension) to a scrolling heatmap series.
+    /// Every sample must have the same length, matching the series resolution.
+    /// </summary>
+    public void AppendMatrixData(AppendMatrixDataOptions options)
+    {
+        ThrowIfDisposed();
+        var samples = options.Samples;
+        if (samples.Count == 0) return;
+
+        var sampleLength = samples[0].Length;
+        var values = new float[samples.Count * sampleLength];
+        for (int i = 0; i < samples.Count; i++)
+        {
+            if (samples[i].Length != sampleLength)
+            {
+                throw new ArgumentException("All samples must have the same length.", nameof(options));
+            }
+            samples[i].CopyTo(values, i * sampleLength);
+        }
+
+        SendMatrixData("appendMatrix", options.SeriesId, new { sampleLength }, values);
+    }
+
+    private void SendMatrixData(string action, string seriesId, object? parameters, float[] values)
+    {
+        var meta = new Dictionary<string, object?>
+        {
+            ["id"] = _client.NextId(),
+            ["category"] = "data",
+            ["action"] = action,
+            ["clientId"] = _client.ClientId,
+            ["chartId"] = _chartId,
+            ["seriesId"] = seriesId,
+        };
+        if (parameters != null) meta["params"] = parameters;
+
+        _client.SendFireAndForget(BijEncoder.Encode([BijPart.Json("meta", meta), BijPart.Float32("values", values)]));
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
@@ -435,4 +505,26 @@ public class AppendDataOptions
 public class ClearDataOptions
 {
     public required string DataSetId { get; set; }
+}
+
+public class SetMatrixDataOptions
+{
+    public required string SeriesId { get; set; }
+    public required float[] Values { get; set; }
+}
+
+public class InvalidateMatrixDataOptions
+{
+    public required string SeriesId { get; set; }
+    public required int IColumn { get; set; }
+    public required int IRow { get; set; }
+    public required int Columns { get; set; }
+    public required int Rows { get; set; }
+    public required float[] Values { get; set; }
+}
+
+public class AppendMatrixDataOptions
+{
+    public required string SeriesId { get; set; }
+    public required IReadOnlyList<float[]> Samples { get; set; }
 }

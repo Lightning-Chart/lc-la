@@ -59,6 +59,8 @@ vi.mock('@lightningchart/lcjs', () => {
     ColorHEX: vi.fn(),
     emptyFill: {},
     emptyLine: {},
+    HeatmapGridSeriesIntensityValues: class {},
+    HeatmapScrollingGridSeriesIntensityValues: class {},
   }
 })
 
@@ -465,5 +467,29 @@ describe('Message Router', () => {
     })
     // init is idempotent (already initialized in beforeEach), so this succeeds silently
     expect(handleMessage(buf).type).toBe('response')
+  })
+
+  it('routes matrix data by seriesId', () => {
+    const chartId = createChart()
+
+    const buf = bijEncode([
+      { key: 'meta', value: { id: '2', category: 'data', action: 'setMatrix', chartId, seriesId: 'heatmap' } },
+      { key: 'values', value: new Float32Array(4) },
+    ])
+    const res = handleMessage(buf)
+    expect(res.type).toBe('error')
+    expect(res.error).toContain('Series not found: heatmap')
+  })
+
+  it('returns error for matrix data without float32 values', () => {
+    const chartId = createChart()
+
+    const buf = bijEncode([
+      { key: 'meta', value: { id: '2', category: 'data', action: 'setMatrix', chartId, seriesId: 'heatmap' } },
+      { key: 'values', value: new Float64Array(4) },
+    ])
+    const res = handleMessage(buf)
+    expect(res.type).toBe('error')
+    expect(res.error).toContain('Float32Array')
   })
 })

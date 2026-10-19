@@ -9,6 +9,7 @@ export interface MessageEnvelope {
   clientId?: string
   chartId?: string
   dataSetId?: string
+  seriesId?: string
   params?: Record<string, unknown>
 }
 
@@ -98,4 +99,20 @@ export interface ConfigureTickStrategyParams {
   axis: AxisTarget
   stackIndex?: number
   strategy: TickStrategy
+}
+
+// Matrix data actions (data/setMatrix, data/invalidateMatrix, data/appendMatrix).
+// Target a series by seriesId. Values are always a flat float32 BIJ part named "values",
+// interpreted in the dataOrder / scrollDimension the series was created with.
+
+export interface InvalidateMatrixParams {
+  iColumn: number
+  iRow: number
+  columns: number
+  rows: number
+}
+
+export interface AppendMatrixParams {
+  /** Number of values per appended sample (= series resolution). values.length must be a multiple of it. */
+  sampleLength: number
 }

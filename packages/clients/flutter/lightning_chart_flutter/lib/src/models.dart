@@ -261,3 +261,38 @@ class ClearDataOptions {
 
   final String dataSetId;
 }
+
+class SetMatrixDataOptions {
+  const SetMatrixDataOptions({required this.seriesId, required this.values});
+
+  final String seriesId;
+  final Float32List values;
+}
+
+class InvalidateMatrixDataOptions {
+  const InvalidateMatrixDataOptions({
+    required this.seriesId,
+    required this.iColumn,
+    required this.iRow,
+    required this.columns,
+    required this.rows,
+    required this.values,
+  });
+
+  final String seriesId;
+  final int iColumn;
+  final int iRow;
+  final int columns;
+  final int rows;
+  final Float32List values;
+}
+
+class AppendMatrixDataOptions {
+  const AppendMatrixDataOptions({
+    required this.seriesId,
+    required this.samples,
+  });
+
+  final String seriesId;
+  final List<Float32List> samples;
+}

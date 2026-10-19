@@ -336,6 +336,77 @@ class LclaChart {
     _client.clearData(options);
   }
 
+  /// Replaces all matrix data of a heatmap series. [SetMatrixDataOptions.values]
+  /// is a flat columns × rows matrix in the data order the series was created
+  /// with.
+  void setMatrixData(SetMatrixDataOptions options) {
+    _throwIfDisposed();
+    _sendMatrixData('setMatrix', options.seriesId, null, options.values);
+  }
+
+  /// Replaces a rectangular region of a heatmap series' matrix data.
+  void invalidateMatrixData(InvalidateMatrixDataOptions options) {
+    _throwIfDisposed();
+    if (options.values.length != options.columns * options.rows) {
+      throw ArgumentError(
+        'values must contain columns * rows (${options.columns * options.rows}) items.',
+      );
+    }
+    _sendMatrixData('invalidateMatrix', options.seriesId, {
+      'iColumn': options.iColumn,
+      'iRow': options.iRow,
+      'columns': options.columns,
+      'rows': options.rows,
+    }, options.values);
+  }
+
+  /// Appends samples (columns or rows, along the scroll dimension) to a
+  /// scrolling heatmap series. Every sample must have the same length,
+  /// matching the series resolution.
+  void appendMatrixData(AppendMatrixDataOptions options) {
+    _throwIfDisposed();
+    final samples = options.samples;
+    if (samples.isEmpty) {
+      return;
+    }
+
+    final sampleLength = samples.first.length;
+    final values = Float32List(samples.length * sampleLength);
+    for (var i = 0; i < samples.length; i++) {
+      if (samples[i].length != sampleLength) {
+        throw ArgumentError('All samples must have the same length.');
+      }
+      values.setAll(i * sampleLength, samples[i]);
+    }
+
+    _sendMatrixData('appendMatrix', options.seriesId, {
+      'sampleLength': sampleLength,
+    }, values);
+  }
+
+  void _sendMatrixData(
+    String action,
+    String seriesId,
+    Map<String, Object?>? params,
+    Float32List values,
+  ) {
+    final meta = <String, Object?>{
+      'id': _client._nextMessageId(),
+      'category': 'data',
+      'action': action,
+      'clientId': _client._clientId,
+      'chartId': chartId,
+      'seriesId': seriesId,
+    };
+    if (params != null) {
+      meta['params'] = params;
+    }
+    _client._sendFireAndForget([
+      BijPart.json('meta', meta),
+      BijPart.float32('values', values),
+    ]);
+  }
+
   void dispose() {
     if (_disposed) {
       return;
