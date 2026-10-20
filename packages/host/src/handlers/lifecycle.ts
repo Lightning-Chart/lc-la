@@ -4,7 +4,7 @@
 
 import { lightningChart, Themes } from '@lightningchart/lcjs'
 import type { MessageEnvelope, ResponseEnvelope, CreateChartParams, LclaTheme } from '../types.js'
-import { hostState, type ChartState } from './state.js'
+import { hostState, type AxisState, type ChartState } from './state.js'
 
 let chartCounter = 0
 
@@ -94,11 +94,13 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
 
   const ownsContainer = !params?.containerId
   const theme = hostState.getTheme()
+  const defaultXAxisOpposite = params?.defaultAxisX?.opposite ?? false
+  const defaultYAxisOpposite = params?.defaultAxisY?.opposite ?? false
   const chart = lcjs.ChartXY({
     container,
     ...(theme ? { theme } : {}),
-    defaultAxisX: { type: 'linear-highPrecision' },
-    defaultAxisY: { type: 'linear-highPrecision' },
+    defaultAxisX: { type: 'linear-highPrecision', opposite: defaultXAxisOpposite },
+    defaultAxisY: { type: 'linear-highPrecision', opposite: defaultYAxisOpposite },
   })
 
   // Keep wheel zoom available while a live X axis is scrolling. The explicit
@@ -107,11 +109,23 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
     chart.setAnimationsEnabled(false)
   }
 
+  const defaultXAxis: AxisState = {
+    target: 'x',
+    axis: chart.axisX,
+  }
+
+  const defaultYAxis: AxisState = {
+    target: 'y',
+    axis: chart.axisY,
+  }
+
   const state: ChartState = {
     id: chartId,
     clientId,
     chart,
-    channels: new Map(),
+    series: new Map(),
+    defaultXAxis,
+    defaultYAxis,
     axes: new Map(),
     ownsContainer,
   }

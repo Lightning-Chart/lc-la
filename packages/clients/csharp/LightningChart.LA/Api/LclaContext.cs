@@ -198,19 +198,19 @@ public class LclaContext : IAsyncDisposable
         });
     }
 
-    public void SetData(SetDataOptions options) => SendData("set", options.DataSetId, options.X, options.Columns, options.MaxSampleCount);
-    public void AppendData(AppendDataOptions options) => SendData("append", options.DataSetId, options.X, options.Columns, options.MaxSampleCount);
+    public void SetData(SetDataOptions options) => SendData("set", options.DataSetId, options.Columns, options.MaxSampleCount);
+    public void AppendData(AppendDataOptions options) => SendData("append", options.DataSetId, options.Columns, options.MaxSampleCount);
 
     public void ClearData(ClearDataOptions options) => SendFireAndForget(new
     {
         id = NextId(), category = "data", action = "clear", clientId = _clientId, dataSetId = options.DataSetId,
     });
 
-    private void SendData(string action, string dataSetId, double[] x, IReadOnlyDictionary<string, double[]> columns, int? maxSampleCount)
+    private void SendData(string action, string dataSetId, IReadOnlyDictionary<string, double[]> columns, int? maxSampleCount)    
     {
         var meta = new Dictionary<string, object?> { ["id"] = NextId(), ["category"] = "data", ["action"] = action, ["clientId"] = _clientId, ["dataSetId"] = dataSetId };
         if (maxSampleCount.HasValue) meta["params"] = new { maxSampleCount = maxSampleCount.Value };
-        var parts = new List<BijPart> { BijPart.Json("meta", meta), BijPart.Float64("x", x) };
+        var parts = new List<BijPart> { BijPart.Json("meta", meta) };
         foreach (var (name, values) in columns) parts.Add(BijPart.Float64(name, values));
         SendFireAndForget(BijEncoder.Encode(parts.ToArray()));
     }
@@ -223,7 +223,6 @@ public class LclaContext : IAsyncDisposable
         {
             ["id"] = ds.Id,
             ["columns"] = ds.Columns.Select(c => new Dictionary<string, object?> { ["id"] = c.Id, ["dataPattern"] = DataPatternToString(c.DataPattern) }).ToArray(),
-            ["xDataPattern"] = DataPatternToString(ds.XDataPattern),
             ["maxSampleCount"] = ds.MaxSampleCount,
         };
         return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
@@ -243,6 +242,8 @@ public class LclaContext : IAsyncDisposable
         var id = NextId();
         var p = new Dictionary<string, object?> { ["type"] = "xy" };
         if (config?.ContainerId != null) p["containerId"] = config.ContainerId;
+        if (config?.DefaultAxisX?.Opposite is bool oppositeX) p["defaultAxisX"] = new { opposite = oppositeX };
+        if (config?.DefaultAxisY?.Opposite is bool oppositeY) p["defaultAxisY"] = new { opposite = oppositeY };
         if (config?.AnimationsEnabled.HasValue == true) p["animationsEnabled"] = config.AnimationsEnabled.Value;
         var createParams = (object)p;
 
@@ -281,9 +282,13 @@ public class LclaContext : IAsyncDisposable
             {
                 chart.ConfigureDataSets(config.DataSets);
             }
-            if (config.Channels != null && config.Channels.Count > 0)
+            if (config.Axes != null && config.Axes.Count > 0)
             {
-                chart.ConfigureChannels(config.Channels);
+                chart.ConfigureAxes(config.Axes);
+            }
+            if (config.Series != null && config.Series.Count > 0)
+            {
+                chart.ConfigureSeries(config.Series);
             }
         }
 
@@ -321,14 +326,29 @@ public class LclaContext : IAsyncDisposable
 }
 
 /// <summary>
+/// Creation options for a chart's default axis.
+/// </summary>
+public class DefaultAxisConfig
+{
+    /// <summary>
+    /// True places a Y axis on the right or an X axis on the top.
+    /// Null or false preserves the normal left/bottom position.
+    /// </summary>
+    public bool? Opposite { get; set; }
+}
+
+/// <summary>
 /// Configuration for creating an XY chart.
 /// </summary>
 public class XYChartConfig
 {
     public string? Title { get; set; }
     public string? ContainerId { get; set; }
+    public DefaultAxisConfig? DefaultAxisX { get; set; }
+    public DefaultAxisConfig? DefaultAxisY { get; set; }
     public List<DataSetConfig>? DataSets { get; set; }
-    public List<ChannelConfig>? Channels { get; set; }
+    public List<AxisConfig>? Axes { get; set; }
+    public List<SeriesConfig>? Series { get; set; }
     /// <summary>
     /// Enable or disable chart animations. Default: true (LCJS default).
     /// Set to false for real-time monitoring dashboards.
@@ -338,25 +358,20 @@ public class XYChartConfig
 
 /// <summary>
 /// Configuration for a dataset within a chart.
-/// A dataset has shared X values and one or more named Y columns.
+/// A dataset contains named columns that series can map to X and Y.
 /// </summary>
 public class DataSetConfig
 {
     public required string Id { get; set; }
 
     /// <summary>
-    /// Data pattern for X values. Default: Progressive (timestamps, sequential indices).
-    /// </summary>
-    public DataPattern? XDataPattern { get; set; }
-
-    /// <summary>
-    /// Named Y columns in this dataset.
+    /// Named columns in this dataset.
     /// </summary>
     public required List<DataSetColumnConfig> Columns { get; set; }
 
     /// <summary>
     /// Maximum number of samples to keep in memory.
-    /// Oldest samples are discarded when exceeded. Default: 1,000,000.
+    /// Oldest samples are discarded when exceeded. Default: 2,000,000.
     /// </summary>
     public int? MaxSampleCount { get; set; }
 }
@@ -374,36 +389,35 @@ public class DataSetColumnConfig
     public DataPattern? DataPattern { get; set; }
 }
 
-/// <summary>
-/// Configuration for a data channel within a chart.
-/// A channel binds to a dataset column and renders it as a series.
-/// </summary>
-public class ChannelConfig
+/// <summary>Additional axis. Omitted positioning indices are handled by the chart.</summary>
+public class AxisConfig
 {
     public required string Id { get; set; }
-
-    /// <summary>
-    /// Which dataset this channel reads from.
-    /// </summary>
-    public required string DataSetId { get; set; }
-
-    /// <summary>
-    /// Which Y column in the dataset this channel visualizes.
-    /// </summary>
-    public required string Column { get; set; }
-
+    public required AxisTarget Axis { get; set; }
     public string? Name { get; set; }
-    public string? Color { get; set; }
-    public ChannelType Type { get; set; } = ChannelType.Line;
-
-    /// <summary>
-    /// Stack index for Y axis stacking. Channels with the same index share an axis.
-    /// 0 or null = default Y axis. Higher values create additional stacked axes.
-    /// </summary>
+    public bool? Opposite { get; set; }
     public int? StackIndex { get; set; }
+    public int? ParallelIndex { get; set; }
 }
 
-public enum ChannelType
+public abstract class SeriesConfig
+{
+    public required string Id { get; set; }
+    public string? Name { get; set; }
+}
+
+public class LineScatterSeriesConfig : SeriesConfig
+{
+    public required string DataSetId { get; set; }
+    public required string X { get; set; }
+    public required string Y { get; set; }
+    public string? XAxisId { get; set; }
+    public string? YAxisId { get; set; }
+    public string? Color { get; set; }
+    public LineScatterSeriesType Type { get; set; } = LineScatterSeriesType.Line;
+}
+
+public enum LineScatterSeriesType
 {
     Line,
     Scatter,

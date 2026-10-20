@@ -1,6 +1,6 @@
 /**
  * Data handler: set, append, and clear data on datasets.
- * Operations target a dataSetId. BIJ parts: x + named Y columns.
+ * Operations target a dataSetId. BIJ parts contain named dataset columns.
  * maxSampleCount can only increase (LCJS crashes on decrease).
  */
 
@@ -43,12 +43,8 @@ export function handleData(envelope: MessageEnvelope, binaryParts: Record<string
 }
 
 function buildSamples(binaryParts: Record<string, unknown>, columns: string[], envelopeId: string): { samples: Record<string, Float64Array>; error?: undefined } | { samples?: undefined; error: ResponseEnvelope } {
-  const x = binaryParts['x']
-  if (!(x instanceof Float64Array)) {
-    return { error: { id: envelopeId, type: 'error', error: 'data requires x as Float64Array' } }
-  }
+  const samples: Record<string, Float64Array> = {}
 
-  const samples: Record<string, Float64Array> = { x }
   for (const col of columns) {
     const part = binaryParts[col]
     if (!(part instanceof Float64Array)) {
