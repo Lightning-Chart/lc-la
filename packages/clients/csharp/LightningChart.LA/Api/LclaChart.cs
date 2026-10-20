@@ -143,7 +143,7 @@ public class LclaChart : IAsyncDisposable
             var obj = new Dictionary<string, object?> { ["id"] = config.Id };
             if (config.Name != null) obj["name"] = config.Name;
 
-            // Settings belonging to each series class
+            // Serialize the settings belonging to each series class
             switch (config)
             {
                 case LineScatterSeriesConfig lineScatter:

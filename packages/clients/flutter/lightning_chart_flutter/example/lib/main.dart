@@ -36,23 +36,29 @@ class ExampleApp extends StatelessWidget {
               DataSetConfig(
                 id: 'sensors',
                 columns: [
+                  DataSetColumnConfig(
+                    id: 'time',
+                    dataPattern: DataPattern.progressive,
+                  ),
                   DataSetColumnConfig(id: 'sensorA'),
                   DataSetColumnConfig(id: 'sensorB'),
                 ],
               ),
             ],
-            channels: const [
-              ChannelConfig(
+            series: const [
+              LineScatterSeriesConfig(
                 id: 'sensorA',
                 dataSetId: 'sensors',
-                column: 'sensorA',
+                x: 'time',
+                y: 'sensorA',
                 name: 'Sensor A',
                 color: '#00A6FF',
               ),
-              ChannelConfig(
+              LineScatterSeriesConfig(
                 id: 'sensorB',
                 dataSetId: 'sensors',
-                column: 'sensorB',
+                x: 'time',
+                y: 'sensorB',
                 name: 'Sensor B',
                 color: '#FF9800',
               ),
@@ -60,8 +66,7 @@ class ExampleApp extends StatelessWidget {
             initialData: [
               SetDataOptions(
                 dataSetId: 'sensors',
-                x: x,
-                columns: {'sensorA': sensorA, 'sensorB': sensorB},
+                columns: {'time': x, 'sensorA': sensorA, 'sensorB': sensorB},
               ),
             ],
           ),

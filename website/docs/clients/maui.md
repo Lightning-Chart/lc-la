@@ -43,11 +43,48 @@ Create the context once and use it to create additional charts.
 Load data through your MAUI app's service, file, or API workflow, then replace the dataset:
 
 ```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "signals",
+            MaxSampleCount = 2_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig
+                {
+                    Id = "time",
+                    DataPattern = DataPattern.Progressive,
+                },
+                new DataSetColumnConfig { Id = "value" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineScatterSeriesConfig
+        {
+            Id = "signal",
+            DataSetId = "signals",
+            X = "time",
+            Y = "value",
+            Name = "Signal",
+        },
+    ],
+});
+
+var samples = await signalService.LoadAsync();
+
 chart.SetData(new SetDataOptions
 {
     DataSetId = "signals",
-    X = samples.Timestamps,
-    Columns = new Dictionary<string, double[]> { ["value"] = samples.Values },
+    Columns = new Dictionary<string, double[]>
+    {
+        ["time"] = samples.Timestamps,
+        ["value"] = samples.Values,
+    },
 });
 ```
 
@@ -56,16 +93,27 @@ chart.SetData(new SetDataOptions
 Append batches received from a device, service, or WebSocket. Configure the X axis to follow the latest samples:
 
 ```csharp
-chart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
-chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 10_000 });
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = ScrollStrategy.Scrolling,
+});
+chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Length = 10_000,
+});
 
 await foreach (var batch in signalService.StreamAsync(cancellationToken))
 {
     chart.AppendData(new AppendDataOptions
     {
         DataSetId = "signals",
-        X = batch.Timestamps,
-        Columns = new Dictionary<string, double[]> { ["value"] = batch.Values },
+        Columns = new Dictionary<string, double[]>
+        {
+            ["time"] = batch.Timestamps,
+            ["value"] = batch.Values,
+        },
     });
 }
 ```
@@ -78,7 +126,7 @@ If the chart cannot start, the chart area shows the error and a **Copy error** b
 
 ## More features
 
-LightningChart for MAUI supports the shared chart, channel, dataset, historical-data, and streaming-data features. For complete feature coverage, see [Features](../features/).
+LightningChart for MAUI supports multiple axes, configurable series, datasets, historical data, and streamingdata features. For complete feature coverage, see [Features](../features/).
 
 ## Feedback and contributions
 

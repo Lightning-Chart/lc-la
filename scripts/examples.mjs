@@ -44,6 +44,16 @@ export const examples = [
         platform: 'win32',
     },
     {
+        name: 'MauiMultipleAxes',
+        client: 'maui',
+        label: 'Multiple axes',
+        directory: 'examples/maui/MauiMultipleAxes',
+        project: 'MauiMultipleAxes.csproj',
+        framework: 'net10.0-windows10.0.19041.0',
+        steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
+        platform: 'win32',
+    },
+    {
         name: 'UnoDroneFlight',
         client: 'uno',
         label: 'Drone flight dashboard',

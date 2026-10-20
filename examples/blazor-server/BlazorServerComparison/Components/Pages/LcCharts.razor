@@ -124,20 +124,23 @@
                 new DataSetConfig
                 {
                     Id = "static-data",
-                    XDataPattern = DataPattern.Progressive,
                     MaxSampleCount = 2_000_000,
-                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                        new DataSetColumnConfig { Id = "value" },
+                    ],
                 },
             ],
-            Channels =
+            Series =
             [
-                new ChannelConfig
+                new LineScatterSeriesConfig
                 {
                     Id = "static-value",
                     DataSetId = "static-data",
-                    Column = "value",
+                    X = "time",
+                    Y = "value",
                     Name = "Value",
-                    Type = ChannelType.Line,
                     Color = "#f4b942",
                 },
             ],
@@ -148,9 +151,9 @@
         _staticChart.SetData(new SetDataOptions
         {
             DataSetId = "static-data",
-            X = historicalData.X,
             Columns = new Dictionary<string, double[]>
             {
+                ["time"] = historicalData.X,
                 ["value"] = historicalData.Y,
             },
         });
@@ -182,27 +185,31 @@
                 new DataSetConfig
                 {
                     Id = "realtime-data",
-                    XDataPattern = DataPattern.Progressive,
                     MaxSampleCount = 2_000_000,
-                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                        new DataSetColumnConfig { Id = "value" },
+                    ],
                 },
             ],
-            Channels =
+            Series =
             [
-                new ChannelConfig
+                new LineScatterSeriesConfig
                 {
                     Id = "realtime-value",
                     DataSetId = "realtime-data",
-                    Column = "value",
+                    X = "time",
+                    Y = "value",
                     Name = "Value",
-                    Type = ChannelType.Line,
                     Color = "#f4b942",
                 },
             ],
         });
         _realtimeChart.SetScrollStrategy(new SetScrollStrategyOptions
         {
-            AxisX = ScrollStrategy.Scrolling,
+            Axis = AxisTarget.X,
+            Strategy = ScrollStrategy.Scrolling,
         });
         _realtimeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
         {
@@ -249,9 +256,9 @@
                     _realtimeChart.AppendData(new AppendDataOptions
                     {
                         DataSetId = "realtime-data",
-                        X = batch.X,
                         Columns = new Dictionary<string, double[]>
                         {
+                            ["time"] = batch.X,
                             ["value"] = batch.Y,
                         },
                     });

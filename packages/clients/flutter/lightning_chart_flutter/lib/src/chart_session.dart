@@ -32,6 +32,20 @@ class LclaChartSession {
     if (config?.containerId != null) {
       params['containerId'] = config!.containerId;
     }
+    final defaultAxisX = config?.defaultAxisX;
+    if (defaultAxisX != null) {
+      params['defaultAxisX'] = _removeNulls({
+        'opposite': defaultAxisX.opposite,
+        'name': defaultAxisX.name,
+      });
+    }
+    final defaultAxisY = config?.defaultAxisY;
+    if (defaultAxisY != null) {
+      params['defaultAxisY'] = _removeNulls({
+        'opposite': defaultAxisY.opposite,
+        'name': defaultAxisY.name,
+      });
+    }
     if (config?.animationsEnabled != null) {
       params['animationsEnabled'] = config!.animationsEnabled;
     }
@@ -61,8 +75,11 @@ class LclaChartSession {
       if (config.dataSets != null && config.dataSets!.isNotEmpty) {
         chart.configureDataSets(config.dataSets!);
       }
-      if (config.channels != null && config.channels!.isNotEmpty) {
-        chart.configureChannels(config.channels!);
+      if (config.axes != null && config.axes!.isNotEmpty) {
+        chart.configureAxes(config.axes!);
+      }
+      if (config.series != null && config.series!.isNotEmpty) {
+        chart.configureSeries(config.series!);
       }
     }
 
@@ -93,14 +110,12 @@ class LclaChartSession {
   void setData(SetDataOptions options) => _sendData(
     'set',
     options.dataSetId,
-    options.x,
     options.columns,
     options.maxSampleCount,
   );
   void appendData(AppendDataOptions options) => _sendData(
     'append',
     options.dataSetId,
-    options.x,
     options.columns,
     options.maxSampleCount,
   );
@@ -156,7 +171,6 @@ class LclaChartSession {
   void _sendData(
     String action,
     String dataSetId,
-    Float64List x,
     Map<String, Float64List> columns,
     int? maxSampleCount,
   ) {
@@ -172,7 +186,6 @@ class LclaChartSession {
     }
     _sendFireAndForget([
       BijPart.json('meta', meta),
-      BijPart.float64('x', x),
       ...columns.entries.map(
         (entry) => BijPart.float64(entry.key, entry.value),
       ),
@@ -222,13 +235,11 @@ class LclaChart {
 
   void setScrollStrategy(SetScrollStrategyOptions options) {
     _throwIfDisposed();
-    final params = <String, Object?>{};
-    if (options.axisX != null) {
-      params['axisX'] = options.axisX!.wireValue;
-    }
-    if (options.axisY != null) {
-      params['axisY'] = options.axisY!.wireValue;
-    }
+    final params = _removeNulls({
+      'axis': options.axis?.wireValue,
+      'axisId': options.axisId,
+      'strategy': options.strategy.wireValue,
+    });
     _client._sendFireAndForget([
       BijPart.json('meta', {
         'id': _client._nextMessageId(),
@@ -251,10 +262,10 @@ class LclaChart {
         'clientId': _client._clientId,
         'chartId': chartId,
         'params': _removeNulls({
-          'axis': options.axis.wireValue,
+          'axis': options.axis?.wireValue,
           'start': options.start,
           'end': options.end,
-          'stackIndex': options.stackIndex,
+          'axisId': options.axisId,
           'animate': options.animate,
           'stopAxisAfter': options.stopAxisAfter,
         }),
@@ -272,11 +283,11 @@ class LclaChart {
         'clientId': _client._clientId,
         'chartId': chartId,
         'params': _removeNulls({
-          'axis': options.axis.wireValue,
+          'axis': options.axis?.wireValue,
           'start': options.start,
           'end': options.end,
           'length': options.length,
-          'stackIndex': options.stackIndex,
+          'axisId': options.axisId,
         }),
       }),
     ]);
@@ -292,9 +303,9 @@ class LclaChart {
         'clientId': _client._clientId,
         'chartId': chartId,
         'params': _removeNulls({
-          'axis': options.axis.wireValue,
+          'axis': options.axis?.wireValue,
           'strategy': options.strategy.wireValue,
-          'stackIndex': options.stackIndex,
+          'axisId': options.axisId,
         }),
       }),
     ]);
@@ -305,18 +316,32 @@ class LclaChart {
     _client.configureDataSets(dataSets);
   }
 
-  void configureChannels(List<ChannelConfig> channels) {
+  void configureAxes(List<AxisConfig> axes) {
     _throwIfDisposed();
+
     _client._sendFireAndForget([
       BijPart.json('meta', {
         'id': _client._nextMessageId(),
         'category': 'config',
-        'action': 'channels',
+        'action': 'axes',
         'clientId': _client._clientId,
         'chartId': chartId,
-        'params': {
-          'channels': channels.map(_channelToJson).toList(growable: false),
-        },
+        'params': {'axes': axes.map(_axisToJson).toList(growable: false)},
+      }),
+    ]);
+  }
+
+  void configureSeries(List<SeriesConfig> series) {
+    _throwIfDisposed();
+
+    _client._sendFireAndForget([
+      BijPart.json('meta', {
+        'id': _client._nextMessageId(),
+        'category': 'config',
+        'action': 'series',
+        'clientId': _client._clientId,
+        'chartId': chartId,
+        'params': {'series': series.map(_seriesToJson).toList(growable: false)},
       }),
     ]);
   }
@@ -362,7 +387,6 @@ class LclaChart {
 Map<String, Object?> _dataSetToJson(DataSetConfig dataSet) {
   return _removeNulls({
     'id': dataSet.id,
-    'xDataPattern': dataSet.xDataPattern?.wireValue,
     'columns': dataSet.columns
         .map(
           (column) => _removeNulls({
@@ -375,16 +399,44 @@ Map<String, Object?> _dataSetToJson(DataSetConfig dataSet) {
   });
 }
 
-Map<String, Object?> _channelToJson(ChannelConfig channel) {
+Map<String, Object?> _axisToJson(AxisConfig axis) {
   return _removeNulls({
-    'id': channel.id,
-    'dataSetId': channel.dataSetId,
-    'column': channel.column,
-    'name': channel.name,
-    'color': channel.color,
-    'type': channel.type.wireValue,
-    'stackIndex': channel.stackIndex,
+    'id': axis.id,
+    'axis': axis.axis.wireValue,
+    'name': axis.name,
+    'opposite': axis.opposite,
+    'stackIndex': axis.stackIndex,
+    'parallelIndex': axis.parallelIndex,
   });
+}
+
+Map<String, Object?> _seriesToJson(SeriesConfig series) {
+  final value = _removeNulls({'id': series.id, 'name': series.name});
+
+  // Serialize the settings belonging to each series class
+  switch (series) {
+    case LineScatterSeriesConfig():
+      value.addAll(
+        _removeNulls({
+          'seriesType': 'lineScatter',
+          'dataSetId': series.dataSetId,
+          'x': series.x,
+          'y': series.y,
+          'xAxisId': series.xAxisId,
+          'yAxisId': series.yAxisId,
+          'color': series.color,
+          'type': series.type.wireValue,
+        }),
+      );
+      break;
+
+    default:
+      throw UnsupportedError(
+        'Serialization is not implemented for ${series.runtimeType}.',
+      );
+  }
+
+  return value;
 }
 
 Map<String, Object?> _removeNulls(Map<String, Object?> source) {

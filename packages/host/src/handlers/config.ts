@@ -218,7 +218,7 @@ function handleAxes(envelope: MessageEnvelope): ResponseEnvelope {
     // Reuse an axis already created for this ID
     const existing = chartState.axes.get(axisConfig.id)
     if (existing) {
-      existing.axis.setTitle(axisConfig.name ?? axisConfig.id)
+      existing.axis.setTitle(axisConfig.name ?? '')
       continue
     }
 
@@ -234,7 +234,7 @@ function handleAxes(envelope: MessageEnvelope): ResponseEnvelope {
       ? chartState.chart.addAxisX(options)
       : chartState.chart.addAxisY(options)
 
-    axis.setTitle(axisConfig.name ?? axisConfig.id)
+    axis.setTitle(axisConfig.name ?? '')
 
     chartState.axes.set(axisConfig.id, {
       target: axisConfig.axis,

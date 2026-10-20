@@ -17,4 +17,12 @@ As data changes, choose an axis behavior that fits the view:
 - **Fitting** scales the axis to include all available data.
 - **Expansion** grows the interval for new extremes without shrinking it.
 
-Channels can share the default Y axis or be assigned to stacked Y axes. Put signals with different units or scales on separate stacked axes while they retain a common X axis. Axis intervals, label formats, and behavior can be configured separately for each stacked Y axis.
+Each chart automatically creates a default X axis and a default Y axis. Configure them through `DefaultAxisX` and `DefaultAxisY` in C#, or `defaultAxisX` and `defaultAxisY` in Flutter. Their names are optional. Setting `Opposite` / `opposite` to true places the default X axis at the top or the default Y axis on the right.
+
+Add further X or Y axes through the chart's axes configuration. Each additional axis has an ID and an X or Y orientation. Its optional stack index selects the plot section, while its parallel index positions it alongside other axes in that section. The opposite setting selects the top side for X axes or the right side for Y axes.
+
+Assign a series to an additional axis using `XAxisId` / `YAxisId` in C#, or `xAxisId` / `yAxisId` in Flutter. Omitted axis IDs use the corresponding default axes.
+
+For interval, tick-strategy, and scroll-strategy operations, select a default axis by its X or Y target, or an additional axis by its ID.
+
+An axis interval sets the range displayed immediately. A default interval defines the range used when the axis resets or follows incoming data; it can be configured for either a default or an additional axis.

@@ -20,8 +20,11 @@ class LightningChart extends StatefulWidget {
   LightningChart.xy({
     required LclaLicense license,
     String? title,
+    DefaultAxisConfig? defaultAxisX,
+    DefaultAxisConfig? defaultAxisY,
     List<DataSetConfig> dataSets = const [],
-    List<ChannelConfig> channels = const [],
+    List<AxisConfig> axes = const [],
+    List<SeriesConfig> series = const [],
     List<SetDataOptions> initialData = const [],
     bool? animationsEnabled,
     LightningChartCreated? onChartCreated,
@@ -33,8 +36,11 @@ class LightningChart extends StatefulWidget {
          license: license,
          config: XYChartConfig(
            title: title,
+           defaultAxisX: defaultAxisX,
+           defaultAxisY: defaultAxisY,
            dataSets: dataSets,
-           channels: channels,
+           axes: axes,
+           series: series,
            animationsEnabled: animationsEnabled,
          ),
          initialData: initialData,
@@ -84,9 +90,13 @@ class _LightningChartState extends State<LightningChart> {
         widget.config.dataSets != null) {
       chart.configureDataSets(widget.config.dataSets!);
     }
-    if (!identical(widget.config.channels, oldWidget.config.channels) &&
-        widget.config.channels != null) {
-      chart.configureChannels(widget.config.channels!);
+    if (!identical(widget.config.axes, oldWidget.config.axes) &&
+        widget.config.axes != null) {
+      chart.configureAxes(widget.config.axes!);
+    }
+    if (!identical(widget.config.series, oldWidget.config.series) &&
+        widget.config.series != null) {
+      chart.configureSeries(widget.config.series!);
     }
     if (widget.config.title != oldWidget.config.title &&
         widget.config.title != null) {

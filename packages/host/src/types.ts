@@ -23,6 +23,7 @@ export interface ResponseEnvelope {
 // Lifecycle actions
 export interface DefaultAxisConfig {
   opposite?: boolean
+  name?: string
 }
 
 export interface CreateChartParams {

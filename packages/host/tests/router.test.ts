@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { bijEncode, bijDecode } from '../src/bij/index.js'
 import { handleMessage } from '../src/handlers/router.js'
 import { hostState } from '../src/handlers/state.js'
+import type { LineScatterSeriesConfig } from '../src/types.js'
 
 // Mock LCJS since we're in Node, not browser
 vi.mock('@lightningchart/lcjs', () => {
@@ -20,6 +21,8 @@ vi.mock('@lightningchart/lcjs', () => {
     setStrokeStyle: vi.fn().mockReturnThis(),
     setPointFillStyle: vi.fn().mockReturnThis(),
     setPointSize: vi.fn().mockReturnThis(),
+    getStrokeStyle: vi.fn(),
+    getPointFillStyle: vi.fn(),
     dispose: vi.fn(),
   })
 
@@ -28,11 +31,13 @@ vi.mock('@lightningchart/lcjs', () => {
     setInterval: vi.fn().mockReturnThis(),
     setDefaultInterval: vi.fn().mockReturnThis(),
     setTickStrategy: vi.fn().mockReturnThis(),
+    setTitle: vi.fn().mockReturnThis(),
   })
 
   const mockChart = () => ({
-    addPointLineAreaSeries: vi.fn().mockReturnValue(mockSeries()),
-    addAxisY: vi.fn().mockReturnValue(mockAxis()),
+    addPointLineAreaSeries: vi.fn(() => mockSeries()),
+    addAxisX: vi.fn(() => mockAxis()),
+    addAxisY: vi.fn(() => mockAxis()),
     setTitle: vi.fn().mockReturnThis(),
     setAnimationsEnabled: vi.fn().mockReturnThis(),
     dispose: vi.fn(),
@@ -113,15 +118,15 @@ function configureDataSet(chartId: string, dsId: string, columns: string[], clie
   expect(res.type).toBe('response')
 }
 
-/** Helper: configure channels on a chart */
-function configureChannels(chartId: string, channels: Array<{ id: string; dataSetId: string; column: string; stackIndex?: number }>) {
+/** Helper: configure series on a chart */
+function configureSeries(chartId: string, series: LineScatterSeriesConfig[]) {
   const buf = bijEncode({
     meta: {
       id: '0',
       category: 'config',
-      action: 'channels',
+      action: 'series',
       chartId,
-      params: { channels },
+      params: { series },
     },
   })
   const res = handleMessage(buf)
@@ -209,23 +214,23 @@ describe('Message Router', () => {
     expect(res.type).toBe('response')
   })
 
-  it('handles config/channels bound to dataset columns', () => {
+  it('handles config/series bound to dataset columns', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
 
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity' },
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'humid-line', dataSetId: 'sensors', x: 'time', y: 'humidity' },
     ])
   })
 
   it('shares a client dataset across its charts', () => {
     const firstChartId = createChart()
     const secondChartId = createChart()
-    configureDataSet(firstChartId, 'sensors', ['temperature'])
+    configureDataSet(firstChartId, 'sensors', ['time', 'temperature'])
 
-    configureChannels(secondChartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
+    configureSeries(secondChartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
     ])
 
     expect(hostState.getDataSet('default', 'sensors')).toBeDefined()
@@ -276,28 +281,69 @@ describe('Message Router', () => {
     expect(hostState.getDataSet(clientId, 'signals')).toBeUndefined()
   })
 
-  it('handles config/channels with stacked axes', () => {
+  it('handles config/series with stacked axes', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity', 'voltage'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity', 'voltage'])
 
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature', stackIndex: 0 },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity', stackIndex: 1 },
-      { id: 'volt-line', dataSetId: 'sensors', column: 'voltage', stackIndex: 2 },
+    const axesResponse = handleMessage(bijEncode({
+        meta: {
+        id: '2',
+        category: 'config',
+        action: 'axes',
+        chartId,
+        params: {
+            axes: [
+            { id: 'humidity-axis', axis: 'y', stackIndex: 1 },
+            { id: 'voltage-axis', axis: 'y', stackIndex: 2 },
+            ],
+        },
+        },
+    }))
+    expect(axesResponse.type).toBe('response')
+
+    configureSeries(chartId, [
+        {
+        id: 'temp-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'temperature',
+        },
+        {
+        id: 'humid-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'humidity',
+        yAxisId: 'humidity-axis',
+        },
+        {
+        id: 'volt-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'voltage',
+        yAxisId: 'voltage-axis',
+        },
     ])
-  })
 
-  it('returns error for channel referencing nonexistent dataset', () => {
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.series.get('temp-line')?.yAxis)
+        .toBe(chartState.defaultYAxis)
+    expect(chartState.series.get('humid-line')?.yAxis)
+        .toBe(chartState.axes.get('humidity-axis'))
+    expect(chartState.series.get('volt-line')?.yAxis)
+        .toBe(chartState.axes.get('voltage-axis'))
+    })
+
+  it('returns error for series referencing nonexistent dataset', () => {
     const chartId = createChart()
 
     const buf = bijEncode({
       meta: {
         id: '2',
         category: 'config',
-        action: 'channels',
+        action: 'series',
         chartId,
         params: {
-          channels: [{ id: 'ch1', dataSetId: 'nonexistent', column: 'temp' }],
+          series: [{ id: 'ch1', dataSetId: 'nonexistent', x: 'time', y: 'temp' }],
         },
       },
     })
@@ -306,18 +352,18 @@ describe('Message Router', () => {
     expect(res.error).toContain('DataSet not found')
   })
 
-  it('returns error for channel referencing nonexistent column', () => {
+  it('returns error for series referencing nonexistent column', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature'])
 
     const buf = bijEncode({
       meta: {
         id: '2',
         category: 'config',
-        action: 'channels',
+        action: 'series',
         chartId,
         params: {
-          channels: [{ id: 'ch1', dataSetId: 'sensors', column: 'nonexistent' }],
+          series: [{ id: 'ch1', dataSetId: 'sensors', x: 'time', y: 'nonexistent' }],
         },
       },
     })
@@ -338,10 +384,10 @@ describe('Message Router', () => {
 
   it('handles data/set with shared timestamps and multiple columns', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity' },
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'humid-line', dataSetId: 'sensors', x: 'time', y: 'humidity' },
     ])
 
     const x = new Float64Array([1, 2, 3, 4, 5])
@@ -350,7 +396,7 @@ describe('Message Router', () => {
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '5', category: 'data', action: 'set', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: x },
+      { key: 'time', value: x },
       { key: 'temperature', value: temperature },
       { key: 'humidity', value: humidity },
     ])
@@ -360,14 +406,14 @@ describe('Message Router', () => {
 
   it('handles data/append with shared timestamps', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
     ])
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '5', category: 'data', action: 'append', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: new Float64Array([1, 2]) },
+      { key: 'time', value: new Float64Array([1, 2]) },
       { key: 'temperature', value: new Float64Array([20, 21]) },
       { key: 'humidity', value: new Float64Array([40, 42]) },
     ])
@@ -380,7 +426,7 @@ describe('Message Router', () => {
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '2', category: 'data', action: 'set', chartId, dataSetId: 'nonexistent' } },
-      { key: 'x', value: new Float64Array([1]) },
+      { key: 'time', value: new Float64Array([1]) },
     ])
     const dataRes = handleMessage(dataBuf)
     expect(dataRes.type).toBe('error')
@@ -399,8 +445,8 @@ describe('Message Router', () => {
         chartId,
         params: {
           datasets: [
-            { id: 'sensors', columns: [{ id: 'temperature' }, { id: 'humidity' }] },
-            { id: 'gps', columns: [{ id: 'lat' }, { id: 'lon' }] },
+            { id: 'sensors', columns: [ { id: 'time' }, { id: 'temperature' }, { id: 'humidity' }, ],},
+            { id: 'gps', columns: [ { id: 'time' }, { id: 'lat' }, { id: 'lon' }, ], },
           ],
         },
       },
@@ -408,16 +454,16 @@ describe('Message Router', () => {
     const res = handleMessage(buf)
     expect(res.type).toBe('response')
 
-    // Channels from different datasets
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'lat-line', dataSetId: 'gps', column: 'lat' },
+    // Series from different datasets
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'lat-line', dataSetId: 'gps', x: 'time', y: 'lat' },
     ])
 
     // Push to each dataset independently
     const sensorBuf = bijEncode([
       { key: 'meta', value: { id: '10', category: 'data', action: 'set', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: new Float64Array([1, 2, 3]) },
+      { key: 'time', value: new Float64Array([1, 2, 3]) },
       { key: 'temperature', value: new Float64Array([20, 21, 22]) },
       { key: 'humidity', value: new Float64Array([40, 42, 45]) },
     ])
@@ -425,7 +471,7 @@ describe('Message Router', () => {
 
     const gpsBuf = bijEncode([
       { key: 'meta', value: { id: '11', category: 'data', action: 'set', chartId, dataSetId: 'gps' } },
-      { key: 'x', value: new Float64Array([100, 200]) },
+      { key: 'time', value: new Float64Array([100, 200]) },
       { key: 'lat', value: new Float64Array([60.1, 60.2]) },
       { key: 'lon', value: new Float64Array([24.9, 25.0]) },
     ])

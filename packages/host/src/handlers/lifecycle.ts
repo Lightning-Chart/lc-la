@@ -103,11 +103,13 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
     defaultAxisY: { type: 'linear-highPrecision', opposite: defaultYAxisOpposite },
   })
 
+  // Apply titles to the automatically created axes when provided
+  if (params?.defaultAxisX?.name != null) chart.axisX.setTitle(params.defaultAxisX.name)
+  if (params?.defaultAxisY?.name != null) chart.axisY.setTitle(params.defaultAxisY.name)
+
   // Keep wheel zoom available while a live X axis is scrolling. The explicit
   // stopScroll flag releases automatic following as soon as the user zooms.
-  if (params?.animationsEnabled === false) {
-    chart.setAnimationsEnabled(false)
-  }
+  if (params?.animationsEnabled === false) chart.setAnimationsEnabled(false)
 
   const defaultXAxis: AxisState = {
     target: 'x',

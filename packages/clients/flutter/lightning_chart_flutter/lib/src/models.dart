@@ -47,33 +47,52 @@ enum LclaTheme {
   final String wireValue;
 }
 
+class DefaultAxisConfig {
+  const DefaultAxisConfig({this.opposite, this.name});
+
+  final bool? opposite;
+  final String? name;
+}
+
 class XYChartConfig {
   const XYChartConfig({
     this.title,
     this.containerId,
+    this.defaultAxisX,
+    this.defaultAxisY,
     this.dataSets,
-    this.channels,
+    this.axes,
+    this.series,
     this.animationsEnabled,
   });
 
   final String? title;
   final String? containerId;
+  final DefaultAxisConfig? defaultAxisX;
+  final DefaultAxisConfig? defaultAxisY;
   final List<DataSetConfig>? dataSets;
-  final List<ChannelConfig>? channels;
+  final List<AxisConfig>? axes;
+  final List<SeriesConfig>? series;
   final bool? animationsEnabled;
 
   XYChartConfig copyWith({
     String? title,
     String? containerId,
+    DefaultAxisConfig? defaultAxisX,
+    DefaultAxisConfig? defaultAxisY,
     List<DataSetConfig>? dataSets,
-    List<ChannelConfig>? channels,
+    List<AxisConfig>? axes,
+    List<SeriesConfig>? series,
     bool? animationsEnabled,
   }) {
     return XYChartConfig(
       title: title ?? this.title,
       containerId: containerId ?? this.containerId,
+      defaultAxisX: defaultAxisX ?? this.defaultAxisX,
+      defaultAxisY: defaultAxisY ?? this.defaultAxisY,
       dataSets: dataSets ?? this.dataSets,
-      channels: channels ?? this.channels,
+      axes: axes ?? this.axes,
+      series: series ?? this.series,
       animationsEnabled: animationsEnabled ?? this.animationsEnabled,
     );
   }
@@ -83,12 +102,10 @@ class DataSetConfig {
   const DataSetConfig({
     required this.id,
     required this.columns,
-    this.xDataPattern,
     this.maxSampleCount,
   });
 
   final String id;
-  final DataPattern? xDataPattern;
   final List<DataSetColumnConfig> columns;
   final int? maxSampleCount;
 }
@@ -110,32 +127,59 @@ enum DataPattern {
   final String? wireValue;
 }
 
-class ChannelConfig {
-  const ChannelConfig({
+class AxisConfig {
+  const AxisConfig({
     required this.id,
-    required this.dataSetId,
-    required this.column,
+    required this.axis,
     this.name,
-    this.color,
-    this.type = ChannelType.line,
+    this.opposite,
     this.stackIndex,
+    this.parallelIndex,
   });
 
   final String id;
-  final String dataSetId;
-  final String column;
+  final AxisTarget axis;
   final String? name;
-  final String? color;
-  final ChannelType type;
+  final bool? opposite;
   final int? stackIndex;
+  final int? parallelIndex;
 }
 
-enum ChannelType {
+abstract class SeriesConfig {
+  const SeriesConfig({required this.id, this.name});
+
+  final String id;
+  final String? name;
+}
+
+class LineScatterSeriesConfig extends SeriesConfig {
+  const LineScatterSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+    this.type = LineScatterSeriesType.line,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+  final LineScatterSeriesType type;
+}
+
+enum LineScatterSeriesType {
   line('line'),
   scatter('scatter'),
   lineScatter('line+scatter');
 
-  const ChannelType(this.wireValue);
+  const LineScatterSeriesType(this.wireValue);
 
   final String wireValue;
 }
@@ -176,68 +220,71 @@ class SetTitleOptions {
 }
 
 class SetScrollStrategyOptions {
-  const SetScrollStrategyOptions({this.axisX, this.axisY});
+  const SetScrollStrategyOptions({
+    this.axis,
+    this.axisId,
+    required this.strategy,
+  });
 
-  final ScrollStrategy? axisX;
-  final ScrollStrategy? axisY;
+  final AxisTarget? axis;
+  final String? axisId;
+  final ScrollStrategy strategy;
 }
 
 class SetAxisIntervalOptions {
   const SetAxisIntervalOptions({
-    required this.axis,
+    this.axis,
+    this.axisId,
     this.start,
     this.end,
-    this.stackIndex,
     this.animate,
     this.stopAxisAfter,
   });
 
-  final AxisTarget axis;
+  final AxisTarget? axis;
+  final String? axisId;
   final double? start;
   final double? end;
-  final int? stackIndex;
   final bool? animate;
   final bool? stopAxisAfter;
 }
 
 class SetDefaultAxisIntervalOptions {
   const SetDefaultAxisIntervalOptions({
-    required this.axis,
+    this.axis,
+    this.axisId,
     this.start,
     this.end,
     this.length,
-    this.stackIndex,
   });
 
-  final AxisTarget axis;
+  final AxisTarget? axis;
+  final String? axisId;
   final double? start;
   final double? end;
   final double? length;
-  final int? stackIndex;
 }
 
 class SetTickStrategyOptions {
   const SetTickStrategyOptions({
-    required this.axis,
+    this.axis,
+    this.axisId,
     required this.strategy,
-    this.stackIndex,
   });
 
-  final AxisTarget axis;
+  final AxisTarget? axis;
+  final String? axisId;
   final TickStrategy strategy;
-  final int? stackIndex;
 }
 
 class SetDataOptions {
   const SetDataOptions({
     required this.dataSetId,
-    required this.x,
     required this.columns,
     this.maxSampleCount,
   });
 
   final String dataSetId;
-  final Float64List x;
   final Map<String, Float64List> columns;
   final int? maxSampleCount;
 }
@@ -245,13 +292,11 @@ class SetDataOptions {
 class AppendDataOptions {
   const AppendDataOptions({
     required this.dataSetId,
-    required this.x,
     required this.columns,
     this.maxSampleCount,
   });
 
   final String dataSetId;
-  final Float64List x;
   final Map<String, Float64List> columns;
   final int? maxSampleCount;
 }

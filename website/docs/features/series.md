@@ -3,12 +3,12 @@ title: Adding series
 sidebar_position: 5
 ---
 
-A series renders one named Y column from a dataset against that dataset's shared X values. Add multiple series to visualize synchronized signals from the same dataset. Give each series an ID, display name, and optional color.
+A series selects named X and Y columns from a dataset. Multiple series can share the same dataset and columns. Each series requires an ID and dataset ID; its display name and color are optional.
 
-Current series types are:
+Use a line-scatter series to display:
 
-- Line
-- Points
-- Point-line
+- A line, the default when its type is omitted
+- Scatter points
+- A line with scatter points
 
-LightningChart LA deliberately exposes a focused series set today. Additional series types can be ported from LightningChart JS as demand requires.
+Series use the chart's default X and Y axes unless you specify additional axes through their IDs. See [Configuring axes](./axes).

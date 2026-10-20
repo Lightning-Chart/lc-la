@@ -242,8 +242,8 @@ public class LclaContext : IAsyncDisposable
         var id = NextId();
         var p = new Dictionary<string, object?> { ["type"] = "xy" };
         if (config?.ContainerId != null) p["containerId"] = config.ContainerId;
-        if (config?.DefaultAxisX?.Opposite is bool oppositeX) p["defaultAxisX"] = new { opposite = oppositeX };
-        if (config?.DefaultAxisY?.Opposite is bool oppositeY) p["defaultAxisY"] = new { opposite = oppositeY };
+        if (config?.DefaultAxisX is { } defaultAxisX) p["defaultAxisX"] = new { opposite = defaultAxisX.Opposite ?? false, name = defaultAxisX.Name };
+        if (config?.DefaultAxisY is { } defaultAxisY) p["defaultAxisY"] = new { opposite = defaultAxisY.Opposite ?? false, name = defaultAxisY.Name };
         if (config?.AnimationsEnabled.HasValue == true) p["animationsEnabled"] = config.AnimationsEnabled.Value;
         var createParams = (object)p;
 
@@ -335,6 +335,7 @@ public class DefaultAxisConfig
     /// Null or false preserves the normal left/bottom position.
     /// </summary>
     public bool? Opposite { get; set; }
+    public string? Name { get; set; }
 }
 
 /// <summary>

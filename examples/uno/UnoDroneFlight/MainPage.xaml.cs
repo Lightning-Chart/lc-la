@@ -158,10 +158,10 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 new DataSetConfig
                 {
                     Id = DataSetId,
-                    XDataPattern = DataPattern.Progressive,
                     MaxSampleCount = 50_000,
                     Columns =
                     [
+                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
                         new DataSetColumnConfig { Id = "altitude" },
                         new DataSetColumnConfig { Id = "speed" },
                         new DataSetColumnConfig { Id = "climb" },
@@ -169,38 +169,46 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 },
             ]);
 
-            _chart.ConfigureChannels(
+            _chart.ConfigureAxes(
             [
-                new ChannelConfig
+                new AxisConfig { Id = "speed", Axis = AxisTarget.Y, StackIndex = -1 },
+                new AxisConfig { Id = "climb", Axis = AxisTarget.Y, StackIndex = -2 },
+            ]);
+
+            _chart.ConfigureSeries(
+            [
+                new LineScatterSeriesConfig
                 {
                     Id = "altitude",
                     DataSetId = DataSetId,
-                    Column = "altitude",
+                    X = "time",
+                    Y = "altitude",
                     Name = "Relative altitude (m)",
                     Color = "#8BF584",
-                    StackIndex = 0,
                 },
-                new ChannelConfig
+                new LineScatterSeriesConfig
                 {
                     Id = "speed",
                     DataSetId = DataSetId,
-                    Column = "speed",
+                    X = "time",
+                    Y = "speed",
+                    YAxisId = "speed",
                     Name = "Horizontal speed (km/h)",
                     Color = "#FFC56A",
-                    StackIndex = -1,
                 },
-                new ChannelConfig
+                new LineScatterSeriesConfig
                 {
                     Id = "climb",
                     DataSetId = DataSetId,
-                    Column = "climb",
+                    X = "time",
+                    Y = "climb",
+                    YAxisId = "climb",
                     Name = "Vertical speed (m/s)",
                     Color = "#BBA6F2",
-                    StackIndex = -2,
                 },
             ]);
 
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
+            _chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Scrolling });
             _telemetryReady = true;
             StartWhenReady();
         }
@@ -233,36 +241,37 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                     new DataSetConfig
                     {
                         Id = RouteDataSetId,
-                        XDataPattern = DataPattern.None,
                         MaxSampleCount = _flight.Longitude.Length,
                         Columns = 
                         [ 
+                            new DataSetColumnConfig { Id = "longitude" },
                             new DataSetColumnConfig { Id = "latitude" }, 
                             new DataSetColumnConfig { Id = "position" } 
                         ],
                     }
                 ],
-                Channels = 
+                Series =
                 [
-                    new ChannelConfig
+                    new LineScatterSeriesConfig
                     {
                         Id = "route",
                         DataSetId = RouteDataSetId,
-                        Column = "latitude",
+                        X = "longitude",
+                        Y = "latitude",
                         Name = "Flight route",
-                        Type = ChannelType.Line,
                         Color = "#8BF584",
                     },
-                    new ChannelConfig
+                    new LineScatterSeriesConfig
                     {
                         Id = "position",
                         DataSetId = RouteDataSetId,
-                        Column = "position",
+                        X = "longitude",
+                        Y = "position",
                         Name = "Current position",
-                        Type = ChannelType.Scatter,
+                        Type = LineScatterSeriesType.Scatter,
                         Color = "#FFC56A",
-                    }
-                ]
+                    },
+                ],
             },
             _lifetime.Token);
 
@@ -347,9 +356,9 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 _context.AppendData(new AppendDataOptions
                 {
                     DataSetId = DataSetId,
-                    X = _flight.TimeMs[start.._nextIndex],
                     Columns = new Dictionary<string, double[]>
                     {
+                        ["time"] = _flight.TimeMs[start.._nextIndex],
                         ["altitude"] = _flight.Altitude[start.._nextIndex],
                         ["speed"] = _flight.Speed[start.._nextIndex],
                         ["climb"] = _flight.Climb[start.._nextIndex],
@@ -399,9 +408,9 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         _routeContext.SetData(new SetDataOptions
         {
             DataSetId = RouteDataSetId,
-            X = _flight.Longitude[..count],
             Columns = new Dictionary<string, double[]>
             {
+                ["longitude"] = _flight.Longitude[..count],
                 ["latitude"] = _flight.Latitude[..count],
                 ["position"] = position,
             },
