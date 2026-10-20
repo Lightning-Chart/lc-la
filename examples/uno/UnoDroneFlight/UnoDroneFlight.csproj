@@ -1,0 +1,18 @@
+<Project Sdk="Uno.Sdk/6.6.29">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041</TargetFramework>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <RootNamespace>UnoDroneFlight</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="LCLA" Version="0.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\drone_data_timestamp_added.CSV" LogicalName="DroneFlightData" />
+  </ItemGroup>
+</Project>

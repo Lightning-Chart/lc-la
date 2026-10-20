@@ -12,7 +12,7 @@ LightningChart.xy(
 )
 ```
 
-The release-facing high-performance repository example lives at `examples/flutter`.
+Explore the [Flutter examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/flutter). Each example's README explains how to run it locally.
 
 From this directory:
 
