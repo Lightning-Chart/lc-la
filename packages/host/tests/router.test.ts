@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { bijEncode, bijDecode } from '../src/bij/index.js'
 import { handleMessage } from '../src/handlers/router.js'
 import { hostState } from '../src/handlers/state.js'
-import type { LineScatterSeriesConfig } from '../src/types.js'
+import type { SeriesConfig } from '../src/types.js'
 
 // Mock LCJS since we're in Node, not browser
 vi.mock('@lightningchart/lcjs', () => {
@@ -119,7 +119,7 @@ function configureDataSet(chartId: string, dsId: string, columns: string[], clie
 }
 
 /** Helper: configure series on a chart */
-function configureSeries(chartId: string, series: LineScatterSeriesConfig[]) {
+function configureSeries(chartId: string, series: SeriesConfig[]) {
   const buf = bijEncode({
     meta: {
       id: '0',
@@ -222,6 +222,64 @@ describe('Message Router', () => {
       { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
       { id: 'humid-line', dataSetId: 'sensors', x: 'time', y: 'humidity' },
     ])
+  })
+
+  it('adds and updates individual series without removing omitted series', () => {
+    const chartId = createChart()
+    configureDataSet(chartId, 'dataset', ['x', 'y'])
+
+    configureSeries(chartId, [
+      {
+        id: 'series-1',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Series 1',
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const first = chartState.series.get('series-1')!
+
+    // Adding another series must preserve the first.
+    configureSeries(chartId, [
+      {
+        id: 'series-2',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Series 2',
+      },
+    ])
+
+    const second = chartState.series.get('series-2')!
+    expect(chartState.series.size).toBe(2)
+    expect(chartState.series.get('series-1')).toBe(first)
+
+    // Updating the first must leave the second unchanged.
+    configureSeries(chartId, [
+      {
+        id: 'series-1',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Updated series',
+        color: '#FFFFFF',
+      },
+    ])
+
+    expect(chartState.series.get('series-1')).toBe(first)
+    expect(first.series.setName).toHaveBeenLastCalledWith('Updated series')
+    expect(first.config.color).toBe('#FFFFFF')
+    expect(chartState.series.get('series-2')).toBe(second)
+    expect(second.config.name).toBe('Series 2')
+
+    // An empty configuration must preserve both.
+    configureSeries(chartId, [])
+
+    expect(chartState.series.size).toBe(2)
+    expect(first.series.dispose).not.toHaveBeenCalled()
+    expect(second.series.dispose).not.toHaveBeenCalled()
   })
 
   it('shares a client dataset across its charts', () => {
@@ -476,6 +534,138 @@ describe('Message Router', () => {
       { key: 'lon', value: new Float64Array([24.9, 25.0]) },
     ])
     expect(handleMessage(gpsBuf).type).toBe('response')
+  })
+
+  it.each(['x', 'y'] as const)('updates the default %s axis title without an ID', (axis) => {
+      const chartId = createChart()
+      const chartState = hostState.getChart(chartId)!
+      const selected = axis === 'x' ? chartState.defaultXAxis : chartState.defaultYAxis
+      const other = axis === 'x' ? chartState.defaultYAxis : chartState.defaultXAxis
+
+      const response = handleMessage(bijEncode({
+        meta: {
+          id: 'axis-title',
+          category: 'config',
+          action: 'axisTitle',
+          chartId,
+          params: { axis, title: 'Updated title' },
+        },
+      }))
+      expect(response.type).toBe('response')
+      expect(selected.axis.setTitle).toHaveBeenCalledWith('Updated title')
+      expect(other.axis.setTitle).not.toHaveBeenCalled()
+    },
+  )
+
+  it('registers default-axis IDs without creating additional axes', () => {
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'create',
+        category: 'lifecycle',
+        action: 'create',
+        params: {
+          type: 'xy',
+          defaultAxisX: { id: 'time', title: 'Time' },
+          defaultAxisY: { id: 'temperature', title: 'Temperature' },
+        },
+      },
+    }))
+    expect(response.type).toBe('response')
+
+    const chartId = (response.result as { chartId: string }).chartId
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.axes.get('time')).toBe(chartState.defaultXAxis)
+    expect(chartState.axes.get('temperature')).toBe(chartState.defaultYAxis)
+    expect(chartState.chart.addAxisX).not.toHaveBeenCalled()
+    expect(chartState.chart.addAxisY).not.toHaveBeenCalled()
+    expect(chartState.defaultXAxis.axis.setTitle).toHaveBeenCalledWith('Time')
+    expect(chartState.defaultYAxis.axis.setTitle).toHaveBeenCalledWith('Temperature')
+
+    const titleResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axis-title',
+        category: 'config',
+        action: 'axisTitle',
+        chartId,
+        params: { axisId: 'temperature', title: '' },
+      },
+    }))
+    expect(titleResponse.type).toBe('response')
+    expect(chartState.defaultYAxis.axis.setTitle).toHaveBeenLastCalledWith('')
+  })
+
+  it.each(['x', 'y'] as const)('updates an additional %s axis title by ID', (axis) => {
+    const chartId = createChart()
+
+    const axesResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axes',
+        category: 'config',
+        action: 'axes',
+        chartId,
+        params: {
+          axes: [{ id: 'additional', axis, title: 'Original title' }],
+        },
+      },
+    }))
+    expect(axesResponse.type).toBe('response')
+
+    const titleResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axis-title',
+        category: 'config',
+        action: 'axisTitle',
+        chartId,
+        params: {
+          axisId: 'additional',
+          title: 'Updated title',
+        },
+      },
+    }))
+    expect(titleResponse.type).toBe('response')
+
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.axes.get('additional')!.axis.setTitle).toHaveBeenLastCalledWith('Updated title')
+    expect(chartState.defaultXAxis.axis.setTitle).not.toHaveBeenCalled()
+    expect(chartState.defaultYAxis.axis.setTitle).not.toHaveBeenCalled()
+  })
+
+  it('passes default-axis positioning options to chart creation', () => {
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'create',
+        category: 'lifecycle',
+        action: 'create',
+        params: {
+          type: 'xy',
+          defaultAxisX: {
+            opposite: true,
+            stackIndex: -1,
+            parallelIndex: 2,
+          },
+          defaultAxisY: {
+            opposite: true,
+            stackIndex: 1,
+            parallelIndex: -2,
+          },
+        },
+      },
+    }))
+    expect(response.type).toBe('response')
+    expect(hostState.getLcjs().ChartXY).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        defaultAxisX: expect.objectContaining({
+          opposite: true,
+          iStack: -1,
+          iParallel: 2,
+        }),
+        defaultAxisY: expect.objectContaining({
+          opposite: true,
+          iStack: 1,
+          iParallel: -2,
+        }),
+      }),
+    )
   })
 
   it('handles config/axisInterval', () => {

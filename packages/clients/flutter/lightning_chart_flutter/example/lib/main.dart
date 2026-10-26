@@ -46,7 +46,7 @@ class ExampleApp extends StatelessWidget {
               ),
             ],
             series: const [
-              LineScatterSeriesConfig(
+              LineSeriesConfig(
                 id: 'sensorA',
                 dataSetId: 'sensors',
                 x: 'time',
@@ -54,7 +54,7 @@ class ExampleApp extends StatelessWidget {
                 name: 'Sensor A',
                 color: '#00A6FF',
               ),
-              LineScatterSeriesConfig(
+              LineSeriesConfig(
                 id: 'sensorB',
                 dataSetId: 'sensors',
                 x: 'time',

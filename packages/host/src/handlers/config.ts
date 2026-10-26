@@ -23,11 +23,12 @@ import type {
   ConfigureAxesParams,
   ConfigureSeriesParams,
   ConfigureTitleParams,
+  ConfigureAxisTitleParams,
   ConfigureScrollStrategyParams,
   ConfigureAxisIntervalParams,
   ConfigureDefaultAxisIntervalParams,
   ConfigureTickStrategyParams,
-  LineScatterSeriesConfig,
+  SeriesConfig,
   DataSetConfig,
   ScrollStrategy,
 } from '../types.js'
@@ -45,6 +46,8 @@ export function handleConfig(envelope: MessageEnvelope): ResponseEnvelope {
       return handleSeries(envelope)
     case 'title':
       return handleTitle(envelope)
+    case 'axisTitle':
+      return handleAxisTitle(envelope)
     case 'scrollStrategy':
       return handleScrollStrategy(envelope)
     case 'axisInterval':
@@ -114,16 +117,6 @@ function handleSeries(envelope: MessageEnvelope): ResponseEnvelope {
   const params = envelope.params as unknown as ConfigureSeriesParams
   if (!params?.series) return { id: envelope.id, type: 'error', error: 'Missing series in params' }
 
-  const requestedIds = new Set(params.series.map((s) => s.id))
-
-  // Remove series no longer in config
-  for (const [id, seriesState] of chartState.series) {
-    if (!requestedIds.has(id)) {
-      seriesState.series.dispose()
-      chartState.series.delete(id)
-    }
-  }
-
   // Create or update series
   for (const seriesConfig of params.series) {
     const dsState = hostState.getDataSet(chartState.clientId, seriesConfig.dataSetId)
@@ -179,7 +172,7 @@ function handleSeries(envelope: MessageEnvelope): ResponseEnvelope {
   return { id: envelope.id, type: 'response' }
 }
 
-function applySeriesStyle(series: PointLineAreaSeries, config: LineScatterSeriesConfig) {
+function applySeriesStyle(series: PointLineAreaSeries, config: SeriesConfig) {
   if (config.name !== undefined) series.setName(config.name)
   const color = config.color ? ColorHEX(config.color) : undefined
   const type = config.type ?? 'line'
@@ -218,7 +211,7 @@ function handleAxes(envelope: MessageEnvelope): ResponseEnvelope {
     // Reuse an axis already created for this ID
     const existing = chartState.axes.get(axisConfig.id)
     if (existing) {
-      existing.axis.setTitle(axisConfig.name ?? '')
+      existing.axis.setTitle(axisConfig.title ?? '')
       continue
     }
 
@@ -234,7 +227,7 @@ function handleAxes(envelope: MessageEnvelope): ResponseEnvelope {
       ? chartState.chart.addAxisX(options)
       : chartState.chart.addAxisY(options)
 
-    axis.setTitle(axisConfig.name ?? '')
+    axis.setTitle(axisConfig.title ?? '')
 
     chartState.axes.set(axisConfig.id, {
       target: axisConfig.axis,
@@ -267,6 +260,18 @@ function resolveAxis(envelope: MessageEnvelope, axis?: 'x' | 'y', axisId?: strin
   }
 
   return { axis: selected.axis }
+}
+
+function handleAxisTitle(envelope: MessageEnvelope): ResponseEnvelope {
+  const params = envelope.params as unknown as ConfigureAxisTitleParams
+  if (typeof params?.title !== 'string') return { id: envelope.id, type: 'error', error: 'Missing title in params' }
+
+  const result = resolveAxis(envelope, params.axis, params.axisId)
+  if (result.error) return result.error
+
+  result.axis.setTitle(params.title)
+
+  return { id: envelope.id, type: 'response'}
 }
 
 function handleAxisInterval(envelope: MessageEnvelope): ResponseEnvelope {

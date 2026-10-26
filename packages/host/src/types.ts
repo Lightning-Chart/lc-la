@@ -22,8 +22,11 @@ export interface ResponseEnvelope {
 
 // Lifecycle actions
 export interface DefaultAxisConfig {
+  id?: string
+  title?: string
   opposite?: boolean
-  name?: string
+  stackIndex?: number
+  parallelIndex?: number
 }
 
 export interface CreateChartParams {
@@ -57,7 +60,7 @@ export interface ConfigureDataSetsParams {
 export interface AxisConfig {
   id: string,
   axis: AxisTarget,
-  name?: string,
+  title?: string,
   opposite?: boolean,
   stackIndex?: number
   parallelIndex?: number
@@ -67,27 +70,58 @@ export interface ConfigureAxesParams {
   axes: AxisConfig[]
 }
 
-export interface SeriesConfig {
+export interface LineSeriesConfig {
   id: string
+  type?: 'line'
   name?: string
-}
-
-export interface LineScatterSeriesConfig extends SeriesConfig {
   dataSetId: string
   x: string
   y: string
   xAxisId?: string
   yAxisId?: string
   color?: string
-  seriesType?: 'lineScatter'
-  type?: 'line' | 'scatter' | 'line+scatter'
 }
 
+export interface ScatterSeriesConfig {
+  id: string
+  type: 'scatter'
+  name?: string
+  dataSetId: string
+  x: string
+  y: string
+  xAxisId?: string
+  yAxisId?: string
+  color?: string
+}
+
+export interface LineScatterSeriesConfig {
+  id: string
+  type: 'line+scatter'
+  name?: string
+  dataSetId: string
+  x: string
+  y: string
+  xAxisId?: string
+  yAxisId?: string
+  color?: string
+}
+
+export type SeriesConfig =
+  | LineSeriesConfig
+  | ScatterSeriesConfig
+  | LineScatterSeriesConfig
+
 export interface ConfigureSeriesParams {
-  series: LineScatterSeriesConfig[]
+  series: SeriesConfig[]
 }
 
 export interface ConfigureTitleParams {
+  title: string
+}
+
+export interface ConfigureAxisTitleParams {
+  axis?: AxisTarget
+  axisId?: string
   title: string
 }
 

@@ -35,15 +35,21 @@ class LclaChartSession {
     final defaultAxisX = config?.defaultAxisX;
     if (defaultAxisX != null) {
       params['defaultAxisX'] = _removeNulls({
+        'id': defaultAxisX.id,
+        'title': defaultAxisX.title,
         'opposite': defaultAxisX.opposite,
-        'name': defaultAxisX.name,
+        'stackIndex': defaultAxisX.stackIndex,
+        'parallelIndex': defaultAxisX.parallelIndex,
       });
     }
     final defaultAxisY = config?.defaultAxisY;
     if (defaultAxisY != null) {
       params['defaultAxisY'] = _removeNulls({
+        'id': defaultAxisY.id,
+        'title': defaultAxisY.title,
         'opposite': defaultAxisY.opposite,
-        'name': defaultAxisY.name,
+        'stackIndex': defaultAxisY.stackIndex,
+        'parallelIndex': defaultAxisY.parallelIndex,
       });
     }
     if (config?.animationsEnabled != null) {
@@ -233,6 +239,24 @@ class LclaChart {
     ]);
   }
 
+  void setAxisTitle(SetAxisTitleOptions options) {
+    _throwIfDisposed();
+    _client._sendFireAndForget([
+      BijPart.json('meta', {
+        'id': _client._nextMessageId(),
+        'category': 'config',
+        'action': 'axisTitle',
+        'clientId': _client._clientId,
+        'chartId': chartId,
+        'params': _removeNulls({
+          'axis': options.axis?.wireValue,
+          'axisId': options.axisId,
+          'title': options.title,
+        }),
+      }),
+    ]);
+  }
+
   void setScrollStrategy(SetScrollStrategyOptions options) {
     _throwIfDisposed();
     final params = _removeNulls({
@@ -403,7 +427,7 @@ Map<String, Object?> _axisToJson(AxisConfig axis) {
   return _removeNulls({
     'id': axis.id,
     'axis': axis.axis.wireValue,
-    'name': axis.name,
+    'title': axis.title,
     'opposite': axis.opposite,
     'stackIndex': axis.stackIndex,
     'parallelIndex': axis.parallelIndex,
@@ -413,19 +437,46 @@ Map<String, Object?> _axisToJson(AxisConfig axis) {
 Map<String, Object?> _seriesToJson(SeriesConfig series) {
   final value = _removeNulls({'id': series.id, 'name': series.name});
 
-  // Serialize the settings belonging to each series class
+  // The configuration class determines the serialized series type
   switch (series) {
-    case LineScatterSeriesConfig():
+    case LineSeriesConfig():
       value.addAll(
         _removeNulls({
-          'seriesType': 'lineScatter',
+          'type': 'line',
           'dataSetId': series.dataSetId,
           'x': series.x,
           'y': series.y,
           'xAxisId': series.xAxisId,
           'yAxisId': series.yAxisId,
           'color': series.color,
-          'type': series.type.wireValue,
+        }),
+      );
+      break;
+
+    case ScatterSeriesConfig():
+      value.addAll(
+        _removeNulls({
+          'type': 'scatter',
+          'dataSetId': series.dataSetId,
+          'x': series.x,
+          'y': series.y,
+          'xAxisId': series.xAxisId,
+          'yAxisId': series.yAxisId,
+          'color': series.color,
+        }),
+      );
+      break;
+
+    case LineScatterSeriesConfig():
+      value.addAll(
+        _removeNulls({
+          'type': 'line+scatter',
+          'dataSetId': series.dataSetId,
+          'x': series.x,
+          'y': series.y,
+          'xAxisId': series.xAxisId,
+          'yAxisId': series.yAxisId,
+          'color': series.color,
         }),
       );
       break;

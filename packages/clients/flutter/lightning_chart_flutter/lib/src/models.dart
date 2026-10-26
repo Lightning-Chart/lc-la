@@ -48,10 +48,19 @@ enum LclaTheme {
 }
 
 class DefaultAxisConfig {
-  const DefaultAxisConfig({this.opposite, this.name});
+  const DefaultAxisConfig({
+    this.id,
+    this.title,
+    this.opposite,
+    this.stackIndex,
+    this.parallelIndex,
+  });
 
+  final String? id;
+  final String? title;
   final bool? opposite;
-  final String? name;
+  final int? stackIndex;
+  final int? parallelIndex;
 }
 
 class XYChartConfig {
@@ -131,7 +140,7 @@ class AxisConfig {
   const AxisConfig({
     required this.id,
     required this.axis,
-    this.name,
+    this.title,
     this.opposite,
     this.stackIndex,
     this.parallelIndex,
@@ -139,7 +148,7 @@ class AxisConfig {
 
   final String id;
   final AxisTarget axis;
-  final String? name;
+  final String? title;
   final bool? opposite;
   final int? stackIndex;
   final int? parallelIndex;
@@ -152,6 +161,46 @@ abstract class SeriesConfig {
   final String? name;
 }
 
+class LineSeriesConfig extends SeriesConfig {
+  const LineSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+}
+
+class ScatterSeriesConfig extends SeriesConfig {
+  const ScatterSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+}
+
 class LineScatterSeriesConfig extends SeriesConfig {
   const LineScatterSeriesConfig({
     required super.id,
@@ -162,7 +211,6 @@ class LineScatterSeriesConfig extends SeriesConfig {
     this.xAxisId,
     this.yAxisId,
     this.color,
-    this.type = LineScatterSeriesType.line,
   });
 
   final String dataSetId;
@@ -171,17 +219,6 @@ class LineScatterSeriesConfig extends SeriesConfig {
   final String? xAxisId;
   final String? yAxisId;
   final String? color;
-  final LineScatterSeriesType type;
-}
-
-enum LineScatterSeriesType {
-  line('line'),
-  scatter('scatter'),
-  lineScatter('line+scatter');
-
-  const LineScatterSeriesType(this.wireValue);
-
-  final String wireValue;
 }
 
 enum ScrollStrategy {
@@ -216,6 +253,14 @@ enum TickStrategy {
 class SetTitleOptions {
   const SetTitleOptions({required this.title});
 
+  final String title;
+}
+
+class SetAxisTitleOptions {
+  const SetAxisTitleOptions({this.axis, this.axisId, required this.title});
+
+  final AxisTarget? axis;
+  final String? axisId;
   final String title;
 }
 

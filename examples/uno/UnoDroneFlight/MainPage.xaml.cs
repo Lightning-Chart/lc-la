@@ -177,7 +177,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
 
             _chart.ConfigureSeries(
             [
-                new LineScatterSeriesConfig
+                new LineSeriesConfig
                 {
                     Id = "altitude",
                     DataSetId = DataSetId,
@@ -186,7 +186,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                     Name = "Relative altitude (m)",
                     Color = "#8BF584",
                 },
-                new LineScatterSeriesConfig
+                new LineSeriesConfig
                 {
                     Id = "speed",
                     DataSetId = DataSetId,
@@ -196,7 +196,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                     Name = "Horizontal speed (km/h)",
                     Color = "#FFC56A",
                 },
-                new LineScatterSeriesConfig
+                new LineSeriesConfig
                 {
                     Id = "climb",
                     DataSetId = DataSetId,
@@ -252,7 +252,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 ],
                 Series =
                 [
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "route",
                         DataSetId = RouteDataSetId,
@@ -261,14 +261,13 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                         Name = "Flight route",
                         Color = "#8BF584",
                     },
-                    new LineScatterSeriesConfig
+                    new ScatterSeriesConfig
                     {
                         Id = "position",
                         DataSetId = RouteDataSetId,
                         X = "longitude",
                         Y = "position",
                         Name = "Current position",
-                        Type = LineScatterSeriesType.Scatter,
                         Color = "#FFC56A",
                     },
                 ],

@@ -83,7 +83,7 @@ var chart = await _context!.CreateChartAsync(new XYChartConfig
     ],
     Series =
     [
-        new LineScatterSeriesConfig
+        new LineSeriesConfig
         {
             Id = "value",
             DataSetId = "signals",

@@ -63,7 +63,7 @@ return LightningChart.xy(
     ),
   ],
   series: const [
-    LineScatterSeriesConfig(
+    LineSeriesConfig(
       id: 'value',
       dataSetId: 'signals',
       x: 'time',
@@ -108,7 +108,7 @@ LightningChart.xy(
     ),
   ],
   series: const [
-    LineScatterSeriesConfig(
+    LineSeriesConfig(
       id: 'value',
       dataSetId: 'signals',
       x: 'time',

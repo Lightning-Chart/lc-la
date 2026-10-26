@@ -242,8 +242,26 @@ public class LclaContext : IAsyncDisposable
         var id = NextId();
         var p = new Dictionary<string, object?> { ["type"] = "xy" };
         if (config?.ContainerId != null) p["containerId"] = config.ContainerId;
-        if (config?.DefaultAxisX is { } defaultAxisX) p["defaultAxisX"] = new { opposite = defaultAxisX.Opposite ?? false, name = defaultAxisX.Name };
-        if (config?.DefaultAxisY is { } defaultAxisY) p["defaultAxisY"] = new { opposite = defaultAxisY.Opposite ?? false, name = defaultAxisY.Name };
+        if (config?.DefaultAxisX is { } defaultAxisX) {
+            p["defaultAxisX"] = new
+            {
+                id = defaultAxisX.Id,
+                title = defaultAxisX.Title,
+                opposite = defaultAxisX.Opposite ?? false,
+                stackIndex = defaultAxisX.StackIndex,
+                parallelIndex = defaultAxisX.ParallelIndex,
+            };
+        }
+        if (config?.DefaultAxisY is { } defaultAxisY) {
+            p["defaultAxisY"] = new
+            {
+                id = defaultAxisY.Id,
+                title = defaultAxisY.Title,
+                opposite = defaultAxisY.Opposite ?? false,
+                stackIndex = defaultAxisY.StackIndex,
+                parallelIndex = defaultAxisY.ParallelIndex,
+            };
+        }
         if (config?.AnimationsEnabled.HasValue == true) p["animationsEnabled"] = config.AnimationsEnabled.Value;
         var createParams = (object)p;
 
@@ -331,11 +349,17 @@ public class LclaContext : IAsyncDisposable
 public class DefaultAxisConfig
 {
     /// <summary>
+    /// Optional identifier for selecting this axis in later operations.
+    /// </summary>
+    public string? Id { get; set; }
+    public string? Title { get; set; }
+    /// <summary>
     /// True places a Y axis on the right or an X axis on the top.
     /// Null or false preserves the normal left/bottom position.
     /// </summary>
     public bool? Opposite { get; set; }
-    public string? Name { get; set; }
+    public int? StackIndex { get; set; }
+    public int? ParallelIndex { get; set; }
 }
 
 /// <summary>
@@ -395,7 +419,7 @@ public class AxisConfig
 {
     public required string Id { get; set; }
     public required AxisTarget Axis { get; set; }
-    public string? Name { get; set; }
+    public string? Title { get; set; }
     public bool? Opposite { get; set; }
     public int? StackIndex { get; set; }
     public int? ParallelIndex { get; set; }
@@ -407,6 +431,26 @@ public abstract class SeriesConfig
     public string? Name { get; set; }
 }
 
+public class LineSeriesConfig : SeriesConfig
+{
+    public required string DataSetId { get; set; }
+    public required string X { get; set; }
+    public required string Y { get; set; }
+    public string? XAxisId { get; set; }
+    public string? YAxisId { get; set; }
+    public string? Color { get; set; }
+}
+
+public class ScatterSeriesConfig : SeriesConfig
+{
+    public required string DataSetId { get; set; }
+    public required string X { get; set; }
+    public required string Y { get; set; }
+    public string? XAxisId { get; set; }
+    public string? YAxisId { get; set; }
+    public string? Color { get; set; }
+}
+
 public class LineScatterSeriesConfig : SeriesConfig
 {
     public required string DataSetId { get; set; }
@@ -415,14 +459,6 @@ public class LineScatterSeriesConfig : SeriesConfig
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
-    public LineScatterSeriesType Type { get; set; } = LineScatterSeriesType.Line;
-}
-
-public enum LineScatterSeriesType
-{
-    Line,
-    Scatter,
-    LineScatter,
 }
 
 /// <summary>

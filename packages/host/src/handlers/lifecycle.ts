@@ -94,18 +94,26 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
 
   const ownsContainer = !params?.containerId
   const theme = hostState.getTheme()
-  const defaultXAxisOpposite = params?.defaultAxisX?.opposite ?? false
-  const defaultYAxisOpposite = params?.defaultAxisY?.opposite ?? false
   const chart = lcjs.ChartXY({
     container,
     ...(theme ? { theme } : {}),
-    defaultAxisX: { type: 'linear-highPrecision', opposite: defaultXAxisOpposite },
-    defaultAxisY: { type: 'linear-highPrecision', opposite: defaultYAxisOpposite },
+    defaultAxisX: {
+        type: 'linear-highPrecision',
+        opposite: params?.defaultAxisX?.opposite ?? false,
+        iStack: params?.defaultAxisX?.stackIndex ?? undefined,
+        iParallel: params?.defaultAxisX?.parallelIndex ?? undefined,
+    },
+    defaultAxisY: {
+        type: 'linear-highPrecision',
+        opposite: params?.defaultAxisY?.opposite ?? false,
+        iStack: params?.defaultAxisY?.stackIndex ?? undefined,
+        iParallel: params?.defaultAxisY?.parallelIndex ?? undefined,
+    },
   })
 
   // Apply titles to the automatically created axes when provided
-  if (params?.defaultAxisX?.name != null) chart.axisX.setTitle(params.defaultAxisX.name)
-  if (params?.defaultAxisY?.name != null) chart.axisY.setTitle(params.defaultAxisY.name)
+  if (params?.defaultAxisX?.title != null) chart.axisX.setTitle(params.defaultAxisX.title)
+  if (params?.defaultAxisY?.title != null) chart.axisY.setTitle(params.defaultAxisY.title)
 
   // Keep wheel zoom available while a live X axis is scrolling. The explicit
   // stopScroll flag releases automatic following as soon as the user zooms.
@@ -131,6 +139,11 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
     axes: new Map(),
     ownsContainer,
   }
+
+  // Optional IDs refer to the existing default axes.
+  if (params?.defaultAxisX?.id != null) { state.axes.set(params.defaultAxisX.id, defaultXAxis) }
+  if (params?.defaultAxisY?.id != null) { state.axes.set(params.defaultAxisY.id, defaultYAxis) }
+
   hostState.addChart(chartId, state)
 
   return { id: envelope.id, type: 'response', result: { chartId } }

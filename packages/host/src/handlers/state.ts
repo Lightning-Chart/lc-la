@@ -6,7 +6,7 @@
  */
 
 import type { Axis, ChartXY, PointLineAreaSeries, LightningChart, DataSetXY, OfficialTheme } from '@lightningchart/lcjs'
-import type { AxisTarget, LineScatterSeriesConfig } from '../types.js'
+import type { AxisTarget, SeriesConfig } from '../types.js'
 export interface DataSetState {
   id: string
   dataSet: DataSetXY
@@ -21,7 +21,7 @@ export interface AxisState {
 export interface SeriesState {
   id: string
   series: PointLineAreaSeries
-  config: LineScatterSeriesConfig
+  config: SeriesConfig
   xAxis: AxisState
   yAxis: AxisState
 }

@@ -156,7 +156,7 @@ public class ApiTests
                 },
             ],
             Series = [
-                new LineScatterSeriesConfig
+                new LineSeriesConfig
                 {
                     Id = "temperature-series",
                     DataSetId = "ds1",
@@ -195,13 +195,80 @@ public class ApiTests
         var seriesMeta = (JsonElement)seriesDecoded["meta"];
         Assert.Equal("series", seriesMeta.GetProperty("action").GetString());
         var series = seriesMeta.GetProperty("params").GetProperty("series")[0];
-        Assert.Equal("lineScatter", series.GetProperty("seriesType").GetString());
         Assert.Equal("line", series.GetProperty("type").GetString());
         Assert.Equal("ds1", series.GetProperty("dataSetId").GetString());
         Assert.Equal("time", series.GetProperty("x").GetString());
         Assert.Equal("temperature", series.GetProperty("y").GetString());
         Assert.Equal("time-axis", series.GetProperty("xAxisId").GetString());
         Assert.Equal("temperature-axis", series.GetProperty("yAxisId").GetString());
+    }
+
+    [Theory]
+    [InlineData(AxisTarget.X, "defaultAxisX")]
+    [InlineData(AxisTarget.Y, "defaultAxisY")]
+    public async Task CreateChart_SendsDefaultAxisSettings(
+        AxisTarget axis, string property)
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(
+            transport, new LclaLicense { Key = "test-license" });
+
+        var settings = new DefaultAxisConfig
+        {
+            Id = "measurement",
+            Title = "Measurement",
+            Opposite = true,
+            StackIndex = -1,
+            ParallelIndex = 2,
+        };
+
+        await client.CreateChartAsync(new XYChartConfig
+        {
+            DefaultAxisX = axis == AxisTarget.X ? settings : null,
+            DefaultAxisY = axis == AxisTarget.Y ? settings : null,
+        });
+
+        var decoded = BijDecoder.Decode(transport.SentMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params").GetProperty(property);
+
+        Assert.Equal("measurement", options.GetProperty("id").GetString());
+        Assert.Equal("Measurement", options.GetProperty("title").GetString());
+        Assert.True(options.GetProperty("opposite").GetBoolean());
+        Assert.Equal(-1, options.GetProperty("stackIndex").GetInt32());
+        Assert.Equal(2, options.GetProperty("parallelIndex").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetAxisTitle_SendsAxisSelectionAndTitle(bool useId)
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(
+            transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        chart.SetAxisTitle(new SetAxisTitleOptions
+        {
+            Axis = useId ? null : AxisTarget.Y,
+            AxisId = useId ? "temperature" : null,
+            Title = "Temperature (°C)",
+        });
+
+        var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params");
+
+        Assert.Equal("config", meta.GetProperty("category").GetString());
+        Assert.Equal("axisTitle", meta.GetProperty("action").GetString());
+        Assert.Equal(chart.ChartId, meta.GetProperty("chartId").GetString());
+        Assert.Equal("Temperature (°C)", options.GetProperty("title").GetString());
+
+        if (useId)
+            Assert.Equal("temperature", options.GetProperty("axisId").GetString());
+        else
+            Assert.Equal("y", options.GetProperty("axis").GetString());
     }
 
     [Fact]

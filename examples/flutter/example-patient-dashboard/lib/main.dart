@@ -253,24 +253,24 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       AxisConfig(
         id: 'blood-pressure',
         axis: AxisTarget.y,
-        name: 'Blood pressure (mmHg)',
+        title: 'Blood pressure (mmHg)',
         stackIndex: -1,
       ),
       AxisConfig(
         id: 'spo2',
         axis: AxisTarget.y,
-        name: 'SpO₂ (%)',
+        title: 'SpO₂ (%)',
         stackIndex: -2,
       ),
       AxisConfig(
         id: 'respiratory-rate',
         axis: AxisTarget.y,
-        name: 'Respiratory rate (/min)',
+        title: 'Respiratory rate (/min)',
         stackIndex: -3,
       ),
     ],
     series: [
-      LineScatterSeriesConfig(
+      LineSeriesConfig(
         id: 'ecg',
         dataSetId: 'ecg',
         x: 'time',
@@ -278,7 +278,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         name: 'ECG',
         color: _Palette.chartHex(_Palette.ecg),
       ),
-      LineScatterSeriesConfig(
+      LineSeriesConfig(
         id: 'systolic',
         dataSetId: 'vitals',
         x: 'time',
@@ -287,7 +287,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         name: 'Systolic (mmHg)',
         color: _Palette.chartHex(_Palette.bloodPressure),
       ),
-      LineScatterSeriesConfig(
+      LineSeriesConfig(
         id: 'diastolic',
         dataSetId: 'vitals',
         x: 'time',
@@ -296,7 +296,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         name: 'Diastolic (mmHg)',
         color: _Palette.chartHex(_Palette.diastolic),
       ),
-      LineScatterSeriesConfig(
+      LineSeriesConfig(
         id: 'spo2',
         dataSetId: 'vitals',
         x: 'time',
@@ -305,7 +305,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         name: 'SpO₂ (%)',
         color: _Palette.chartHex(_Palette.spo2),
       ),
-      LineScatterSeriesConfig(
+      LineSeriesConfig(
         id: 'respiratory-rate',
         dataSetId: 'vitals',
         x: 'time',

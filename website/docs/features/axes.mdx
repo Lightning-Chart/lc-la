@@ -1,0 +1,664 @@
+---
+title: Configuring axes
+sidebar_position: 6
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+XY charts have a default X axis and a default Y axis. You can configure these axes, add further axes, and choose which axes each series uses.
+
+## Default axes
+
+Every XY chart automatically creates one default X axis and one default Y axis. Omit their configuration to use the normal settings.
+
+Configure their titles and positioning when creating the chart. Either default axis accepts an opposite setting, stack index, and parallel index.
+
+An optional ID lets you reference the default axis in later operations and series bindings. Without an ID, the default axis remains accessible through its X/Y target.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+After rendering the chart container and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    DefaultAxisX = new DefaultAxisConfig
+    {
+        Title = "X axis",
+    },
+    DefaultAxisY = new DefaultAxisConfig
+    {
+        Id = "default-y",
+        Title = "Y axis",
+        Opposite = true,
+    },
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+After loading the WebView and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    DefaultAxisX = new DefaultAxisConfig
+    {
+        Title = "X axis",
+    },
+    DefaultAxisY = new DefaultAxisConfig
+    {
+        Id = "default-y",
+        Title = "Y axis",
+        Opposite = true,
+    },
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+After loading the WebView and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    DefaultAxisX = new DefaultAxisConfig
+    {
+        Title = "X axis",
+    },
+    DefaultAxisY = new DefaultAxisConfig
+    {
+        Id = "default-y",
+        Title = "Y axis",
+        Opposite = true,
+    },
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Provide the configuration when creating the widget:
+
+```dart
+LightningChart.xy(
+  license: license,
+  defaultAxisX: const DefaultAxisConfig(
+    title: 'X axis',
+  ),
+  defaultAxisY: const DefaultAxisConfig(
+    id: 'default-y',
+    title: 'Y axis',
+    opposite: true,
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+This positions the default Y axis on the right. Omit the opposite setting to keep it on the left.
+
+## Additional axes
+
+Add further X or Y axes through the chart's axes configuration. Each additional axis requires a unique ID and an X or Y orientation.
+
+Additional axes can be created with the chart or added afterward. Their side, stack index, and parallel index are set when the axis is created.
+
+The examples below add a right-side Y axis while retaining both default axes with their normal settings.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Create the additional axis with the chart:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    Axes =
+    [
+        new AxisConfig
+        {
+            Id = "additional-y",
+            Axis = AxisTarget.Y,
+            Title = "Additional Y axis",
+            Opposite = true,
+        },
+    ],
+});
+```
+
+Alternatively, add it to an existing chart:
+
+```csharp
+chart.ConfigureAxes(
+[
+    new AxisConfig
+    {
+        Id = "additional-y",
+        Axis = AxisTarget.Y,
+        Title = "Additional Y axis",
+        Opposite = true,
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Create the additional axis with the chart:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    Axes =
+    [
+        new AxisConfig
+        {
+            Id = "additional-y",
+            Axis = AxisTarget.Y,
+            Title = "Additional Y axis",
+            Opposite = true,
+        },
+    ],
+});
+```
+
+Alternatively, add it to an existing chart:
+
+```csharp
+chart.ConfigureAxes(
+[
+    new AxisConfig
+    {
+        Id = "additional-y",
+        Axis = AxisTarget.Y,
+        Title = "Additional Y axis",
+        Opposite = true,
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+Create the additional axis with the chart:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    Axes =
+    [
+        new AxisConfig
+        {
+            Id = "additional-y",
+            Axis = AxisTarget.Y,
+            Title = "Additional Y axis",
+            Opposite = true,
+        },
+    ],
+});
+```
+
+Alternatively, add it to an existing chart:
+
+```csharp
+chart.ConfigureAxes(
+[
+    new AxisConfig
+    {
+        Id = "additional-y",
+        Axis = AxisTarget.Y,
+        Title = "Additional Y axis",
+        Opposite = true,
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Create the additional axis with the widget:
+
+```dart
+LightningChart.xy(
+  license: license,
+  axes: const [
+    AxisConfig(
+      id: 'additional-y',
+      axis: AxisTarget.y,
+      title: 'Additional Y axis',
+      opposite: true,
+    ),
+  ],
+);
+```
+
+Alternatively, add it afterward using the controller received through `onChartCreated`:
+
+```dart
+chart.configureAxes(const [
+  AxisConfig(
+    id: 'additional-y',
+    axis: AxisTarget.y,
+    title: 'Additional Y axis',
+    opposite: true,
+  ),
+]);
+```
+
+</TabItem>
+</Tabs>
+
+An existing ID selects the same axis and applies its title. Omitting the title clears it. Its orientation and positioning remain unchanged.
+
+### Axis side
+
+By default, X axes appear at the bottom and Y axes at the left.
+
+Enable the opposite setting to place an X axis at the top or a Y axis on the right.
+
+This option applies equally to default and additional axes. Set it when creating the axis.
+
+### Stacked axes
+
+Stacked axes divide the chart into separate plot sections.
+
+Set the stack index when creating the axis to select its plot section. Axes with the same stack index share a plot section. Negative values are supported.
+
+Default axes also accept a stack index. Set it when creating the chart, and set each additional axis's stack index when creating that axis.
+
+### Parallel axes
+
+Parallel axes provide separate scales within the same plot section.
+
+Set the parallel index when creating the axis to select its position. Use the same stack index for axes that belong to the same plot section.
+
+Combine parallel positioning with the opposite setting to place axes on both sides of the chart.
+
+## Assigning series to axes
+
+A [series](./series) uses the default X and Y axes when its axis IDs are omitted.
+
+Assign a series to a specific axis using its ID. This can identify either a default or an additional axis.
+
+Set the series’s Y-axis ID to the ID you assigned when creating the axis. Omit the series’s X-axis ID to use the default X axis.
+
+## Axis title
+
+Set the title when creating the axis, or change it afterward. Select a default axis through its X/Y target, or any axis with an assigned ID. An empty title clears the displayed text.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.X,
+    Title = "Updated X axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.Y,
+    Title = "Updated Y axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    AxisId = "additional-y",
+    Title = "Updated additional Y axis",
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.X,
+    Title = "Updated X axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.Y,
+    Title = "Updated Y axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    AxisId = "additional-y",
+    Title = "Updated additional Y axis",
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.X,
+    Title = "Updated X axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    Axis = AxisTarget.Y,
+    Title = "Updated Y axis",
+});
+
+chart.SetAxisTitle(new SetAxisTitleOptions
+{
+    AxisId = "additional-y",
+    Title = "Updated additional Y axis",
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Use the controller received through `onChartCreated`:
+
+```dart
+chart.setAxisTitle(const SetAxisTitleOptions(
+  axis: AxisTarget.x,
+  title: 'Updated X axis',
+));
+
+chart.setAxisTitle(const SetAxisTitleOptions(
+  axis: AxisTarget.y,
+  title: 'Updated Y axis',
+));
+
+chart.setAxisTitle(const SetAxisTitleOptions(
+  axisId: 'additional-y',
+  title: 'Updated additional Y axis',
+));
+```
+
+</TabItem>
+</Tabs>
+
+## Axis interval
+
+An axis interval defines the currently displayed range. Change it after creation to show a specific part of the data.
+
+Select a default axis through its X/Y target, or any axis with an assigned ID through that ID.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Start = 0,
+    End = 20,
+});
+
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    AxisId = "additional-y",
+    Start = 0,
+    End = 10,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Start = 0,
+    End = 20,
+});
+
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    AxisId = "additional-y",
+    Start = 0,
+    End = 10,
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Start = 0,
+    End = 20,
+});
+
+chart.SetAxisInterval(new SetAxisIntervalOptions
+{
+    AxisId = "additional-y",
+    Start = 0,
+    End = 10,
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.setAxisInterval(const SetAxisIntervalOptions(
+  axis: AxisTarget.x,
+  start: 0,
+  end: 20,
+));
+
+chart.setAxisInterval(const SetAxisIntervalOptions(
+  axisId: 'additional-y',
+  start: 0,
+  end: 10,
+));
+```
+
+</TabItem>
+</Tabs>
+
+### Default interval
+
+The default interval defines the range used when the axis resets or follows incoming data. It can be configured for any axis, and it can be changed after axis creation.
+
+Select a default axis through its X/Y target, or any axis with an assigned ID.
+Specify start and end values for a fixed default range, or a length for a trailing window that follows the latest data.
+
+The example below configures a trailing window of 20 units on the default X axis.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = ScrollStrategy.Scrolling,
+});
+
+chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Length = 20,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = ScrollStrategy.Scrolling,
+});
+
+chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Length = 20,
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = ScrollStrategy.Scrolling,
+});
+
+chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+{
+    Axis = AxisTarget.X,
+    Length = 20,
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.setScrollStrategy(const SetScrollStrategyOptions(
+  axis: AxisTarget.x,
+  strategy: ScrollStrategy.scrolling,
+));
+
+chart.setDefaultAxisInterval(const SetDefaultAxisIntervalOptions(
+  axis: AxisTarget.x,
+  length: 20,
+));
+```
+
+</TabItem>
+</Tabs>
+
+## Scrolling and fitting
+
+The scroll strategy controls how an axis responds to data:
+
+- **Scrolling** keeps a fixed interval and moves it to the newest data.
+- **Fitting** scales the axis to include all available data.
+- **Expansion** grows the interval for new extremes without shrinking it.
+
+The strategy can be changed after axis creation. For example, switch the default Y axis to fitting:
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.Y,
+    Strategy = ScrollStrategy.Fitting,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.Y,
+    Strategy = ScrollStrategy.Fitting,
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.SetScrollStrategy(new SetScrollStrategyOptions
+{
+    Axis = AxisTarget.Y,
+    Strategy = ScrollStrategy.Fitting,
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.setScrollStrategy(const SetScrollStrategyOptions(
+  axis: AxisTarget.y,
+  strategy: ScrollStrategy.fitting,
+));
+```
+
+</TabItem>
+</Tabs>
+
+Use an assigned axis ID instead of the X/Y target to configure another axis.
+
+## Axis ticks
+
+Tick strategies control how axis values are displayed:
+
+- **Numeric** displays numeric values.
+- **DateTime** displays date and time values, represented as Unix timestamps in milliseconds.
+- **Time** displays time durations, represented as milliseconds.
+
+The tick strategy can be changed after axis creation. Select a default axis through its X/Y target, or any axis with an assigned ID.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.SetTickStrategy(new SetTickStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = TickStrategy.Numeric,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.SetTickStrategy(new SetTickStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = TickStrategy.Numeric,
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.SetTickStrategy(new SetTickStrategyOptions
+{
+    Axis = AxisTarget.X,
+    Strategy = TickStrategy.Numeric,
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.setTickStrategy(const SetTickStrategyOptions(
+  axis: AxisTarget.x,
+  strategy: TickStrategy.numeric,
+));
+```
+
+</TabItem>
+</Tabs>

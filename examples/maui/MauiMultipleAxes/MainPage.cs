@@ -89,8 +89,8 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
             {
                 ContainerId = "lcla-root",
                 Title = "Vertical multiple-axis streaming",
-                DefaultAxisX = new DefaultAxisConfig { Name = "Vibration (mm/s)" },
-                DefaultAxisY = new DefaultAxisConfig { Name = "Time (s)" },
+                DefaultAxisX = new DefaultAxisConfig { Title = "Vibration (mm/s)" },
+                DefaultAxisY = new DefaultAxisConfig { Title = "Time (s)" },
                 DataSets =
                 [
                     new DataSetConfig
@@ -99,11 +99,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         MaxSampleCount = 1_048_576,
                         Columns =
                         [
-                            new DataSetColumnConfig
-                            {
-                                Id = "time",
-                                DataPattern = DataPattern.Progressive,
-                            },
+                            new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
                             new DataSetColumnConfig { Id = "vibration" },
                             new DataSetColumnConfig { Id = "temperature" },
                             new DataSetColumnConfig { Id = "pressure" },
@@ -117,7 +113,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                     {
                         Id = "temperature",
                         Axis = AxisTarget.X,
-                        Name = "Temperature (°C)",
+                        Title = "Temperature (°C)",
                         Opposite = true,
                         StackIndex = 0,
                         ParallelIndex = 0,
@@ -127,7 +123,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                     {
                         Id = "pressure",
                         Axis = AxisTarget.X,
-                        Name = "Pressure (bar)",
+                        Title = "Pressure (bar)",
                         StackIndex = 0,
                         ParallelIndex = 1,
                     },
@@ -136,7 +132,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                     {
                         Id = "time-right",
                         Axis = AxisTarget.Y,
-                        Name = "Time (s)",
+                        Title = "Time (s)",
                         Opposite = true,
                         StackIndex = 0,
                         ParallelIndex = 0,
@@ -145,7 +141,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                 Series =
                 [
                     // Default X displays vibration, default Y displays time
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "vibration",
                         Name = "Vibration (mm/s)",
@@ -155,7 +151,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Color = "#FFD400",
                     },
                     // Additional X axis, the same default Y time axis
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "temperature",
                         Name = "Temperature (°C)",
@@ -165,7 +161,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         XAxisId = "temperature",
                         Color = "#FF7866",
                     },
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "pressure",
                         Name = "Pressure (bar)",

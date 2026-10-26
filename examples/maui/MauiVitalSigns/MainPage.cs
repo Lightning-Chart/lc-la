@@ -215,7 +215,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                 ],
                 Series =
                 [
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "heart-rate",
                         DataSetId = DataSetId,
@@ -224,7 +224,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Name = "Heart rate (bpm)",
                         Color = "#F2C14E",
                     },
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "systolic",
                         DataSetId = DataSetId,
@@ -234,7 +234,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Name = "Systolic (mmHg)",
                         Color = "#FF6B6B",
                     },
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "diastolic",
                         DataSetId = DataSetId,
@@ -244,7 +244,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Name = "Diastolic (mmHg)",
                         Color = "#F08A5D",
                     },
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "spo2",
                         DataSetId = DataSetId,
@@ -254,7 +254,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Name = "SpO₂ (%)",
                         Color = "#B388FF",
                     },
-                    new LineScatterSeriesConfig
+                    new LineSeriesConfig
                     {
                         Id = "respiratory-rate",
                         DataSetId = DataSetId,
