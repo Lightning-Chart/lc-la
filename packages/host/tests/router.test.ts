@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { bijEncode, bijDecode } from '../src/bij/index.js'
 import { handleMessage } from '../src/handlers/router.js'
 import { hostState } from '../src/handlers/state.js'
+import type { SeriesConfig } from '../src/types.js'
 
 // Mock LCJS since we're in Node, not browser
 vi.mock('@lightningchart/lcjs', () => {
@@ -20,6 +21,8 @@ vi.mock('@lightningchart/lcjs', () => {
     setStrokeStyle: vi.fn().mockReturnThis(),
     setPointFillStyle: vi.fn().mockReturnThis(),
     setPointSize: vi.fn().mockReturnThis(),
+    getStrokeStyle: vi.fn(),
+    getPointFillStyle: vi.fn(),
     dispose: vi.fn(),
   })
 
@@ -28,11 +31,13 @@ vi.mock('@lightningchart/lcjs', () => {
     setInterval: vi.fn().mockReturnThis(),
     setDefaultInterval: vi.fn().mockReturnThis(),
     setTickStrategy: vi.fn().mockReturnThis(),
+    setTitle: vi.fn().mockReturnThis(),
   })
 
   const mockChart = () => ({
-    addPointLineAreaSeries: vi.fn().mockReturnValue(mockSeries()),
-    addAxisY: vi.fn().mockReturnValue(mockAxis()),
+    addPointLineAreaSeries: vi.fn(() => mockSeries()),
+    addAxisX: vi.fn(() => mockAxis()),
+    addAxisY: vi.fn(() => mockAxis()),
     setTitle: vi.fn().mockReturnThis(),
     setAnimationsEnabled: vi.fn().mockReturnThis(),
     dispose: vi.fn(),
@@ -113,15 +118,15 @@ function configureDataSet(chartId: string, dsId: string, columns: string[], clie
   expect(res.type).toBe('response')
 }
 
-/** Helper: configure channels on a chart */
-function configureChannels(chartId: string, channels: Array<{ id: string; dataSetId: string; column: string; stackIndex?: number }>) {
+/** Helper: configure series on a chart */
+function configureSeries(chartId: string, series: SeriesConfig[]) {
   const buf = bijEncode({
     meta: {
       id: '0',
       category: 'config',
-      action: 'channels',
+      action: 'series',
       chartId,
-      params: { channels },
+      params: { series },
     },
   })
   const res = handleMessage(buf)
@@ -209,23 +214,81 @@ describe('Message Router', () => {
     expect(res.type).toBe('response')
   })
 
-  it('handles config/channels bound to dataset columns', () => {
+  it('handles config/series bound to dataset columns', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
 
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity' },
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'humid-line', dataSetId: 'sensors', x: 'time', y: 'humidity' },
     ])
+  })
+
+  it('adds and updates individual series without removing omitted series', () => {
+    const chartId = createChart()
+    configureDataSet(chartId, 'dataset', ['x', 'y'])
+
+    configureSeries(chartId, [
+      {
+        id: 'series-1',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Series 1',
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const first = chartState.series.get('series-1')!
+
+    // Adding another series must preserve the first.
+    configureSeries(chartId, [
+      {
+        id: 'series-2',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Series 2',
+      },
+    ])
+
+    const second = chartState.series.get('series-2')!
+    expect(chartState.series.size).toBe(2)
+    expect(chartState.series.get('series-1')).toBe(first)
+
+    // Updating the first must leave the second unchanged.
+    configureSeries(chartId, [
+      {
+        id: 'series-1',
+        dataSetId: 'dataset',
+        x: 'x',
+        y: 'y',
+        name: 'Updated series',
+        color: '#FFFFFF',
+      },
+    ])
+
+    expect(chartState.series.get('series-1')).toBe(first)
+    expect(first.series.setName).toHaveBeenLastCalledWith('Updated series')
+    expect(first.config.color).toBe('#FFFFFF')
+    expect(chartState.series.get('series-2')).toBe(second)
+    expect(second.config.name).toBe('Series 2')
+
+    // An empty configuration must preserve both.
+    configureSeries(chartId, [])
+
+    expect(chartState.series.size).toBe(2)
+    expect(first.series.dispose).not.toHaveBeenCalled()
+    expect(second.series.dispose).not.toHaveBeenCalled()
   })
 
   it('shares a client dataset across its charts', () => {
     const firstChartId = createChart()
     const secondChartId = createChart()
-    configureDataSet(firstChartId, 'sensors', ['temperature'])
+    configureDataSet(firstChartId, 'sensors', ['time', 'temperature'])
 
-    configureChannels(secondChartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
+    configureSeries(secondChartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
     ])
 
     expect(hostState.getDataSet('default', 'sensors')).toBeDefined()
@@ -276,28 +339,69 @@ describe('Message Router', () => {
     expect(hostState.getDataSet(clientId, 'signals')).toBeUndefined()
   })
 
-  it('handles config/channels with stacked axes', () => {
+  it('handles config/series with stacked axes', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity', 'voltage'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity', 'voltage'])
 
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature', stackIndex: 0 },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity', stackIndex: 1 },
-      { id: 'volt-line', dataSetId: 'sensors', column: 'voltage', stackIndex: 2 },
+    const axesResponse = handleMessage(bijEncode({
+        meta: {
+        id: '2',
+        category: 'config',
+        action: 'axes',
+        chartId,
+        params: {
+            axes: [
+            { id: 'humidity-axis', axis: 'y', stackIndex: 1 },
+            { id: 'voltage-axis', axis: 'y', stackIndex: 2 },
+            ],
+        },
+        },
+    }))
+    expect(axesResponse.type).toBe('response')
+
+    configureSeries(chartId, [
+        {
+        id: 'temp-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'temperature',
+        },
+        {
+        id: 'humid-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'humidity',
+        yAxisId: 'humidity-axis',
+        },
+        {
+        id: 'volt-line',
+        dataSetId: 'sensors',
+        x: 'time',
+        y: 'voltage',
+        yAxisId: 'voltage-axis',
+        },
     ])
-  })
 
-  it('returns error for channel referencing nonexistent dataset', () => {
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.series.get('temp-line')?.yAxis)
+        .toBe(chartState.defaultYAxis)
+    expect(chartState.series.get('humid-line')?.yAxis)
+        .toBe(chartState.axes.get('humidity-axis'))
+    expect(chartState.series.get('volt-line')?.yAxis)
+        .toBe(chartState.axes.get('voltage-axis'))
+    })
+
+  it('returns error for series referencing nonexistent dataset', () => {
     const chartId = createChart()
 
     const buf = bijEncode({
       meta: {
         id: '2',
         category: 'config',
-        action: 'channels',
+        action: 'series',
         chartId,
         params: {
-          channels: [{ id: 'ch1', dataSetId: 'nonexistent', column: 'temp' }],
+          series: [{ id: 'ch1', dataSetId: 'nonexistent', x: 'time', y: 'temp' }],
         },
       },
     })
@@ -306,18 +410,18 @@ describe('Message Router', () => {
     expect(res.error).toContain('DataSet not found')
   })
 
-  it('returns error for channel referencing nonexistent column', () => {
+  it('returns error for series referencing nonexistent column', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature'])
+    configureDataSet(chartId, 'sensors', ['time', 'temperature'])
 
     const buf = bijEncode({
       meta: {
         id: '2',
         category: 'config',
-        action: 'channels',
+        action: 'series',
         chartId,
         params: {
-          channels: [{ id: 'ch1', dataSetId: 'sensors', column: 'nonexistent' }],
+          series: [{ id: 'ch1', dataSetId: 'sensors', x: 'time', y: 'nonexistent' }],
         },
       },
     })
@@ -338,10 +442,10 @@ describe('Message Router', () => {
 
   it('handles data/set with shared timestamps and multiple columns', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'humid-line', dataSetId: 'sensors', column: 'humidity' },
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'humid-line', dataSetId: 'sensors', x: 'time', y: 'humidity' },
     ])
 
     const x = new Float64Array([1, 2, 3, 4, 5])
@@ -350,7 +454,7 @@ describe('Message Router', () => {
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '5', category: 'data', action: 'set', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: x },
+      { key: 'time', value: x },
       { key: 'temperature', value: temperature },
       { key: 'humidity', value: humidity },
     ])
@@ -360,14 +464,14 @@ describe('Message Router', () => {
 
   it('handles data/append with shared timestamps', () => {
     const chartId = createChart()
-    configureDataSet(chartId, 'sensors', ['temperature', 'humidity'])
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
+    configureDataSet(chartId, 'sensors', ['time', 'temperature', 'humidity'])
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
     ])
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '5', category: 'data', action: 'append', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: new Float64Array([1, 2]) },
+      { key: 'time', value: new Float64Array([1, 2]) },
       { key: 'temperature', value: new Float64Array([20, 21]) },
       { key: 'humidity', value: new Float64Array([40, 42]) },
     ])
@@ -380,7 +484,7 @@ describe('Message Router', () => {
 
     const dataBuf = bijEncode([
       { key: 'meta', value: { id: '2', category: 'data', action: 'set', chartId, dataSetId: 'nonexistent' } },
-      { key: 'x', value: new Float64Array([1]) },
+      { key: 'time', value: new Float64Array([1]) },
     ])
     const dataRes = handleMessage(dataBuf)
     expect(dataRes.type).toBe('error')
@@ -399,8 +503,8 @@ describe('Message Router', () => {
         chartId,
         params: {
           datasets: [
-            { id: 'sensors', columns: [{ id: 'temperature' }, { id: 'humidity' }] },
-            { id: 'gps', columns: [{ id: 'lat' }, { id: 'lon' }] },
+            { id: 'sensors', columns: [ { id: 'time' }, { id: 'temperature' }, { id: 'humidity' }, ],},
+            { id: 'gps', columns: [ { id: 'time' }, { id: 'lat' }, { id: 'lon' }, ], },
           ],
         },
       },
@@ -408,16 +512,16 @@ describe('Message Router', () => {
     const res = handleMessage(buf)
     expect(res.type).toBe('response')
 
-    // Channels from different datasets
-    configureChannels(chartId, [
-      { id: 'temp-line', dataSetId: 'sensors', column: 'temperature' },
-      { id: 'lat-line', dataSetId: 'gps', column: 'lat' },
+    // Series from different datasets
+    configureSeries(chartId, [
+      { id: 'temp-line', dataSetId: 'sensors', x: 'time', y: 'temperature' },
+      { id: 'lat-line', dataSetId: 'gps', x: 'time', y: 'lat' },
     ])
 
     // Push to each dataset independently
     const sensorBuf = bijEncode([
       { key: 'meta', value: { id: '10', category: 'data', action: 'set', chartId, dataSetId: 'sensors' } },
-      { key: 'x', value: new Float64Array([1, 2, 3]) },
+      { key: 'time', value: new Float64Array([1, 2, 3]) },
       { key: 'temperature', value: new Float64Array([20, 21, 22]) },
       { key: 'humidity', value: new Float64Array([40, 42, 45]) },
     ])
@@ -425,11 +529,143 @@ describe('Message Router', () => {
 
     const gpsBuf = bijEncode([
       { key: 'meta', value: { id: '11', category: 'data', action: 'set', chartId, dataSetId: 'gps' } },
-      { key: 'x', value: new Float64Array([100, 200]) },
+      { key: 'time', value: new Float64Array([100, 200]) },
       { key: 'lat', value: new Float64Array([60.1, 60.2]) },
       { key: 'lon', value: new Float64Array([24.9, 25.0]) },
     ])
     expect(handleMessage(gpsBuf).type).toBe('response')
+  })
+
+  it.each(['x', 'y'] as const)('updates the default %s axis title without an ID', (axis) => {
+      const chartId = createChart()
+      const chartState = hostState.getChart(chartId)!
+      const selected = axis === 'x' ? chartState.defaultXAxis : chartState.defaultYAxis
+      const other = axis === 'x' ? chartState.defaultYAxis : chartState.defaultXAxis
+
+      const response = handleMessage(bijEncode({
+        meta: {
+          id: 'axis-title',
+          category: 'config',
+          action: 'axisTitle',
+          chartId,
+          params: { axis, title: 'Updated title' },
+        },
+      }))
+      expect(response.type).toBe('response')
+      expect(selected.axis.setTitle).toHaveBeenCalledWith('Updated title')
+      expect(other.axis.setTitle).not.toHaveBeenCalled()
+    },
+  )
+
+  it('registers default-axis IDs without creating additional axes', () => {
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'create',
+        category: 'lifecycle',
+        action: 'create',
+        params: {
+          type: 'xy',
+          defaultAxisX: { id: 'time', title: 'Time' },
+          defaultAxisY: { id: 'temperature', title: 'Temperature' },
+        },
+      },
+    }))
+    expect(response.type).toBe('response')
+
+    const chartId = (response.result as { chartId: string }).chartId
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.axes.get('time')).toBe(chartState.defaultXAxis)
+    expect(chartState.axes.get('temperature')).toBe(chartState.defaultYAxis)
+    expect(chartState.chart.addAxisX).not.toHaveBeenCalled()
+    expect(chartState.chart.addAxisY).not.toHaveBeenCalled()
+    expect(chartState.defaultXAxis.axis.setTitle).toHaveBeenCalledWith('Time')
+    expect(chartState.defaultYAxis.axis.setTitle).toHaveBeenCalledWith('Temperature')
+
+    const titleResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axis-title',
+        category: 'config',
+        action: 'axisTitle',
+        chartId,
+        params: { axisId: 'temperature', title: '' },
+      },
+    }))
+    expect(titleResponse.type).toBe('response')
+    expect(chartState.defaultYAxis.axis.setTitle).toHaveBeenLastCalledWith('')
+  })
+
+  it.each(['x', 'y'] as const)('updates an additional %s axis title by ID', (axis) => {
+    const chartId = createChart()
+
+    const axesResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axes',
+        category: 'config',
+        action: 'axes',
+        chartId,
+        params: {
+          axes: [{ id: 'additional', axis, title: 'Original title' }],
+        },
+      },
+    }))
+    expect(axesResponse.type).toBe('response')
+
+    const titleResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'axis-title',
+        category: 'config',
+        action: 'axisTitle',
+        chartId,
+        params: {
+          axisId: 'additional',
+          title: 'Updated title',
+        },
+      },
+    }))
+    expect(titleResponse.type).toBe('response')
+
+    const chartState = hostState.getChart(chartId)!
+    expect(chartState.axes.get('additional')!.axis.setTitle).toHaveBeenLastCalledWith('Updated title')
+    expect(chartState.defaultXAxis.axis.setTitle).not.toHaveBeenCalled()
+    expect(chartState.defaultYAxis.axis.setTitle).not.toHaveBeenCalled()
+  })
+
+  it('passes default-axis positioning options to chart creation', () => {
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'create',
+        category: 'lifecycle',
+        action: 'create',
+        params: {
+          type: 'xy',
+          defaultAxisX: {
+            opposite: true,
+            stackIndex: -1,
+            parallelIndex: 2,
+          },
+          defaultAxisY: {
+            opposite: true,
+            stackIndex: 1,
+            parallelIndex: -2,
+          },
+        },
+      },
+    }))
+    expect(response.type).toBe('response')
+    expect(hostState.getLcjs().ChartXY).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        defaultAxisX: expect.objectContaining({
+          opposite: true,
+          iStack: -1,
+          iParallel: 2,
+        }),
+        defaultAxisY: expect.objectContaining({
+          opposite: true,
+          iStack: 1,
+          iParallel: -2,
+        }),
+      }),
+    )
   })
 
   it('handles config/axisInterval', () => {

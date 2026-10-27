@@ -74,16 +74,21 @@ var chart = await _context!.CreateChartAsync(new XYChartConfig
         {
             Id = "signals",
             MaxSampleCount = 2_000_000,
-            Columns = [new DataSetColumnConfig { Id = "value" }],
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                new DataSetColumnConfig { Id = "value" },
+            ],
         },
     ],
-    Channels =
+    Series =
     [
-        new ChannelConfig
+        new LineSeriesConfig
         {
             Id = "value",
             DataSetId = "signals",
-            Column = "value",
+            X = "time",
+            Y = "value",
             Name = "Signal",
         },
     ],
@@ -93,9 +98,9 @@ var samples = await signalService.LoadAsync();
 chart.SetData(new SetDataOptions
 {
     DataSetId = "signals",
-    X = samples.Timestamps,
     Columns = new Dictionary<string, double[]>
     {
+        ["time"] = samples.Timestamps,
         ["value"] = samples.Values,
     },
 });
@@ -108,7 +113,8 @@ For a stream from a device, background service, or SignalR hub, append each rece
 ```csharp
 chart.SetScrollStrategy(new SetScrollStrategyOptions
 {
-    AxisX = ScrollStrategy.Scrolling,
+    Axis = AxisTarget.X,
+    Strategy = ScrollStrategy.Scrolling,
 });
 chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
 {
@@ -121,9 +127,9 @@ await foreach (var batch in signalService.StreamAsync(cancellationToken))
     chart.AppendData(new AppendDataOptions
     {
         DataSetId = "signals",
-        X = batch.Timestamps,
         Columns = new Dictionary<string, double[]>
         {
+            ["time"] = batch.Timestamps,
             ["value"] = batch.Values,
         },
     });
@@ -134,7 +140,7 @@ When streaming stops, call `DiscardPending()` on the `BlazorTransport` to drop b
 
 ## More features
 
-LightningChart for Blazor supports the shared chart, channel, dataset, historical-data, and streaming-data features. For complete feature coverage, see [Features](../features/).
+LightningChart for Blazor supports multiple axes, configurable series, datasets, historical data, and streaming data features. For complete feature coverage, see [Features](../features/).
 
 ## Feedback and contributions
 

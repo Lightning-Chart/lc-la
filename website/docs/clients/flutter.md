@@ -53,22 +53,31 @@ return LightningChart.xy(
     DataSetConfig(
       id: 'signals',
       maxSampleCount: 2_000_000,
-      columns: [DataSetColumnConfig(id: 'value')],
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
     ),
   ],
-  channels: const [
-    ChannelConfig(
+  series: const [
+    LineSeriesConfig(
       id: 'value',
       dataSetId: 'signals',
-      column: 'value',
+      x: 'time',
+      y: 'value',
       name: 'Signal',
     ),
   ],
   initialData: [
     SetDataOptions(
       dataSetId: 'signals',
-      x: samples.timestamps,
-      columns: {'value': samples.values},
+      columns: {
+        'time': samples.timestamps,
+        'value': samples.values,
+      },
     ),
   ],
 );
@@ -78,22 +87,48 @@ return LightningChart.xy(
 
 ## Real-time data
 
-Capture the controller after Flutter mounts the widget, then append batches received from a stream, WebSocket, or device. Configure the X axis to follow the latest data.
+Capture the controller after Flutter mounts the widget, then append batches received from a stream, WebSocket, or device.
 
 ```dart
 LightningChartController? chart;
 
 LightningChart.xy(
   license: license,
-  dataSets: dataSets,
-  channels: channels,
+  dataSets: const [
+    DataSetConfig(
+      id: 'signals',
+      maxSampleCount: 2_000_000,
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'value',
+      dataSetId: 'signals',
+      x: 'time',
+      y: 'value',
+      name: 'Signal',
+    ),
+  ],
   onChartCreated: (createdChart) {
     chart = createdChart;
     chart!.setScrollStrategy(
-      const SetScrollStrategyOptions(axisX: ScrollStrategy.scrolling),
+      const SetScrollStrategyOptions(
+        axis: AxisTarget.x,
+        strategy: ScrollStrategy.scrolling,
+      ),
     );
     chart!.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(axis: AxisTarget.x, length: 10),
+      const SetDefaultAxisIntervalOptions(
+        axis: AxisTarget.x,
+        length: 10,
+      ),
     );
   },
 );
@@ -101,8 +136,10 @@ LightningChart.xy(
 signalRepository.liveBatches.listen((batch) {
   chart?.appendData(AppendDataOptions(
     dataSetId: 'signals',
-    x: batch.timestamps,
-    columns: {'value': batch.values},
+    columns: {
+        'time': batch.timestamps,
+        'value': batch.values,
+    },
   ));
 });
 ```
@@ -111,7 +148,7 @@ Cancel the stream subscription in `dispose` when the widget is removed. On Andro
 
 ## More features
 
-LightningChart Flutter shares the same underlying features as every LightningChart LA client. This page introduces the general syntax and key use cases; for complete client-agnostic feature coverage, see [Features](../features/).
+LightningChart Flutter supports multiple axes, configurable series, historical data, and real-time streaming. For complete feature coverage, see [Features](../features/).
 
 ## Feedback and contributions
 

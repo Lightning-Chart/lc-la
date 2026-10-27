@@ -1,6 +1,6 @@
 # LightningChart MAUI Example
 
-This .NET MAUI example displays patient vital signs from `Data/patient_10.csv`. The recording can be viewed as historical data or replayed using its timestamps.
+This .NET MAUI example displays patient vital signs from `Data/patient_10.csv` in stacked chart sections. Systolic and diastolic share a blood-pressure axis. The recording can be viewed as historical data or replayed using its timestamps.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 

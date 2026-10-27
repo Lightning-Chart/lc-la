@@ -123,7 +123,7 @@ public class ApiTests
     }
 
     [Fact]
-    public async Task CreateChart_WithConfig_SendsDataSetsAndChannels()
+    public async Task CreateChart_WithConfig_SendsDataSetsAxesAndSeries()
     {
         var transport = new MockTransport();
         var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
@@ -135,43 +135,156 @@ public class ApiTests
                 new DataSetConfig
                 {
                     Id = "ds1",
-                    Columns = [new DataSetColumnConfig { Id = "temperature" }],
+                    Columns = [
+                        new DataSetColumnConfig { Id = "time" },
+                        new DataSetColumnConfig { Id = "temperature" },
+                    ],
                 },
             ],
-            Channels = [
-                new ChannelConfig { Id = "ch1", DataSetId = "ds1", Column = "temperature", Name = "Temp", Color = "#ff0000" },
+            Axes = [
+                new AxisConfig 
+                {
+                    Id = "time-axis",
+                    Axis = AxisTarget.X,
+                    Opposite = true,
+                },
+                new AxisConfig
+                {
+                    Id = "temperature-axis",
+                    Axis = AxisTarget.Y,
+                    Opposite = true,
+                },
+            ],
+            Series = [
+                new LineSeriesConfig
+                {
+                    Id = "temperature-series",
+                    DataSetId = "ds1",
+                    X = "time",
+                    Y = "temperature",
+                    XAxisId = "time-axis",
+                    YAxisId = "temperature-axis",
+                    Name = "Temp",
+                    Color = "#ff0000",
+                },
             ],
         });
 
-        // init + create via SendAsync, title + datasets + channels via FireAndForget
+        // init + create, then title + datasets + axes + series via FireAndForget
         Assert.Equal(2, transport.SentMessages.Count);
-        Assert.Equal(3, transport.FireAndForgetMessages.Count);
+        Assert.Equal(4, transport.FireAndForgetMessages.Count);
 
         // Verify datasets message
         var dsDecoded = BijDecoder.Decode(transport.FireAndForgetMessages[1]);
         var dsMeta = (JsonElement)dsDecoded["meta"];
         Assert.Equal("datasets", dsMeta.GetProperty("action").GetString());
 
-        // Verify channels message
-        var chDecoded = BijDecoder.Decode(transport.FireAndForgetMessages[2]);
-        var chMeta = (JsonElement)chDecoded["meta"];
-        Assert.Equal("channels", chMeta.GetProperty("action").GetString());
+        // Verify axes message
+        var axesDecoded = BijDecoder.Decode(transport.FireAndForgetMessages[2]);
+        var axesMeta = (JsonElement)axesDecoded["meta"];
+        Assert.Equal("axes", axesMeta.GetProperty("action").GetString());
+        var axes = axesMeta.GetProperty("params").GetProperty("axes");
+        Assert.Equal(2, axes.GetArrayLength());
+        Assert.Equal("x", axes[0].GetProperty("axis").GetString());
+        Assert.True(axes[0].GetProperty("opposite").GetBoolean());
+        Assert.Equal("y", axes[1].GetProperty("axis").GetString());
+        Assert.True(axes[1].GetProperty("opposite").GetBoolean());
+
+        // Verify series message
+        var seriesDecoded = BijDecoder.Decode(transport.FireAndForgetMessages[3]);
+        var seriesMeta = (JsonElement)seriesDecoded["meta"];
+        Assert.Equal("series", seriesMeta.GetProperty("action").GetString());
+        var series = seriesMeta.GetProperty("params").GetProperty("series")[0];
+        Assert.Equal("line", series.GetProperty("type").GetString());
+        Assert.Equal("ds1", series.GetProperty("dataSetId").GetString());
+        Assert.Equal("time", series.GetProperty("x").GetString());
+        Assert.Equal("temperature", series.GetProperty("y").GetString());
+        Assert.Equal("time-axis", series.GetProperty("xAxisId").GetString());
+        Assert.Equal("temperature-axis", series.GetProperty("yAxisId").GetString());
+    }
+
+    [Theory]
+    [InlineData(AxisTarget.X, "defaultAxisX")]
+    [InlineData(AxisTarget.Y, "defaultAxisY")]
+    public async Task CreateChart_SendsDefaultAxisSettings(
+        AxisTarget axis, string property)
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(
+            transport, new LclaLicense { Key = "test-license" });
+
+        var settings = new DefaultAxisConfig
+        {
+            Id = "measurement",
+            Title = "Measurement",
+            Opposite = true,
+            StackIndex = -1,
+            ParallelIndex = 2,
+        };
+
+        await client.CreateChartAsync(new XYChartConfig
+        {
+            DefaultAxisX = axis == AxisTarget.X ? settings : null,
+            DefaultAxisY = axis == AxisTarget.Y ? settings : null,
+        });
+
+        var decoded = BijDecoder.Decode(transport.SentMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params").GetProperty(property);
+
+        Assert.Equal("measurement", options.GetProperty("id").GetString());
+        Assert.Equal("Measurement", options.GetProperty("title").GetString());
+        Assert.True(options.GetProperty("opposite").GetBoolean());
+        Assert.Equal(-1, options.GetProperty("stackIndex").GetInt32());
+        Assert.Equal(2, options.GetProperty("parallelIndex").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetAxisTitle_SendsAxisSelectionAndTitle(bool useId)
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(
+            transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        chart.SetAxisTitle(new SetAxisTitleOptions
+        {
+            Axis = useId ? null : AxisTarget.Y,
+            AxisId = useId ? "temperature" : null,
+            Title = "Temperature (°C)",
+        });
+
+        var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params");
+
+        Assert.Equal("config", meta.GetProperty("category").GetString());
+        Assert.Equal("axisTitle", meta.GetProperty("action").GetString());
+        Assert.Equal(chart.ChartId, meta.GetProperty("chartId").GetString());
+        Assert.Equal("Temperature (°C)", options.GetProperty("title").GetString());
+
+        if (useId)
+            Assert.Equal("temperature", options.GetProperty("axisId").GetString());
+        else
+            Assert.Equal("y", options.GetProperty("axis").GetString());
     }
 
     [Fact]
-    public async Task SetData_SendsBijWithSharedTimestamps()
+    public async Task SetData_SendsBijWithNamedColumns()
     {
         var transport = new MockTransport();
         var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
         var chart = await client.CreateChartAsync();
 
-        var x = new double[] { 1.0, 2.0, 3.0 };
         var columns = new Dictionary<string, double[]>
         {
+            ["time"] = [1.0, 2.0, 3.0],
             ["temperature"] = [10.0, 20.0, 30.0],
             ["humidity"] = [40.0, 50.0, 60.0],
         };
-        chart.SetData(new SetDataOptions { DataSetId = "sensors", X = x, Columns = columns });
+        chart.SetData(new SetDataOptions { DataSetId = "sensors", Columns = columns });
 
         var lastMsg = transport.FireAndForgetMessages.Last();
         var decoded = BijDecoder.Decode(lastMsg);
@@ -180,8 +293,8 @@ public class ApiTests
         Assert.Equal("set", meta.GetProperty("action").GetString());
         Assert.Equal("sensors", meta.GetProperty("dataSetId").GetString());
 
-        var decodedX = (double[])decoded["x"];
-        Assert.Equal(x, decodedX);
+        var decodedTime = (double[])decoded["time"];
+        Assert.Equal(columns["time"], decodedTime);
         var decodedTemp = (double[])decoded["temperature"];
         Assert.Equal(columns["temperature"], decodedTemp);
         var decodedHumid = (double[])decoded["humidity"];
@@ -197,9 +310,10 @@ public class ApiTests
 
         var columns = new Dictionary<string, double[]>
         {
+            ["time"] = [1.0, 2.0],
             ["temperature"] = [10.0, 20.0],
         };
-        chart.AppendData(new AppendDataOptions { DataSetId = "sensors", X = [1.0, 2.0], Columns = columns });
+        chart.AppendData(new AppendDataOptions { DataSetId = "sensors", Columns = columns });
 
         // SetData + AppendData both go through FireAndForget
         var appendMsg = transport.FireAndForgetMessages.Last();
@@ -208,6 +322,8 @@ public class ApiTests
         Assert.Equal("data", meta.GetProperty("category").GetString());
         Assert.Equal("append", meta.GetProperty("action").GetString());
         Assert.Equal("sensors", meta.GetProperty("dataSetId").GetString());
+        Assert.Equal(columns["time"], (double[])decoded["time"]);
+        Assert.Equal(columns["temperature"], (double[])decoded["temperature"]);
     }
 
     [Fact]

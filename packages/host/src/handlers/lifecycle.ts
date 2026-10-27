@@ -4,7 +4,7 @@
 
 import { lightningChart, Themes } from '@lightningchart/lcjs'
 import type { MessageEnvelope, ResponseEnvelope, CreateChartParams, LclaTheme } from '../types.js'
-import { hostState, type ChartState } from './state.js'
+import { hostState, type AxisState, type ChartState } from './state.js'
 
 let chartCounter = 0
 
@@ -97,24 +97,53 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
   const chart = lcjs.ChartXY({
     container,
     ...(theme ? { theme } : {}),
-    defaultAxisX: { type: 'linear-highPrecision' },
-    defaultAxisY: { type: 'linear-highPrecision' },
+    defaultAxisX: {
+        type: 'linear-highPrecision',
+        opposite: params?.defaultAxisX?.opposite ?? false,
+        iStack: params?.defaultAxisX?.stackIndex ?? undefined,
+        iParallel: params?.defaultAxisX?.parallelIndex ?? undefined,
+    },
+    defaultAxisY: {
+        type: 'linear-highPrecision',
+        opposite: params?.defaultAxisY?.opposite ?? false,
+        iStack: params?.defaultAxisY?.stackIndex ?? undefined,
+        iParallel: params?.defaultAxisY?.parallelIndex ?? undefined,
+    },
   })
+
+  // Apply titles to the automatically created axes when provided
+  if (params?.defaultAxisX?.title != null) chart.axisX.setTitle(params.defaultAxisX.title)
+  if (params?.defaultAxisY?.title != null) chart.axisY.setTitle(params.defaultAxisY.title)
 
   // Keep wheel zoom available while a live X axis is scrolling. The explicit
   // stopScroll flag releases automatic following as soon as the user zooms.
-  if (params?.animationsEnabled === false) {
-    chart.setAnimationsEnabled(false)
+  if (params?.animationsEnabled === false) chart.setAnimationsEnabled(false)
+
+  const defaultXAxis: AxisState = {
+    target: 'x',
+    axis: chart.axisX,
+  }
+
+  const defaultYAxis: AxisState = {
+    target: 'y',
+    axis: chart.axisY,
   }
 
   const state: ChartState = {
     id: chartId,
     clientId,
     chart,
-    channels: new Map(),
+    series: new Map(),
+    defaultXAxis,
+    defaultYAxis,
     axes: new Map(),
     ownsContainer,
   }
+
+  // Optional IDs refer to the existing default axes.
+  if (params?.defaultAxisX?.id != null) { state.axes.set(params.defaultAxisX.id, defaultXAxis) }
+  if (params?.defaultAxisY?.id != null) { state.axes.set(params.defaultAxisY.id, defaultYAxis) }
+
   hostState.addChart(chartId, state)
 
   return { id: envelope.id, type: 'response', result: { chartId } }

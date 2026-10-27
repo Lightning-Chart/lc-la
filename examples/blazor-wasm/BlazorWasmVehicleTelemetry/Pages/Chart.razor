@@ -179,10 +179,10 @@
             new DataSetConfig
             {
                 Id = DataSetId,
-                XDataPattern = DataPattern.Progressive,
                 MaxSampleCount = 2_000,
                 Columns =
                 [
+                    new() { Id = "time", DataPattern = DataPattern.Progressive },
                     new() { Id = "speed" },
                     new() { Id = "power" },
                     new() { Id = "throttle" },
@@ -211,68 +211,81 @@
         {
             ContainerId = "performance-chart",
             Title = "",
-            Channels =
+            Axes =
             [
-                Channel("speed", "Speed", "#f4b942"),
-                Channel("power", "Power", "#e879f9", stackIndex: -1),
+                new AxisConfig { Id = "power", Axis = AxisTarget.Y, StackIndex = -1 },
+            ],
+            Series =
+            [
+                Series("speed", "Speed", "#f4b942"),
+                Series("power", "Power", "#e879f9", yAxisId: "power"),
             ],
         });
         _driverInputChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "driver-input-chart",
             Title = "",
-            Channels =
+            Axes =
             [
-                Channel("throttle", "Throttle", "#a3e635"),
-                Channel("brake", "Brake pressure", "#fb7185", stackIndex: -1),
-                Channel("steering", "Steering angle", "#c084fc", stackIndex: -2),
+                new AxisConfig { Id = "brake", Axis = AxisTarget.Y, StackIndex = -1 },
+                new AxisConfig { Id = "steering", Axis = AxisTarget.Y, StackIndex = -2 },
+            ],
+            Series =
+            [
+                Series("throttle", "Throttle", "#a3e635"),
+                Series("brake", "Brake pressure", "#fb7185", yAxisId: "brake"),
+                Series("steering", "Steering angle", "#c084fc", yAxisId: "steering"),
             ],
         });
         _dynamicsChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "dynamics-chart",
             Title = "",
-            Channels =
+            Axes =
             [
-                Channel("lateral", "Lateral acceleration", "#e879f9"),
-                Channel("longitudinal", "Longitudinal acceleration", "#a3e635"),
-                Channel("yaw", "Yaw rate", "#f4b942", stackIndex: -1),
+                new AxisConfig { Id = "yaw", Axis = AxisTarget.Y, StackIndex = -1 },
+            ],
+            Series =
+            [
+                Series("lateral", "Lateral acceleration", "#e879f9"),
+                Series("longitudinal", "Longitudinal acceleration", "#a3e635"),
+                Series("yaw", "Yaw rate", "#f4b942", yAxisId: "yaw"),
             ],
         });
         _tirePressureChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "tire-pressure-chart",
             Title = "",
-            Channels =
+            Series =
             [
-                Channel("pressure-fl", "Front left", "#f4b942"),
-                Channel("pressure-fr", "Front right", "#c084fc"),
-                Channel("pressure-rl", "Rear left", "#a3e635"),
-                Channel("pressure-rr", "Rear right", "#fb7185"),
+                Series("pressure-fl", "Front left", "#f4b942"),
+                Series("pressure-fr", "Front right", "#c084fc"),
+                Series("pressure-rl", "Rear left", "#a3e635"),
+                Series("pressure-rr", "Rear right", "#fb7185"),
             ],
         });
         _tireSlipChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "tire-slip-chart",
             Title = "",
-            Channels =
+            Series =
             [
-                Channel("slip-fl", "Front left", "#f4b942"),
-                Channel("slip-fr", "Front right", "#c084fc"),
-                Channel("slip-rl", "Rear left", "#a3e635"),
-                Channel("slip-rr", "Rear right", "#fb7185"),
+                Series("slip-fl", "Front left", "#f4b942"),
+                Series("slip-fr", "Front right", "#c084fc"),
+                Series("slip-rl", "Rear left", "#a3e635"),
+                Series("slip-rr", "Rear right", "#fb7185"),
             ],
         });
         _brakeTemperatureChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "brake-temperature-chart",
             Title = "",
-            Channels =
+            Series =
             [
-                Channel("brake-temp-fl", "Front left", "#f4b942"),
-                Channel("brake-temp-fr", "Front right", "#fb923c"),
-                Channel("brake-temp-rl", "Rear left", "#c084fc"),
-                Channel("brake-temp-rr", "Rear right", "#fb7185"),
+                Series("brake-temp-fl", "Front left", "#f4b942"),
+                Series("brake-temp-fr", "Front right", "#fb923c"),
+                Series("brake-temp-rl", "Rear left", "#c084fc"),
+                Series("brake-temp-rr", "Rear right", "#fb7185"),
             ],
         });
         _charts.AddRange(
@@ -286,21 +299,17 @@
         ]);
     }
 
-    // Channel configuration
-    private static ChannelConfig Channel(
-        string id,
-        string name,
-        string color,
-        int? stackIndex = null) =>
+    // Bind each series to the shared time column and its measurement column
+    private static LineSeriesConfig Series(string id, string name, string color, string? yAxisId = null) =>
         new()
         {
             Id = id,
             DataSetId = DataSetId,
-            Column = id,
+            X = "time",
+            Y = id,
             Name = name,
             Color = color,
-            Type = ChannelType.Line,
-            StackIndex = stackIndex,
+            YAxisId = yAxisId,
         };
 
     // Axes configuration
@@ -308,16 +317,17 @@
     {
         foreach (var chart in _charts)
         {
-            chart.SetScrollStrategy(new SetScrollStrategyOptions{ AxisX = ScrollStrategy.Scrolling });
-            chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions{ Axis = AxisTarget.X, Length = VisibleWindowSeconds });
+            chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Scrolling });
+            chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = VisibleWindowSeconds });
         }
+
         _performanceChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 40, End = 180 });
-        _performanceChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -150, End = 400, StackIndex = -1 });
+        _performanceChart!.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "power", Start = -150, End = 400 });
         _driverInputChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -5, End = 105 });
-        _driverInputChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -2, End = 40, StackIndex = -1 });
-        _driverInputChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -110, End = 70, StackIndex = -2 });
+        _driverInputChart!.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "brake", Start = -2, End = 40 });
+        _driverInputChart!.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "steering", Start = -110, End = 70 });
         _dynamicsChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -12, End = 12 });
-        _dynamicsChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -0.60, End = 0.80, StackIndex = -1 });
+        _dynamicsChart!.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "yaw", Start = -0.60, End = 0.80 });
         _tirePressureChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 43.5, End = 45.2 });
         _brakeTemperatureChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = 0.35, End = 0.60 });
         _tireSlipChart!.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = -0.10, End = 0.70 });
@@ -380,9 +390,9 @@
         _context!.AppendData(new AppendDataOptions
         {
             DataSetId = DataSetId,
-            X = [sample.TimeSeconds],
             Columns = new Dictionary<string, double[]>
             {
+                ["time"] = [sample.TimeSeconds],
                 ["speed"] = [sample.SpeedKmh],
                 ["power"] = [sample.PowerKw],
                 ["throttle"] = [sample.ThrottlePercent],

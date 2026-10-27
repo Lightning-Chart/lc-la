@@ -1,0 +1,436 @@
+---
+title: Adding series
+sidebar_position: 5
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+A series displays data from a dataset by selecting columns for its X and Y values. Multiple series can share the same dataset and columns.
+
+Each series requires a unique ID, a dataset ID, and its X and Y column bindings. Its display name and color are optional.
+
+## Series types
+
+Choose the configuration class for the visualization you need:
+
+- `LineSeriesConfig` displays a line.
+- `ScatterSeriesConfig` displays scatter points.
+- `LineScatterSeriesConfig` displays a line with scatter points.
+
+## Adding series
+
+### At chart creation
+
+Add series to the chart's series list. Define their datasets in the same chart configuration or create the datasets beforehand.
+
+The example below defines a dataset with two columns and adds a line series.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+After rendering the chart container and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "dataset",
+            X = "x",
+            Y = "y",
+            Name = "Series 1",
+            Color = "#FFD400",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+After loading the WebView and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "dataset",
+            X = "x",
+            Y = "y",
+            Name = "Series 1",
+            Color = "#FFD400",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+After loading the WebView and initializing the context:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "dataset",
+            X = "x",
+            Y = "y",
+            Name = "Series 1",
+            Color = "#FFD400",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Provide the datasets and series when creating the widget:
+
+```dart
+LightningChart.xy(
+  license: license,
+  dataSets: const [
+    DataSetConfig(
+      id: 'dataset',
+      maxSampleCount: 2_000_000,
+      columns: [
+        DataSetColumnConfig(id: 'x'),
+        DataSetColumnConfig(id: 'y'),
+      ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'series-1',
+      dataSetId: 'dataset',
+      x: 'x',
+      y: 'y',
+      name: 'Series 1',
+      color: '#FFD400',
+    ),
+  ],
+);
+```
+
+</TabItem>
+</Tabs>
+
+The series displays data when samples are supplied to the dataset. See [Data management](./data-management) for loading historical data and appending incoming samples.
+
+### After chart creation
+
+Configure series on an existing chart after defining their datasets.
+
+Add a new series by providing a new ID.
+
+The example below adds a scatter series using the same dataset as in the example above.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new ScatterSeriesConfig
+    {
+        Id = "series-2",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        Name = "Series 2",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new ScatterSeriesConfig
+    {
+        Id = "series-2",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        Name = "Series 2",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new ScatterSeriesConfig
+    {
+        Id = "series-2",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        Name = "Series 2",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Use the controller received through `onChartCreated`:
+
+```dart
+chart.configureSeries(const [
+  ScatterSeriesConfig(
+    id: 'series-2',
+    dataSetId: 'dataset',
+    x: 'x',
+    y: 'y',
+    name: 'Series 2',
+    color: '#6ACBFF',
+  ),
+]);
+```
+
+</TabItem>
+</Tabs>
+
+## Series name and color
+
+The series name identifies it in the legend and cursor information. It is separate from the series ID, which identifies the series in configuration updates.
+
+Specify a hexadecimal color to choose the series color. Omit it when creating the series to use the automatically assigned color.
+
+## Assigning axes
+
+Series use the default X and Y axes when their axis IDs are omitted.
+
+To use a specific axis, provide the ID assigned when creating that axis. Default axes with assigned IDs can be selected in the same way as additional axes.
+
+The example below assumes an existing Y axis whose assigned ID is `additional-y`.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Set `XAxisId` or `YAxisId` in the series configuration. For example:
+
+```csharp
+new LineSeriesConfig
+{
+    Id = "series-1",
+    DataSetId = "dataset",
+    X = "x",
+    Y = "y",
+    YAxisId = "additional-y",
+}
+```
+
+The omitted X-axis ID selects the default X axis.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Set `XAxisId` or `YAxisId` in the series configuration. For example:
+
+```csharp
+new LineSeriesConfig
+{
+    Id = "series-1",
+    DataSetId = "dataset",
+    X = "x",
+    Y = "y",
+    YAxisId = "additional-y",
+}
+```
+
+The omitted X-axis ID selects the default X axis.
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+Set `XAxisId` or `YAxisId` in the series configuration. For example:
+
+```csharp
+new LineSeriesConfig
+{
+    Id = "series-1",
+    DataSetId = "dataset",
+    X = "x",
+    Y = "y",
+    YAxisId = "additional-y",
+}
+```
+
+The omitted X-axis ID selects the default X axis.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Set `xAxisId` or `yAxisId` in the series configuration. For example:
+
+```dart
+const LineSeriesConfig(
+  id: 'series-1',
+  dataSetId: 'dataset',
+  x: 'x',
+  y: 'y',
+  yAxisId: 'additional-y',
+)
+```
+
+The omitted X-axis ID selects the default X axis.
+
+</TabItem>
+</Tabs>
+
+See [Configuring axes](./axes) for creating axes, assigning IDs, and configuring their positioning.
+
+## Updating series
+
+Configure a series again with the same ID to change its name, color, dataset, column bindings, or selected axes. Choose a different configuration class to change between a line, scatter points, and a line with points.
+
+Supply the required dataset and column bindings again, and retain any axis IDs needed by the series. Series omitted from the call remain unchanged.
+
+The example below updates the name and color of the series configured in the preceding section. Required dataset and column bindings are supplied again.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new LineSeriesConfig
+    {
+        Id = "series-1",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        YAxisId = "additional-y",
+        Name = "Updated series",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new LineSeriesConfig
+    {
+        Id = "series-1",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        YAxisId = "additional-y",
+        Name = "Updated series",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.ConfigureSeries(
+[
+    new LineSeriesConfig
+    {
+        Id = "series-1",
+        DataSetId = "dataset",
+        X = "x",
+        Y = "y",
+        YAxisId = "additional-y",
+        Name = "Updated series",
+        Color = "#6ACBFF",
+    },
+]);
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.configureSeries(const [
+  LineSeriesConfig(
+    id: 'series-1',
+    dataSetId: 'dataset',
+    x: 'x',
+    y: 'y',
+    yAxisId: 'additional-y',
+    name: 'Updated series',
+    color: '#6ACBFF',
+  ),
+]);
+```
+
+</TabItem>
+</Tabs>
+
+## Updating data
+
+Use dataset operations to replace historical data or append incoming samples. Series bound to that dataset display the updated data without requiring another series configuration call.
+
+See [Data management](./data-management).

@@ -27,18 +27,20 @@ public class LclaChart : IAsyncDisposable
     public void SetTitle(SetTitleOptions options)
     {
         ThrowIfDisposed();
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "title",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = new { title = options.Title },
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        SendConfig("title", new { title = options.Title });
+    }
+
+    /// <summary>
+    /// Set the visible title of a default or additional axis.
+    /// </summary>
+    public void SetAxisTitle(SetAxisTitleOptions  options)
+    {
+        ThrowIfDisposed();
+        var p = new Dictionary<string, object?> { ["title"] = options.Title, };
+        if (options.Axis.HasValue) p["axis"] = AxisTargetToString(options.Axis.Value);
+        if (options.AxisId != null) p["axisId"] = options.AxisId;
+
+        SendConfig("axisTitle", p);
     }
 
     /// <summary>
@@ -48,21 +50,10 @@ public class LclaChart : IAsyncDisposable
     {
         ThrowIfDisposed();
         var p = new Dictionary<string, object?>();
-        if (options.AxisX.HasValue) p["axisX"] = ScrollStrategyToString(options.AxisX.Value);
-        if (options.AxisY.HasValue) p["axisY"] = ScrollStrategyToString(options.AxisY.Value);
-
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "scrollStrategy",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = p,
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        if (options.Axis.HasValue) p["axis"] = AxisTargetToString(options.Axis.Value);
+        if (options.AxisId != null) p["axisId"] = options.AxisId;
+        p["strategy"] = ScrollStrategyToString(options.Strategy);
+        SendConfig("scrollStrategy", p);
     }
 
     /// <summary>
@@ -71,24 +62,14 @@ public class LclaChart : IAsyncDisposable
     public void SetAxisInterval(SetAxisIntervalOptions options)
     {
         ThrowIfDisposed();
-        var p = new Dictionary<string, object?> { ["axis"] = AxisTargetToString(options.Axis) };
+        var p = new Dictionary<string, object?>();
+        if (options.Axis.HasValue) p["axis"] = AxisTargetToString(options.Axis.Value);
         if (options.Start.HasValue) p["start"] = options.Start.Value;
         if (options.End.HasValue) p["end"] = options.End.Value;
-        if (options.StackIndex.HasValue) p["stackIndex"] = options.StackIndex.Value;
+        if (options.AxisId != null) p["axisId"] = options.AxisId;
         if (options.Animate.HasValue) p["animate"] = options.Animate.Value;
-
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "axisInterval",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = p,
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        if (options.StopAxisAfter.HasValue) p["stopAxisAfter"] = options.StopAxisAfter.Value;
+        SendConfig("axisInterval", p);
     }
 
     /// <summary>
@@ -98,24 +79,13 @@ public class LclaChart : IAsyncDisposable
     public void SetDefaultAxisInterval(SetDefaultAxisIntervalOptions options)
     {
         ThrowIfDisposed();
-        var p = new Dictionary<string, object?> { ["axis"] = AxisTargetToString(options.Axis) };
+        var p = new Dictionary<string, object?>();
+        if (options.Axis.HasValue) p["axis"] = AxisTargetToString(options.Axis.Value);
         if (options.Start.HasValue) p["start"] = options.Start.Value;
         if (options.End.HasValue) p["end"] = options.End.Value;
         if (options.Length.HasValue) p["length"] = options.Length.Value;
-        if (options.StackIndex.HasValue) p["stackIndex"] = options.StackIndex.Value;
-
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "defaultAxisInterval",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = p,
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        if (options.AxisId != null) p["axisId"] = options.AxisId;
+        SendConfig("defaultAxisInterval", p);
     }
 
     /// <summary>
@@ -126,23 +96,11 @@ public class LclaChart : IAsyncDisposable
         ThrowIfDisposed();
         var p = new Dictionary<string, object?>
         {
-            ["axis"] = AxisTargetToString(options.Axis),
             ["strategy"] = TickStrategyToString(options.Strategy),
         };
-        if (options.StackIndex.HasValue) p["stackIndex"] = options.StackIndex.Value;
-
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "tickStrategy",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = p,
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        if (options.Axis.HasValue) p["axis"] = AxisTargetToString(options.Axis.Value);
+        if (options.AxisId != null) p["axisId"] = options.AxisId;
+        SendConfig("tickStrategy", p);
     }
 
     /// <summary>
@@ -166,65 +124,90 @@ public class LclaChart : IAsyncDisposable
                     return (object)colObj;
                 }).ToArray(),
             };
-            if (ds.XDataPattern.HasValue)
-                obj["xDataPattern"] = DataPatternToString(ds.XDataPattern.Value);
             if (ds.MaxSampleCount.HasValue)
                 obj["maxSampleCount"] = ds.MaxSampleCount.Value;
             return (object)obj;
         }).ToArray();
-
-        var message = BijEncoder.Encode([
-            BijPart.Json("meta", new
-            {
-                id = _client.NextId(),
-                category = "config",
-                action = "datasets",
-                clientId = _client.ClientId,
-                chartId = _chartId,
-                @params = new { datasets = dsObjects },
-            }),
-        ]);
-        _client.SendFireAndForget(message);
+        SendConfig("datasets", new { datasets = dsObjects });
     }
 
-    /// <summary>
-    /// Configure channels on this chart. Channels that exist in the host
-    /// but are not in the provided list will be removed.
-    /// </summary>
-    public void ConfigureChannels(IReadOnlyList<ChannelConfig> channels)
+    /// <summary>Configure additional axes. Default axes are configured when the chart is created.</summary>
+    public void ConfigureAxes(IReadOnlyList<AxisConfig> axes)
     {
         ThrowIfDisposed();
-        var channelObjects = channels.Select(ch =>
+        var axisObjects = axes.Select(axis =>
         {
-            var obj = new Dictionary<string, object?>
-            {
-                ["id"] = ch.Id,
-                ["dataSetId"] = ch.DataSetId,
-                ["column"] = ch.Column,
-                ["name"] = ch.Name,
-                ["color"] = ch.Color,
-                ["type"] = ch.Type switch
-                {
-                    ChannelType.Line => "line",
-                    ChannelType.Scatter => "scatter",
-                    ChannelType.LineScatter => "line+scatter",
-                    _ => "line",
-                },
-            };
-            if (ch.StackIndex.HasValue)
-                obj["stackIndex"] = ch.StackIndex.Value;
+            var obj = new Dictionary<string, object?> { ["id"] = axis.Id, ["axis"] = AxisTargetToString(axis.Axis) };
+            if (axis.Title != null) obj["title"] = axis.Title;
+            if (axis.Opposite.HasValue) obj["opposite"] = axis.Opposite.Value;
+            if (axis.StackIndex.HasValue) obj["stackIndex"] = axis.StackIndex.Value;
+            if (axis.ParallelIndex.HasValue) obj["parallelIndex"] = axis.ParallelIndex.Value;
             return (object)obj;
         }).ToArray();
+        SendConfig("axes", new { axes = axisObjects });
+    }
 
+    /// <summary>Configure series on this chart.</summary>
+    public void ConfigureSeries(IReadOnlyList<SeriesConfig> series)
+    {
+        ThrowIfDisposed();
+        var seriesObjects = series.Select(config =>
+        {
+            var obj = new Dictionary<string, object?> { ["id"] = config.Id };
+            if (config.Name != null) obj["name"] = config.Name;
+
+            // The configuration class determines the serialized series type
+            switch (config)
+            {
+                case LineSeriesConfig line:
+                    obj["type"] = "line";
+                    obj["dataSetId"] = line.DataSetId;
+                    obj["x"] = line.X;
+                    obj["y"] = line.Y;
+                    if (line.Color != null) obj["color"] = line.Color;
+                    if (line.XAxisId != null) obj["xAxisId"] = line.XAxisId;
+                    if (line.YAxisId != null) obj["yAxisId"] = line.YAxisId;
+                    break;
+
+                case ScatterSeriesConfig scatter:
+                    obj["type"] = "scatter";
+                    obj["dataSetId"] = scatter.DataSetId;
+                    obj["x"] = scatter.X;
+                    obj["y"] = scatter.Y;
+                    if (scatter.Color != null) obj["color"] = scatter.Color;
+                    if (scatter.XAxisId != null) obj["xAxisId"] = scatter.XAxisId;
+                    if (scatter.YAxisId != null) obj["yAxisId"] = scatter.YAxisId;
+                    break;
+
+                case LineScatterSeriesConfig lineScatter:
+                    obj["type"] = "line+scatter";
+                    obj["dataSetId"] = lineScatter.DataSetId;
+                    obj["x"] = lineScatter.X;
+                    obj["y"] = lineScatter.Y;
+                    if (lineScatter.Color != null) obj["color"] = lineScatter.Color;
+                    if (lineScatter.XAxisId != null) obj["xAxisId"] = lineScatter.XAxisId;
+                    if (lineScatter.YAxisId != null) obj["yAxisId"] = lineScatter.YAxisId;
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
+            }
+            return (object)obj;
+        }).ToArray();
+        SendConfig("series", new { series = seriesObjects });
+    }
+
+    private void SendConfig(string action, object parameters)
+    {
         var message = BijEncoder.Encode([
             BijPart.Json("meta", new
             {
                 id = _client.NextId(),
                 category = "config",
-                action = "channels",
+                action,
                 clientId = _client.ClientId,
                 chartId = _chartId,
-                @params = new { channels = channelObjects },
+                @params = parameters,
             }),
         ]);
         _client.SendFireAndForget(message);
@@ -232,70 +215,22 @@ public class LclaChart : IAsyncDisposable
 
     /// <summary>
     /// Set data on a dataset, replacing any existing data.
-    /// Shared X values + named Y columns matching the dataset schema.
+    /// Named columns matching the dataset schema.
     /// </summary>
     public void SetData(SetDataOptions options)
     {
         ThrowIfDisposed();
-        var meta = new Dictionary<string, object?>
-        {
-            ["id"] = _client.NextId(),
-            ["category"] = "data",
-            ["action"] = "set",
-            ["clientId"] = _client.ClientId,
-            ["dataSetId"] = options.DataSetId,
-        };
-        if (options.MaxSampleCount.HasValue)
-        {
-            meta["params"] = new { maxSampleCount = options.MaxSampleCount.Value };
-        }
-
-        var parts = new List<BijPart>
-        {
-            BijPart.Json("meta", meta),
-            BijPart.Float64("x", options.X),
-        };
-        foreach (var (colName, colData) in options.Columns)
-        {
-            parts.Add(BijPart.Float64(colName, colData));
-        }
-
-        var message = BijEncoder.Encode(parts.ToArray());
-        _client.SendFireAndForget(message);
+        _client.SetData(options);
     }
 
     /// <summary>
     /// Append streaming data to a dataset. Fire-and-forget.
-    /// Shared X values + named Y columns.
+    /// Named columns matching the dataset schema.
     /// </summary>
     public void AppendData(AppendDataOptions options)
     {
         ThrowIfDisposed();
-        var meta = new Dictionary<string, object?>
-        {
-            ["id"] = _client.NextId(),
-            ["category"] = "data",
-            ["action"] = "append",
-            ["clientId"] = _client.ClientId,
-            ["dataSetId"] = options.DataSetId,
-        };
-        if (options.MaxSampleCount.HasValue)
-        {
-            meta["params"] = new { maxSampleCount = options.MaxSampleCount.Value };
-        }
-
-        var parts = new List<BijPart>
-        {
-            BijPart.Json("meta", meta),
-            BijPart.Float64("x", options.X),
-        };
-        foreach (var (colName, colData) in options.Columns)
-        {
-            parts.Add(BijPart.Float64(colName, colData));
-        }
-
-        var message = BijEncoder.Encode(parts.ToArray());
-        _client.SendFireAndForget(message);
+        _client.AppendData(options);
     }
 
     /// <summary>
@@ -382,44 +317,52 @@ public class SetTitleOptions
     public required string Title { get; set; }
 }
 
+public class SetAxisTitleOptions
+{
+    public AxisTarget? Axis { get; set; }
+    public string? AxisId { get; set; }
+    public required string Title { get; set; }
+}
+
 public class SetScrollStrategyOptions
 {
-    public ScrollStrategy? AxisX { get; set; }
-    public ScrollStrategy? AxisY { get; set; }
+    public AxisTarget? Axis { get; set; }
+    public string? AxisId { get; set; }
+    public required ScrollStrategy Strategy { get; set; }
 }
 
 public class SetAxisIntervalOptions
 {
-    public required AxisTarget Axis { get; set; }
+    public AxisTarget? Axis { get; set; }
     public double? Start { get; set; }
     public double? End { get; set; }
-    public int? StackIndex { get; set; }
+    public string? AxisId { get; set; }
     public bool? Animate { get; set; }
+    public bool? StopAxisAfter { get; set; }
 }
 
 public class SetDefaultAxisIntervalOptions
 {
-    public required AxisTarget Axis { get; set; }
+    public AxisTarget? Axis { get; set; }
     public double? Start { get; set; }
     public double? End { get; set; }
     /// <summary>
     /// Trailing window length. When set, the axis follows latest data: end=dataMax, start=dataMax-Length.
     /// </summary>
     public double? Length { get; set; }
-    public int? StackIndex { get; set; }
+    public string? AxisId { get; set; }
 }
 
 public class SetTickStrategyOptions
 {
-    public required AxisTarget Axis { get; set; }
+    public AxisTarget? Axis { get; set; }
     public required TickStrategy Strategy { get; set; }
-    public int? StackIndex { get; set; }
+    public string? AxisId { get; set; }
 }
 
 public class SetDataOptions
 {
     public required string DataSetId { get; set; }
-    public required double[] X { get; set; }
     public required IReadOnlyDictionary<string, double[]> Columns { get; set; }
     public int? MaxSampleCount { get; set; }
 }
@@ -427,7 +370,6 @@ public class SetDataOptions
 public class AppendDataOptions
 {
     public required string DataSetId { get; set; }
-    public required double[] X { get; set; }
     public required IReadOnlyDictionary<string, double[]> Columns { get; set; }
     public int? MaxSampleCount { get; set; }
 }
