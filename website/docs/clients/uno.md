@@ -2,7 +2,9 @@
 title: Uno
 ---
 
-Tested with Uno Platform project targeting .NET 10.
+Use LightningChart with Uno Platform applications.
+
+Tested with Uno Platform targeting .NET 10.
 
 ## Install
 
@@ -10,32 +12,25 @@ Tested with Uno Platform project targeting .NET 10.
 dotnet add package LCLA
 ```
 
-## Examples
+## Example
 
-Explore the [Uno Platform examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/uno). Each example has its own README with instructions for running it locally.
+The [Uno Platform example on GitHub](https://github.com/Lightning-Chart/lc-la-example-uno) replays a recorded drone flight, displaying telemetry, the flight path, and current measurements. Its README walks through running it locally.
 
 ## License key
 
-LightningChart for Uno requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key. Load the key through the configuration method used by your application. In the example below, `licenseKey` represents that configured value.
-
-
-Create one license and use it when initializing the shared context after the `WebView2` has loaded:
+LightningChart for Uno requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key, then load the chart into a `WebView2`:
 
 ```csharp
-var license = new LclaLicense
+var transport = await WebViewTransport.StartAsync();
+webView.Source = transport.Uri;
+
+var context = new LclaContext(transport, new LclaLicense
 {
     Key = licenseKey,
     AppTitle = "My Uno App",
     Company = "My Company",
-};
-
-var transport = await WebViewTransport.StartAsync();
-webView.Source = transport.Uri;
-
-var context = new LclaContext(transport, license);
+});
 ```
-
-Create the context once and use it to create additional charts.
 
 `AppTitle` and `Company` default to trial values. Set both for app deployment licenses.
 
@@ -44,38 +39,6 @@ Create the context once and use it to create additional charts.
 Load data through the service, file, or API workflow in your Uno application, then replace the dataset:
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
-{
-    DataSets =
-    [
-        new DataSetConfig
-        {
-            Id = "signals",
-            MaxSampleCount = 2_000_000,
-            Columns =
-            [
-                new DataSetColumnConfig
-                {
-                    Id = "time",
-                    DataPattern = DataPattern.Progressive,
-                },
-                new DataSetColumnConfig { Id = "value" },
-            ],
-        },
-    ],
-    Series =
-    [
-        new LineSeriesConfig
-        {
-            Id = "signal",
-            DataSetId = "signals",
-            X = "time",
-            Y = "value",
-            Name = "Signal",
-        },
-    ],
-});
-
 var samples = await signalService.LoadAsync();
 
 chart.SetData(new SetDataOptions
@@ -94,15 +57,12 @@ chart.SetData(new SetDataOptions
 Append batches received from your application's data source:
 
 ```csharp
-chart.SetScrollStrategy(new SetScrollStrategyOptions
+chart.Update(new UpdateXYChartConfig
 {
-    Axis = AxisTarget.X,
-    Strategy = ScrollStrategy.Scrolling,
-});
-chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
-{
-    Axis = AxisTarget.X,
-    Length = 10_000,
+    Axes =
+    [
+        new UpdateAxisConfig { Axis = AxisTarget.X, ScrollStrategy = ScrollStrategy.Scrolling },
+    ],
 });
 
 await foreach (var batch in signalService.StreamAsync(cancellationToken))

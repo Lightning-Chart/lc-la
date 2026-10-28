@@ -250,6 +250,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       ),
     ],
     axes: const [
+      AxisConfig(axis: AxisTarget.y, stackIndex: 0),
       AxisConfig(
         id: 'blood-pressure',
         axis: AxisTarget.y,
@@ -433,13 +434,18 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       final patient = await _PatientData.load();
       final ecg = await _EcgData.load();
       if (!mounted) return;
-      chart.setAxisInterval(
-        const SetAxisIntervalOptions(axis: AxisTarget.y, start: -0.4, end: 1.2),
-      );
-      chart.setTickStrategy(
-        const SetTickStrategyOptions(
-          axis: AxisTarget.x,
-          strategy: TickStrategy.time,
+      chart.update(
+        const UpdateXYChartConfig(
+          axes: [
+            UpdateAxisConfig(
+              axis: AxisTarget.y,
+              interval: AxisIntervalConfig(start: -0.4, end: 1.2),
+            ),
+            UpdateAxisConfig(
+              axis: AxisTarget.x,
+              tickStrategy: TickStrategy.time,
+            ),
+          ],
         ),
       );
       setState(() {
@@ -467,10 +473,14 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     _PatientData patient,
     _EcgData ecg,
   ) {
-    chart.setScrollStrategy(
-      const SetScrollStrategyOptions(
-        axis: AxisTarget.x,
-        strategy: ScrollStrategy.fitting,
+    chart.update(
+      const UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            scrollStrategy: ScrollStrategy.fitting,
+          ),
+        ],
       ),
     );
     chart.setData(
@@ -531,12 +541,18 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         ),
       );
     }
-    chart.setAxisInterval(
-      SetAxisIntervalOptions(
-        axis: AxisTarget.x,
-        start: math.max(patient.time.first, _replayTimeMs - _windowMs),
-        end: math.max(patient.time.first + _windowMs, _replayTimeMs),
-        stopAxisAfter: false,
+    chart.update(
+      UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            interval: AxisIntervalConfig(
+              start: math.max(patient.time.first, _replayTimeMs - _windowMs),
+              end: math.max(patient.time.first + _windowMs, _replayTimeMs),
+              stopAxisAfter: false,
+            ),
+          ),
+        ],
       ),
     );
     setState(() {
@@ -548,16 +564,15 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   }
 
   void _configureReplayAxis(LightningChartController chart) {
-    chart.setScrollStrategy(
-      const SetScrollStrategyOptions(
-        axis: AxisTarget.x,
-        strategy: ScrollStrategy.scrolling,
-      ),
-    );
-    chart.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(
-        axis: AxisTarget.x,
-        length: _windowMs,
+    chart.update(
+      const UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            scrollStrategy: ScrollStrategy.scrolling,
+            defaultInterval: AxisDefaultIntervalConfig(length: _windowMs),
+          ),
+        ],
       ),
     );
   }
@@ -658,12 +673,18 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     chart.clearData(const ClearDataOptions(dataSetId: 'ecg'));
     chart.clearData(const ClearDataOptions(dataSetId: 'vitals'));
     _configureReplayAxis(chart);
-    chart.setAxisInterval(
-      SetAxisIntervalOptions(
-        axis: AxisTarget.x,
-        start: startTimeMs,
-        end: startTimeMs + _windowMs,
-        stopAxisAfter: false,
+    chart.update(
+      UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            interval: AxisIntervalConfig(
+              start: startTimeMs,
+              end: startTimeMs + _windowMs,
+              stopAxisAfter: false,
+            ),
+          ),
+        ],
       ),
     );
     _clock.reset();

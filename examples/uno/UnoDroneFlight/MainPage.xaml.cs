@@ -169,46 +169,48 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 },
             ]);
 
-            _chart.ConfigureAxes(
-            [
-                new AxisConfig { Id = "speed", Axis = AxisTarget.Y, StackIndex = -1 },
-                new AxisConfig { Id = "climb", Axis = AxisTarget.Y, StackIndex = -2 },
-            ]);
+           _chart.Update(new UpdateXYChartConfig
+            {
+                Axes =
+                [
+                    new UpdateAxisConfig { Axis = AxisTarget.X, ScrollStrategy = ScrollStrategy.Scrolling },
+                    new AxisConfig { Id = "speed", Axis = AxisTarget.Y, StackIndex = -1 },
+                    new AxisConfig { Id = "climb", Axis = AxisTarget.Y, StackIndex = -2 },
+                ],
+                Series =
+                [
+                    new LineSeriesConfig
+                    {
+                        Id = "altitude",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "altitude",
+                        Name = "Relative altitude (m)",
+                        Color = "#8BF584",
+                    },
+                    new LineSeriesConfig
+                    {
+                        Id = "speed",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "speed",
+                        YAxisId = "speed",
+                        Name = "Horizontal speed (km/h)",
+                        Color = "#FFC56A",
+                    },
+                    new LineSeriesConfig
+                    {
+                        Id = "climb",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "climb",
+                        YAxisId = "climb",
+                        Name = "Vertical speed (m/s)",
+                        Color = "#BBA6F2",
+                    },
+                ],
+            });
 
-            _chart.ConfigureSeries(
-            [
-                new LineSeriesConfig
-                {
-                    Id = "altitude",
-                    DataSetId = DataSetId,
-                    X = "time",
-                    Y = "altitude",
-                    Name = "Relative altitude (m)",
-                    Color = "#8BF584",
-                },
-                new LineSeriesConfig
-                {
-                    Id = "speed",
-                    DataSetId = DataSetId,
-                    X = "time",
-                    Y = "speed",
-                    YAxisId = "speed",
-                    Name = "Horizontal speed (km/h)",
-                    Color = "#FFC56A",
-                },
-                new LineSeriesConfig
-                {
-                    Id = "climb",
-                    DataSetId = DataSetId,
-                    X = "time",
-                    Y = "climb",
-                    YAxisId = "climb",
-                    Name = "Vertical speed (m/s)",
-                    Color = "#BBA6F2",
-                },
-            ]);
-
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Scrolling });
             _telemetryReady = true;
             StartWhenReady();
         }
@@ -276,8 +278,23 @@ public sealed partial class MainPage : Page, IAsyncDisposable
 
             if (_disposed) return;
 
-            _routeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Start = 28.7548, End = 28.7597 });
-            _routeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.Y, Start = 62.39327, End = 62.39552 });
+            _routeChart.Update(new UpdateXYChartConfig
+            {
+                Axes =
+                [
+                    new UpdateAxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        DefaultInterval = new AxisDefaultIntervalConfig { Start = 28.7548, End = 28.7597 },
+                    },
+                    new UpdateAxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        DefaultInterval = new AxisDefaultIntervalConfig { Start = 62.39327, End = 62.39552 },
+                    },
+                ],
+            });
+
             _routeReady = true;
             StartWhenReady();
         }
@@ -306,7 +323,17 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         if (_disposed || _chart is null || _context is null || _flight is null || !_telemetryReady || !_routeReady || _playing)
             return;
 
-        _chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = WindowMs });
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Axes =
+            [
+                new UpdateAxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = WindowMs },
+                },
+            ],
+        });
         _playing = true;
         _playButton.Content = "Pause";
         _clock.Start();
@@ -328,7 +355,17 @@ public sealed partial class MainPage : Page, IAsyncDisposable
             return;
 
         _context.ClearData(new ClearDataOptions { DataSetId = DataSetId });
-        _chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = WindowMs });
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Axes =
+            [
+                new UpdateAxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = WindowMs },
+                },
+            ],
+        });
         _clock.Reset();
         if (_playing) _clock.Start();
         _nextIndex = 0;

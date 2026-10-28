@@ -4,18 +4,17 @@ title: Flutter
 
 Use LightningChart Flutter on Web, Android, iOS, and macOS.
 
+Tested with Flutter 3.44.
+
 ## Install
 
 ```bash
 flutter pub add lightning_chart_flutter
 ```
 
-Tested with Flutter 3.44.
+## Example
 
-## Examples
-
-Explore the [Flutter examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/flutter). 
-Each example has its own README with instructions for running it locally.
+The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example-flutter) displays a patient monitoring dashboard with ECG, blood pressure, oxygen saturation, and respiratory rate. Monitor mode shows current measurements, while Review mode shows recording statistics. Its README walks through running it locally.
 
 ## License key
 
@@ -52,7 +51,7 @@ return LightningChart.xy(
   dataSets: const [
     DataSetConfig(
       id: 'signals',
-      maxSampleCount: 2_000_000,
+      maxSampleCount: 1_000_000,
       columns: [
         DataSetColumnConfig(
           id: 'time',
@@ -87,17 +86,25 @@ return LightningChart.xy(
 
 ## Real-time data
 
-Capture the controller after Flutter mounts the widget, then append batches received from a stream, WebSocket, or device.
+For incoming data from a device, service, or WebSocket, append each received batch to the dataset.
+
+Store the subscription in your widget's state:
 
 ```dart
-LightningChartController? chart;
+import 'dart:async';
 
-LightningChart.xy(
+StreamSubscription<dynamic>? _subscription;
+```
+
+The following creates a chart with a ten-second scrolling window and starts listening after the chart is ready:
+
+```dart
+return LightningChart.xy(
   license: license,
   dataSets: const [
     DataSetConfig(
       id: 'signals',
-      maxSampleCount: 2_000_000,
+      maxSampleCount: 1_000_000,
       columns: [
         DataSetColumnConfig(
           id: 'time',
@@ -105,6 +112,15 @@ LightningChart.xy(
         ),
         DataSetColumnConfig(id: 'value'),
       ],
+    ),
+  ],
+  axes: const [
+    AxisConfig(
+      axis: AxisTarget.x,
+      scrollStrategy: ScrollStrategy.scrolling,
+      defaultInterval: AxisDefaultIntervalConfig(
+        length: 10_000,
+      ),
     ),
   ],
   series: const [
@@ -116,35 +132,33 @@ LightningChart.xy(
       name: 'Signal',
     ),
   ],
-  onChartCreated: (createdChart) {
-    chart = createdChart;
-    chart!.setScrollStrategy(
-      const SetScrollStrategyOptions(
-        axis: AxisTarget.x,
-        strategy: ScrollStrategy.scrolling,
-      ),
-    );
-    chart!.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(
-        axis: AxisTarget.x,
-        length: 10,
-      ),
-    );
+  onChartCreated: (chart) {
+    _subscription = signalRepository.liveBatches.listen((batch) {
+      chart.appendData(AppendDataOptions(
+        dataSetId: 'signals',
+        columns: {
+          'time': batch.timestamps,
+          'value': batch.values,
+        },
+      ));
+    });
   },
 );
-
-signalRepository.liveBatches.listen((batch) {
-  chart?.appendData(AppendDataOptions(
-    dataSetId: 'signals',
-    columns: {
-        'time': batch.timestamps,
-        'value': batch.values,
-    },
-  ));
-});
 ```
 
-Cancel the stream subscription in `dispose` when the widget is removed. On Android, add the `INTERNET` permission; if loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` as described in the example README.
+Cancel the subscription when the widget is removed:
+
+```dart
+@override
+void dispose() {
+  _subscription?.cancel();
+  super.dispose();
+}
+```
+
+The chart widget releases its chart resources automatically.
+
+On Android, add the `INTERNET` permission. If loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` as described in the example README.
 
 ## More features
 

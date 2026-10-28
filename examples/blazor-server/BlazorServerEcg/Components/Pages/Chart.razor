@@ -104,19 +104,30 @@
 
             foreach (var chart in _charts)
             {
-                chart.ConfigureSeries([
-                    new LineSeriesConfig
-                    {
-                        Id = "ecg",
-                        DataSetId = "ecg",
-                        X = "sample",
-                        Y = "lead",
-                        Name = "ECG lead",
-                        Color = "#7AC9B4",
-                    },
-                ]);
-                chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Scrolling });
-                chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = 1_000 });
+                chart.Update(new UpdateXYChartConfig
+                {
+                    Axes =
+                    [
+                        new UpdateAxisConfig
+                        {
+                            Axis = AxisTarget.X,
+                            ScrollStrategy = ScrollStrategy.Scrolling,
+                            DefaultInterval = new AxisDefaultIntervalConfig { Length = 1_000 },
+                        },
+                    ],
+                    Series =
+                    [
+                        new LineSeriesConfig
+                        {
+                            Id = "ecg",
+                            DataSetId = "ecg",
+                            X = "sample",
+                            Y = "lead",
+                            Name = "ECG lead",
+                            Color = "#7AC9B4",
+                        },
+                    ],
+                });
             }
 
             _ready = true;

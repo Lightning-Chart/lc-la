@@ -20,8 +20,6 @@ class LightningChart extends StatefulWidget {
   LightningChart.xy({
     required LclaLicense license,
     String? title,
-    DefaultAxisConfig? defaultAxisX,
-    DefaultAxisConfig? defaultAxisY,
     List<DataSetConfig> dataSets = const [],
     List<AxisConfig> axes = const [],
     List<SeriesConfig> series = const [],
@@ -36,8 +34,6 @@ class LightningChart extends StatefulWidget {
          license: license,
          config: XYChartConfig(
            title: title,
-           defaultAxisX: defaultAxisX,
-           defaultAxisY: defaultAxisY,
            dataSets: dataSets,
            axes: axes,
            series: series,
@@ -81,27 +77,33 @@ class _LightningChartState extends State<LightningChart> {
   @override
   void didUpdateWidget(covariant LightningChart oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     final chart = _chart;
-    if (chart == null) {
-      return;
+    if (chart == null) return;
+
+    // Send changed configuration sections together in one update.
+    final update = UpdateXYChartConfig(
+      title: widget.config.title != oldWidget.config.title
+          ? widget.config.title
+          : null,
+      dataSets: !identical(widget.config.dataSets, oldWidget.config.dataSets)
+          ? widget.config.dataSets
+          : null,
+      axes: !identical(widget.config.axes, oldWidget.config.axes)
+          ? widget.config.axes
+          : null,
+      series: !identical(widget.config.series, oldWidget.config.series)
+          ? widget.config.series
+          : null,
+    );
+
+    if (update.title != null ||
+        update.dataSets != null ||
+        update.axes != null ||
+        update.series != null) {
+      chart.update(update);
     }
 
-    if (!identical(widget.config.dataSets, oldWidget.config.dataSets) &&
-        widget.config.dataSets != null) {
-      chart.configureDataSets(widget.config.dataSets!);
-    }
-    if (!identical(widget.config.axes, oldWidget.config.axes) &&
-        widget.config.axes != null) {
-      chart.configureAxes(widget.config.axes!);
-    }
-    if (!identical(widget.config.series, oldWidget.config.series) &&
-        widget.config.series != null) {
-      chart.configureSeries(widget.config.series!);
-    }
-    if (widget.config.title != oldWidget.config.title &&
-        widget.config.title != null) {
-      chart.setTitle(SetTitleOptions(title: widget.config.title!));
-    }
     if (!identical(widget.initialData, oldWidget.initialData)) {
       _applyInitialData(chart);
     }

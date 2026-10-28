@@ -6,7 +6,7 @@
  */
 
 import type { Axis, ChartXY, PointLineAreaSeries, LightningChart, DataSetXY, OfficialTheme } from '@lightningchart/lcjs'
-import type { AxisTarget, SeriesConfig } from '../types.js'
+import type { AxisTarget, AxisConfig, SeriesConfig } from '../types.js'
 export interface DataSetState {
   id: string
   dataSet: DataSetXY
@@ -16,6 +16,7 @@ export interface DataSetState {
 export interface AxisState {
   target: AxisTarget
   axis: Axis
+  config: AxisConfig
 }
 
 export interface SeriesState {
@@ -96,6 +97,17 @@ export class HostState {
 
   getDataSet(clientId: string, id: string): DataSetState | undefined {
     return this.dataSetsByClient.get(clientId)?.get(id)
+  }
+
+  // Dataset removal must account for every chart in the same context.
+  isDataSetInUse(clientId: string, dataSetId: string): boolean {
+    for (const chart of this.charts.values()) {
+      if (chart.clientId !== clientId) continue
+      for (const series of chart.series.values()) {
+        if (series.config.dataSetId === dataSetId) return true
+      }
+    }
+    return false
   }
 }
 

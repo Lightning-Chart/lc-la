@@ -6,19 +6,22 @@ sidebar_position: 3
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Data is organized into datasets containing named numeric columns. Each series selects its X and Y columns from a dataset. Multiple series can share columns, and multiple charts in the same context can use the same dataset.
+Data is organized into datasets containing named numeric columns. Series select columns for their X and Y values. Multiple series can use the same dataset.
+
+Dataset and column IDs connect the dataset definition, series bindings, and supplied data. Use matching IDs across these operations.
+
 
 ## Adding datasets
 
-Each dataset has an ID, a list of columns, and a maximum sample count. Each column has its own ID.
+A dataset requires an ID and column definitions. Its maximum sample count is optional.
 
-The dataset and column IDs are used when configuring series and supplying data. They must match across these operations.
+Dataset IDs must be unique within their owning context. Charts sharing a context can use the same dataset.
 
 ### At chart creation
 
-Define datasets in the chart configuration before adding series that reference them.
+Include datasets in the chart configuration. Series in that configuration can reference them immediately.
 
-The example below creates a dataset with columns named `"x"` and `"y"`.
+The following example creates a dataset with two columns.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
@@ -34,7 +37,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
         new DataSetConfig
         {
             Id = "dataset",
-            MaxSampleCount = 2_000_000,
+            MaxSampleCount = 1_000_000,
             Columns =
             [
                 new DataSetColumnConfig { Id = "x" },
@@ -58,7 +61,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
         new DataSetConfig
         {
             Id = "dataset",
-            MaxSampleCount = 2_000_000,
+            MaxSampleCount = 1_000_000,
             Columns =
             [
                 new DataSetColumnConfig { Id = "x" },
@@ -82,7 +85,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
         new DataSetConfig
         {
             Id = "dataset",
-            MaxSampleCount = 2_000_000,
+            MaxSampleCount = 1_000_000,
             Columns =
             [
                 new DataSetColumnConfig { Id = "x" },
@@ -104,7 +107,7 @@ LightningChart.xy(
   dataSets: const [
     DataSetConfig(
       id: 'dataset',
-      maxSampleCount: 2_000_000,
+      maxSampleCount: 1_000_000,
       columns: [
         DataSetColumnConfig(id: 'x'),
         DataSetColumnConfig(id: 'y'),
@@ -119,65 +122,77 @@ LightningChart.xy(
 
 To display the data, add series that reference the dataset and its columns. See [Adding series](./series).
 
+
 ### After chart creation
 
-Create another dataset through the dataset configuration method. Configure it before adding series that reference it.
+Include a dataset creation configuration with a new unique ID in a chart update.
+
+The example below adds another dataset while retaining the existing datasets.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.ConfigureDataSets(
-[
-    new DataSetConfig
-    {
-        Id = "another-dataset",
-        MaxSampleCount = 2_000_000,
-        Columns =
-        [
-            new DataSetColumnConfig { Id = "x" },
-            new DataSetColumnConfig { Id = "y" },
-        ],
-    },
-]);
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "another-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+});
 ```
 
 </TabItem>
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.ConfigureDataSets(
-[
-    new DataSetConfig
-    {
-        Id = "another-dataset",
-        MaxSampleCount = 2_000_000,
-        Columns =
-        [
-            new DataSetColumnConfig { Id = "x" },
-            new DataSetColumnConfig { Id = "y" },
-        ],
-    },
-]);
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "another-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+});
 ```
 
 </TabItem>
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.ConfigureDataSets(
-[
-    new DataSetConfig
-    {
-        Id = "another-dataset",
-        MaxSampleCount = 2_000_000,
-        Columns =
-        [
-            new DataSetColumnConfig { Id = "x" },
-            new DataSetColumnConfig { Id = "y" },
-        ],
-    },
-]);
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "another-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+    ],
+});
 ```
 
 </TabItem>
@@ -186,20 +201,27 @@ chart.ConfigureDataSets(
 Use the controller received through `onChartCreated`:
 
 ```dart
-chart.configureDataSets(const [
-  DataSetConfig(
-    id: 'another-dataset',
-    maxSampleCount: 2_000_000,
-    columns: [
-      DataSetColumnConfig(id: 'x'),
-      DataSetColumnConfig(id: 'y'),
+chart.update(
+  const UpdateXYChartConfig(
+    dataSets: [
+      DataSetConfig(
+        id: 'another-dataset',
+        maxSampleCount: 1_000_000,
+        columns: [
+          DataSetColumnConfig(id: 'x'),
+          DataSetColumnConfig(id: 'y'),
+        ],
+      ),
     ],
   ),
-]);
+);
 ```
 
 </TabItem>
 </Tabs>
+
+A series can reference the new dataset in the same chart update. Omitted datasets remain available. An empty dataset list does not remove anything.
+
 
 ## Column patterns
 
@@ -208,8 +230,6 @@ For ordered data, declare a pattern separately for each column:
 - **Progressive** indicates increasing values.
 - **Regressive** indicates decreasing values.
 - Leave the pattern unspecified for unordered values.
-
-Patterns describe the data order. They do not determine whether a column is used for X or Y; that is selected in the series configuration.
 
 For example, configure a column containing increasing values as follows:
 
@@ -259,13 +279,16 @@ const DataSetColumnConfig(
 </TabItem>
 </Tabs>
 
+Column definitions cannot be edited after dataset creation. To use a different set of columns, create a new dataset and update the relevant series bindings.
+
+
 ## Loading data
 
-Replace a dataset's contents when loading a historical recording or a new selection of data.
+Replace a dataset's samples when loading a historical recording or a new selection of data.
 
-Supply an array for every column defined in the dataset. Values at the same array index represent the same sample, so keep corresponding column arrays aligned.
+Supply an array for every configured column. Corresponding array indices represent the same sample.
 
-The following example uses the `"dataset"` defined above. Obtain the arrays from your application's file, service, or API workflow.
+The following loads the dataset created above. Obtain the arrays from your application's file, service, or API workflow.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
@@ -321,16 +344,18 @@ chart.SetData(new SetDataOptions
 </TabItem>
 <TabItem value="flutter" label="Flutter">
 
-Use the chart controller. Here, `xValues` and `yValues` are `Float64List` instances from `dart:typed_data`:
+Here, `xValues` and `yValues` are `Float64List` instances from `dart:typed_data`:
 
 ```dart
-chart.setData(SetDataOptions(
-  dataSetId: 'dataset',
-  columns: {
-    'x': xValues,
-    'y': yValues,
-  },
-));
+chart.setData(
+  SetDataOptions(
+    dataSetId: 'dataset',
+    columns: {
+      'x': xValues,
+      'y': yValues,
+    },
+  ),
+);
 ```
 
 Historical data available before widget creation can also be supplied through `initialData`:
@@ -341,11 +366,19 @@ LightningChart.xy(
   dataSets: const [
     DataSetConfig(
       id: 'dataset',
-      maxSampleCount: 2_000_000,
+      maxSampleCount: 1_000_000,
       columns: [
         DataSetColumnConfig(id: 'x'),
         DataSetColumnConfig(id: 'y'),
       ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'series-1',
+      dataSetId: 'dataset',
+      x: 'x',
+      y: 'y',
     ),
   ],
   initialData: [
@@ -363,18 +396,19 @@ LightningChart.xy(
 </TabItem>
 </Tabs>
 
-All series bound to the dataset display the replaced data. Their series configurations remain unchanged.
+All series bound to the dataset display the replaced samples. Their configurations remain unchanged.
+
 
 ## Appending data
 
-Append incoming batches to retain existing samples and add new ones. Supply every dataset column in each batch.
+Append incoming batches to retain existing samples and add new ones. Supply every configured column in each batch.
 
-Historical loading and streaming use the same dataset definition, so a chart can load a recording and then continue with incoming samples.
+Historical loading and streaming use the same dataset definition. A chart can load a recording and continue with incoming samples.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
 
-Call this for each batch received from your data source. Here, `batchX` and `batchY` are `double[]` arrays:
+Call this for each received batch. Here, `batchX` and `batchY` are `double[]` arrays:
 
 ```csharp
 chart.AppendData(new AppendDataOptions
@@ -391,7 +425,7 @@ chart.AppendData(new AppendDataOptions
 </TabItem>
 <TabItem value="maui" label="MAUI">
 
-Call this for each batch received from your data source. Here, `batchX` and `batchY` are `double[]` arrays:
+Call this for each received batch. Here, `batchX` and `batchY` are `double[]` arrays:
 
 ```csharp
 chart.AppendData(new AppendDataOptions
@@ -408,7 +442,7 @@ chart.AppendData(new AppendDataOptions
 </TabItem>
 <TabItem value="uno" label="Uno">
 
-Call this for each batch received from your data source. Here, `batchX` and `batchY` are `double[]` arrays:
+Call this for each received batch. Here, `batchX` and `batchY` are `double[]` arrays:
 
 ```csharp
 chart.AppendData(new AppendDataOptions
@@ -425,30 +459,102 @@ chart.AppendData(new AppendDataOptions
 </TabItem>
 <TabItem value="flutter" label="Flutter">
 
-Call this through the chart controller for each received batch. Here, `batchX` and `batchY` are `Float64List` instances:
+Call this through the controller for each received batch. Here, `batchX` and `batchY` are `Float64List` instances:
 
 ```dart
-chart.appendData(AppendDataOptions(
-  dataSetId: 'dataset',
-  columns: {
-    'x': batchX,
-    'y': batchY,
-  },
-));
+chart.appendData(
+  AppendDataOptions(
+    dataSetId: 'dataset',
+    columns: {
+      'x': batchX,
+      'y': batchY,
+    },
+  ),
+);
 ```
 
 </TabItem>
 </Tabs>
 
-Appending data does not require another series configuration call. Configure the axes to follow incoming samples as needed; see [Scrolling and fitting](./axes#scrolling-and-fitting).
+Appending samples does not require another series configuration update. To make axes follow incoming data, see [Scrolling and fitting](./axes#scrolling-and-fitting).
 
-## Data cleaning
+
+## Data cleaning / maximum memory use
 
 The maximum sample count controls how many samples a dataset retains. When appending would exceed the limit, the oldest samples are discarded first.
 
-Set the limit when creating the dataset. If omitted, the limit is 2,000,000 samples.
+Set the limit when creating the dataset. If omitted, it is 2,000,000 samples. To increase the limit later, select the dataset by its ID in a chart update.
 
-The limit can be increased later through the optional maximum-sample-count setting on a data-loading or appending operation. It cannot be reduced during the dataset's lifetime.
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            MaxSampleCount = 2_000_000,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    dataSets: [
+      UpdateDataSetConfig(
+        id: 'dataset',
+        maxSampleCount: 2_000_000,
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
 
 ## Clearing data
 
@@ -488,16 +594,326 @@ chart.ClearData(new ClearDataOptions
 <TabItem value="flutter" label="Flutter">
 
 ```dart
-chart.clearData(const ClearDataOptions(
-  dataSetId: 'dataset',
-));
+chart.clearData(
+  const ClearDataOptions(
+    dataSetId: 'dataset',
+  ),
+);
 ```
 
 </TabItem>
 </Tabs>
 
+
+## Removing datasets
+
+Remove a dataset by its ID. Removal is rejected while any series in the owning context still uses the dataset. Rebind or remove those series first, or include their binding updates or removal requests in the same chart update.
+
+The following example removes the unused dataset added earlier.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "another-dataset",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "another-dataset",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new UpdateDataSetConfig
+        {
+            Id = "another-dataset",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    dataSets: [
+      UpdateDataSetConfig(
+        id: 'another-dataset',
+        remove: true,
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+### Replacing a dataset
+
+One chart update can create a replacement dataset, reconnect an existing series, and remove the old dataset.
+
+In the following example, the existing dataset is used only by the line series being updated. Its new dataset has the same column IDs, so the existing X/Y bindings can be retained.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "replacement-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            Remove = true,
+        },
+    ],
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "replacement-dataset",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "replacement-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            Remove = true,
+        },
+    ],
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "replacement-dataset",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "replacement-dataset",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "x" },
+                new DataSetColumnConfig { Id = "y" },
+            ],
+        },
+        new UpdateDataSetConfig
+        {
+            Id = "dataset",
+            Remove = true,
+        },
+    ],
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "replacement-dataset",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    dataSets: [
+      DataSetConfig(
+        id: 'replacement-dataset',
+        maxSampleCount: 1_000_000,
+        columns: [
+          DataSetColumnConfig(id: 'x'),
+          DataSetColumnConfig(id: 'y'),
+        ],
+      ),
+      UpdateDataSetConfig(
+        id: 'dataset',
+        remove: true,
+      ),
+    ],
+    series: [
+      UpdateLineSeriesConfig(
+        id: 'series-1',
+        dataSetId: 'replacement-dataset',
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+The replacement starts without samples. Load or append data to its ID to display it.
+
+
 ## Sharing datasets
 
 Series can share a dataset while selecting different columns or axes. Data operations affect the dataset, so every series bound to it sees the changes.
 
-Charts within the same shared context can also use the same dataset. Supply the data once rather than sending a separate copy for each chart. See [LCLA Context](./context) for client-specific context behavior.
+Where charts share a context, supply data once through that context rather than sending a separate copy for each chart.
+
+See [LCLA Context](./context) for context ownership and sharing.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Datasets can also be created directly through the shared context:
+
+```csharp
+context.ConfigureDataSets(
+[
+    new DataSetConfig
+    {
+        Id = "shared-dataset",
+        Columns =
+        [
+            new DataSetColumnConfig { Id = "x" },
+            new DataSetColumnConfig { Id = "y" },
+        ],
+    },
+]);
+```
+
+Charts created through that context can reference this dataset. The method also accepts `UpdateDataSetConfig` to increase retention or remove an unused dataset.
+
+Data can be supplied through `context.SetData()`, `context.AppendData()`, and `context.ClearData()` using the same options as the chart methods.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Datasets can also be created directly through the shared context:
+
+```csharp
+context.ConfigureDataSets(
+[
+    new DataSetConfig
+    {
+        Id = "shared-dataset",
+        Columns =
+        [
+            new DataSetColumnConfig { Id = "x" },
+            new DataSetColumnConfig { Id = "y" },
+        ],
+    },
+]);
+```
+
+Charts must belong to the same context to share this dataset. Separate WebViews with separate contexts have independent datasets.
+
+Data can be supplied through `context.SetData()`, `context.AppendData()`, and `context.ClearData()` using the same options as the chart methods.
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+Datasets can also be created directly through the shared context:
+
+```csharp
+context.ConfigureDataSets(
+[
+    new DataSetConfig
+    {
+        Id = "shared-dataset",
+        Columns =
+        [
+            new DataSetColumnConfig { Id = "x" },
+            new DataSetColumnConfig { Id = "y" },
+        ],
+    },
+]);
+```
+
+Charts must belong to the same context to share this dataset. Separate WebViews with separate contexts have independent datasets.
+
+Data can be supplied through `context.SetData()`, `context.AppendData()`, and `context.ClearData()` using the same options as the chart methods.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+In Flutter, each chart owns its datasets. Series within the same chart can share a dataset.
+
+Create and update datasets through `chart.update()`, and supply samples through `chart.setData()`, `chart.appendData()`, and `chart.clearData()`.
+
+</TabItem>
+</Tabs>

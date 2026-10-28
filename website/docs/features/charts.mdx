@@ -1,0 +1,182 @@
+---
+title: Adding charts
+sidebar_position: 4
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+LightningChart LA creates interactive XY charts with panning and zooming enabled by default. Use your application's normal layout components to position and size each chart.
+
+## Creating a chart
+
+Set the chart title and animation settings when creating a chart. You can also supply datasets, axes, and series in the initial configuration.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Render a chart container in your component:
+
+```html
+<div id="signal-chart" style="height: 480px"></div>
+```
+
+After the container has rendered and the context has been initialized:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    Title = "Signal chart",
+    AnimationsEnabled = true,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+After the WebView has loaded and the context has been initialized:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    Title = "Signal chart",
+    AnimationsEnabled = true,
+});
+```
+
+Size and position the chart through the WebView's native layout.
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+After the WebView has loaded and the context has been initialized:
+
+```csharp
+var chart = await context.CreateChartAsync(new XYChartConfig
+{
+    Title = "Signal chart",
+    AnimationsEnabled = true,
+});
+```
+
+Size and position the chart through the WebView's native layout.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Place the chart widget in your application's layout:
+
+```dart
+LightningChart.xy(
+  license: license,
+  title: 'Signal chart',
+  animationsEnabled: true,
+);
+```
+
+Use Flutter layout widgets to give the chart its size and position.
+
+</TabItem>
+</Tabs>
+
+Animations are enabled by default. Omit the animation setting to keep that default.
+
+Without an axes list, the chart uses its normal default X and Y axes. Add series to connect the chart to data.
+
+See [Configuring axes](./axes), [Adding series](./series), and [Data management](./data-management) for complete configuration examples.
+
+## Updating a chart
+
+Use an update configuration to change the title or configure datasets, axes, and series after creation. Omitted objects and properties remain unchanged.
+
+The following changes only the chart title:
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Use the controller supplied by `onChartCreated`:
+
+```dart
+chart.update(const UpdateXYChartConfig(
+  title: 'Updated signal chart',
+));
+```
+
+</TabItem>
+</Tabs>
+
+Updates can also create axes, series, and datasets with new IDs, change their editable settings, or explicitly remove them. See the corresponding feature pages for supported properties and removal rules.
+
+The chart's container and animation setting cannot be changed after creation.
+
+## Removing a chart
+
+Release the chart when its view is no longer needed.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+await chart.DisposeAsync();
+```
+
+Call this from your component's cleanup code.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+await chart.DisposeAsync();
+```
+
+Call this when the chart's page is removed.
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+await chart.DisposeAsync();
+```
+
+Call this when the chart's page is removed.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+The chart widget releases its chart resources when it is removed from the widget tree. Cancel any application-owned data subscriptions in your widget's `dispose` method.
+
+</TabItem>
+</Tabs>
+
+Removing a chart leaves other charts and shared datasets in the same context available. Disposing a context releases all charts it owns.

@@ -188,7 +188,7 @@ public class LclaContext : IAsyncDisposable
     }
     internal string ClientId => _clientId;
 
-    public void ConfigureDataSets(IReadOnlyList<DataSetConfig> dataSets)
+    public void ConfigureDataSets(IReadOnlyList<IDataSetConfig> dataSets)
     {
         var dataSetObjects = dataSets.Select(DataSetToObject).ToArray();
         SendFireAndForget(new
@@ -217,14 +217,207 @@ public class LclaContext : IAsyncDisposable
 
     private void SendFireAndForget(object meta) => SendFireAndForget(BijEncoder.Encode([BijPart.Json("meta", meta)]));
 
-    private static object DataSetToObject(DataSetConfig ds)
+    internal static object DataSetToObject(IDataSetConfig config)
     {
-        var value = new Dictionary<string, object?>
+        var value = new Dictionary<string, object?>();
+
+        switch (config)
         {
-            ["id"] = ds.Id,
-            ["columns"] = ds.Columns.Select(c => new Dictionary<string, object?> { ["id"] = c.Id, ["dataPattern"] = DataPatternToString(c.DataPattern) }).ToArray(),
-            ["maxSampleCount"] = ds.MaxSampleCount,
-        };
+            case DataSetConfig dataSet:
+                value["id"] = dataSet.Id;
+                value["columns"] = dataSet.Columns.Select(column =>
+                    new Dictionary<string, object?>
+                    {
+                        ["id"] = column.Id,
+                        ["dataPattern"] = DataPatternToString(column.DataPattern),
+                    }).ToArray();
+                value["maxSampleCount"] = dataSet.MaxSampleCount;
+                break;
+
+            case UpdateDataSetConfig update:
+                value["id"] = update.Id;
+                value["maxSampleCount"] = update.MaxSampleCount;
+                value["remove"] = update.Remove;
+                break;
+
+            default:
+                throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
+        }
+
+        return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
+    }
+
+    internal static object AxisToObject(IAxisConfig config)
+    {
+        var value = new Dictionary<string, object?>();
+
+        switch (config)
+        {
+            case AxisConfig axis:
+                value["id"] = axis.Id;
+                value["axis"] = axis.Axis;
+                value["title"] = axis.Title;
+                value["opposite"] = axis.Opposite;
+                value["stackIndex"] = axis.StackIndex;
+                value["parallelIndex"] = axis.ParallelIndex;
+                value["interval"] = axis.Interval;
+                value["defaultInterval"] = axis.DefaultInterval;
+                value["tickStrategy"] = axis.TickStrategy;
+                value["scrollStrategy"] = axis.ScrollStrategy;
+                break;
+
+            case UpdateAxisConfig update:
+                value["id"] = update.Id;
+                value["axis"] = update.Axis;
+                value["title"] = update.Title;
+                value["interval"] = update.Interval;
+                value["defaultInterval"] = update.DefaultInterval;
+                value["tickStrategy"] = update.TickStrategy;
+                value["scrollStrategy"] = update.ScrollStrategy;
+                value["remove"] = update.Remove;
+                break;
+
+            default:
+                throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
+        }
+
+        // Convert enums to the names expected by the host.
+        if (value["axis"] is AxisTarget target)
+        {
+            value["axis"] = target switch
+            {
+                AxisTarget.X => "x",
+                AxisTarget.Y => "y",
+                _ => "x",
+            };
+        }
+
+        if (value["tickStrategy"] is TickStrategy ticks)
+        {
+            value["tickStrategy"] = ticks switch
+            {
+                TickStrategy.Numeric => "numeric",
+                TickStrategy.DateTime => "dateTime",
+                TickStrategy.Time => "time",
+                _ => "numeric",
+            };
+        }
+
+        if (value["scrollStrategy"] is ScrollStrategy scroll)
+        {
+            value["scrollStrategy"] = scroll switch
+            {
+                ScrollStrategy.Scrolling => "scrolling",
+                ScrollStrategy.Fitting => "fitting",
+                ScrollStrategy.Expansion => "expansion",
+                _ => "fitting",
+            };
+        }
+
+        // Serialize nested settings without sending omitted properties.
+        if (value["interval"] is AxisIntervalConfig interval)
+        {
+            value["interval"] = new Dictionary<string, object?>
+            {
+                ["start"] = interval.Start,
+                ["end"] = interval.End,
+                ["animate"] = interval.Animate,
+                ["stopAxisAfter"] = interval.StopAxisAfter,
+            }.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        if (value["defaultInterval"] is AxisDefaultIntervalConfig defaultInterval)
+        {
+            value["defaultInterval"] = new Dictionary<string, object?>
+            {
+                ["start"] = defaultInterval.Start,
+                ["end"] = defaultInterval.End,
+                ["length"] = defaultInterval.Length,
+            }.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
+    }
+
+    internal static object SeriesToObject(ISeriesConfig config)
+    {
+        var value = new Dictionary<string, object?>();
+
+        switch (config)
+        {
+            case LineSeriesConfig line:
+                value["id"] = line.Id;
+                value["type"] = "line";
+                value["name"] = line.Name;
+                value["dataSetId"] = line.DataSetId;
+                value["x"] = line.X;
+                value["y"] = line.Y;
+                value["color"] = line.Color;
+                value["xAxisId"] = line.XAxisId;
+                value["yAxisId"] = line.YAxisId;
+                break;
+
+            case UpdateLineSeriesConfig line:
+                value["id"] = line.Id;
+                value["type"] = "line";
+                value["name"] = line.Name;
+                value["dataSetId"] = line.DataSetId;
+                value["x"] = line.X;
+                value["y"] = line.Y;
+                value["color"] = line.Color;
+                value["remove"] = line.Remove;
+                break;
+
+            case ScatterSeriesConfig scatter:
+                value["id"] = scatter.Id;
+                value["type"] = "scatter";
+                value["name"] = scatter.Name;
+                value["dataSetId"] = scatter.DataSetId;
+                value["x"] = scatter.X;
+                value["y"] = scatter.Y;
+                value["color"] = scatter.Color;
+                value["xAxisId"] = scatter.XAxisId;
+                value["yAxisId"] = scatter.YAxisId;
+                break;
+
+            case UpdateScatterSeriesConfig scatter:
+                value["id"] = scatter.Id;
+                value["type"] = "scatter";
+                value["name"] = scatter.Name;
+                value["dataSetId"] = scatter.DataSetId;
+                value["x"] = scatter.X;
+                value["y"] = scatter.Y;
+                value["color"] = scatter.Color;
+                value["remove"] = scatter.Remove;
+                break;
+
+            case LineScatterSeriesConfig lineScatter:
+                value["id"] = lineScatter.Id;
+                value["type"] = "line+scatter";
+                value["name"] = lineScatter.Name;
+                value["dataSetId"] = lineScatter.DataSetId;
+                value["x"] = lineScatter.X;
+                value["y"] = lineScatter.Y;
+                value["color"] = lineScatter.Color;
+                value["xAxisId"] = lineScatter.XAxisId;
+                value["yAxisId"] = lineScatter.YAxisId;
+                break;
+
+            case UpdateLineScatterSeriesConfig lineScatter:
+                value["id"] = lineScatter.Id;
+                value["type"] = "line+scatter";
+                value["name"] = lineScatter.Name;
+                value["dataSetId"] = lineScatter.DataSetId;
+                value["x"] = lineScatter.X;
+                value["y"] = lineScatter.Y;
+                value["color"] = lineScatter.Color;
+                value["remove"] = lineScatter.Remove;
+                break;
+
+            default:
+                throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
+        }
+
         return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
@@ -242,27 +435,8 @@ public class LclaContext : IAsyncDisposable
         var id = NextId();
         var p = new Dictionary<string, object?> { ["type"] = "xy" };
         if (config?.ContainerId != null) p["containerId"] = config.ContainerId;
-        if (config?.DefaultAxisX is { } defaultAxisX) {
-            p["defaultAxisX"] = new
-            {
-                id = defaultAxisX.Id,
-                title = defaultAxisX.Title,
-                opposite = defaultAxisX.Opposite ?? false,
-                stackIndex = defaultAxisX.StackIndex,
-                parallelIndex = defaultAxisX.ParallelIndex,
-            };
-        }
-        if (config?.DefaultAxisY is { } defaultAxisY) {
-            p["defaultAxisY"] = new
-            {
-                id = defaultAxisY.Id,
-                title = defaultAxisY.Title,
-                opposite = defaultAxisY.Opposite ?? false,
-                stackIndex = defaultAxisY.StackIndex,
-                parallelIndex = defaultAxisY.ParallelIndex,
-            };
-        }
         if (config?.AnimationsEnabled.HasValue == true) p["animationsEnabled"] = config.AnimationsEnabled.Value;
+        if (config?.Axes != null) p["axes"] = config.Axes.Select(AxisToObject).ToArray();
         var createParams = (object)p;
 
         var message = BijEncoder.Encode([
@@ -294,19 +468,15 @@ public class LclaContext : IAsyncDisposable
         {
             if (config.Title != null)
             {
-                chart.SetTitle(new SetTitleOptions { Title = config.Title });
+                chart.Update(new UpdateXYChartConfig { Title = config.Title });
             }
             if (config.DataSets != null && config.DataSets.Count > 0)
             {
-                chart.ConfigureDataSets(config.DataSets);
-            }
-            if (config.Axes != null && config.Axes.Count > 0)
-            {
-                chart.ConfigureAxes(config.Axes);
+                chart.Update(new UpdateXYChartConfig { DataSets = config.DataSets.Cast<IDataSetConfig>().ToList() });
             }
             if (config.Series != null && config.Series.Count > 0)
             {
-                chart.ConfigureSeries(config.Series);
+                chart.Update(new UpdateXYChartConfig { Series = config.Series.Cast<ISeriesConfig>().ToList() });
             }
         }
 
@@ -344,34 +514,18 @@ public class LclaContext : IAsyncDisposable
 }
 
 /// <summary>
-/// Creation options for a chart's default axis.
-/// </summary>
-public class DefaultAxisConfig
-{
-    /// <summary>
-    /// Optional identifier for selecting this axis in later operations.
-    /// </summary>
-    public string? Id { get; set; }
-    public string? Title { get; set; }
-    /// <summary>
-    /// True places a Y axis on the right or an X axis on the top.
-    /// Null or false preserves the normal left/bottom position.
-    /// </summary>
-    public bool? Opposite { get; set; }
-    public int? StackIndex { get; set; }
-    public int? ParallelIndex { get; set; }
-}
-
-/// <summary>
 /// Configuration for creating an XY chart.
 /// </summary>
 public class XYChartConfig
 {
     public string? Title { get; set; }
     public string? ContainerId { get; set; }
-    public DefaultAxisConfig? DefaultAxisX { get; set; }
-    public DefaultAxisConfig? DefaultAxisY { get; set; }
     public List<DataSetConfig>? DataSets { get; set; }
+    /// <summary>
+    /// The first X/Y entries configure the default axes.
+    /// Omit this list to use the normal default axes.
+    /// Additional axes require an ID.
+    /// </summary>
     public List<AxisConfig>? Axes { get; set; }
     public List<SeriesConfig>? Series { get; set; }
     /// <summary>
@@ -382,10 +536,50 @@ public class XYChartConfig
 }
 
 /// <summary>
-/// Configuration for a dataset within a chart.
-/// A dataset contains named columns that series can map to X and Y.
+/// Update a chart. Omitted objects and properties remain unchanged.
+/// Creation configurations add objects.
+/// Update configurations modify existing objects or explicitly remove them.
 /// </summary>
-public class DataSetConfig
+public class UpdateXYChartConfig
+{
+    public string? Title { get; set; }
+    public List<IDataSetConfig>? DataSets { get; set; }
+    public List<IAxisConfig>? Axes { get; set; }
+    public List<ISeriesConfig>? Series { get; set; }
+}
+
+/// <summary>
+/// Changes to the current visible axis interval.
+/// </summary>
+public class AxisIntervalConfig
+{
+    public double? Start { get; set; }
+    public double? End { get; set; }
+    public bool? Animate { get; set; }
+    public bool? StopAxisAfter { get; set; }
+}
+
+/// <summary>
+/// Default axis interval: Start/End for a fixed range,
+/// or Length for a window following the latest data.
+/// </summary>
+public class AxisDefaultIntervalConfig
+{
+    public double? Start { get; set; }
+    public double? End { get; set; }
+    public double? Length { get; set; }
+}
+
+/// <summary>Dataset creation or update configuration.</summary>
+public interface IDataSetConfig
+{
+}
+
+/// <summary>
+/// Create a dataset with named columns.
+/// Columns cannot be changed after creation.
+/// </summary>
+public class DataSetConfig : IDataSetConfig
 {
     public required string Id { get; set; }
 
@@ -402,6 +596,16 @@ public class DataSetConfig
 }
 
 /// <summary>
+/// Update maximum number of samples in dataset or remove a dataset.
+/// </summary>
+public class UpdateDataSetConfig : IDataSetConfig
+{
+    public required string Id { get; set; }
+    public int? MaxSampleCount { get; set; }
+    public bool? Remove { get; set; }
+}
+
+/// <summary>
 /// Configuration for a single column within a dataset.
 /// </summary>
 public class DataSetColumnConfig
@@ -414,21 +618,66 @@ public class DataSetColumnConfig
     public DataPattern? DataPattern { get; set; }
 }
 
-/// <summary>Additional axis. Omitted positioning indices are handled by the chart.</summary>
-public class AxisConfig
+/// <summary>Axis creation or update configuration.</summary>
+public interface IAxisConfig
 {
-    public required string Id { get; set; }
+}
+
+/// <summary>
+/// Axis creation settings.
+/// The first X/Y entries configure the default axes.
+/// Additional axes require an ID.
+/// </summary>
+public class AxisConfig : IAxisConfig
+{
+    public string? Id { get; set; }
     public required AxisTarget Axis { get; set; }
     public string? Title { get; set; }
     public bool? Opposite { get; set; }
     public int? StackIndex { get; set; }
     public int? ParallelIndex { get; set; }
+    public AxisIntervalConfig? Interval { get; set; }
+    public AxisDefaultIntervalConfig? DefaultInterval { get; set; }
+    public TickStrategy? TickStrategy { get; set; }
+    public ScrollStrategy? ScrollStrategy { get; set; }
 }
 
-public abstract class SeriesConfig
+/// <summary>
+/// Update an axis by ID, or select a default axis using Axis.
+/// Omitted settings remain unchanged.
+/// </summary>
+public class UpdateAxisConfig : IAxisConfig
+{
+    public string? Id { get; set; }
+    public AxisTarget? Axis { get; set; }
+    public string? Title { get; set; }
+    public AxisIntervalConfig? Interval { get; set; }
+    public AxisDefaultIntervalConfig? DefaultInterval { get; set; }
+    public TickStrategy? TickStrategy { get; set; }
+    public ScrollStrategy? ScrollStrategy { get; set; }
+    public bool? Remove { get; set; }
+}
+
+/// <summary>Series creation or update configuration.</summary>
+public interface ISeriesConfig
+{
+}
+
+public abstract class SeriesConfig : ISeriesConfig
 {
     public required string Id { get; set; }
     public string? Name { get; set; }
+}
+
+/// <summary>
+/// Update an existing series by ID.
+/// Omitted settings remain unchanged.
+/// </summary>
+public abstract class UpdateSeriesConfig : ISeriesConfig
+{
+    public required string Id { get; set; }
+    public string? Name { get; set; }
+    public bool? Remove { get; set; }
 }
 
 public class LineSeriesConfig : SeriesConfig
@@ -438,6 +687,14 @@ public class LineSeriesConfig : SeriesConfig
     public required string Y { get; set; }
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
+    public string? Color { get; set; }
+}
+
+public class UpdateLineSeriesConfig : UpdateSeriesConfig
+{
+    public string? DataSetId { get; set; }
+    public string? X { get; set; }
+    public string? Y { get; set; }
     public string? Color { get; set; }
 }
 
@@ -451,6 +708,14 @@ public class ScatterSeriesConfig : SeriesConfig
     public string? Color { get; set; }
 }
 
+public class UpdateScatterSeriesConfig : UpdateSeriesConfig
+{
+    public string? DataSetId { get; set; }
+    public string? X { get; set; }
+    public string? Y { get; set; }
+    public string? Color { get; set; }
+}
+
 public class LineScatterSeriesConfig : SeriesConfig
 {
     public required string DataSetId { get; set; }
@@ -458,6 +723,14 @@ public class LineScatterSeriesConfig : SeriesConfig
     public required string Y { get; set; }
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
+    public string? Color { get; set; }
+}
+
+public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
+{
+    public string? DataSetId { get; set; }
+    public string? X { get; set; }
+    public string? Y { get; set; }
     public string? Color { get; set; }
 }
 

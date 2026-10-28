@@ -209,6 +209,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                 ],
                 Axes =
                 [
+                    new AxisConfig { Axis = AxisTarget.Y, StackIndex = 0 },
                     new AxisConfig { Id = "blood-pressure", Axis = AxisTarget.Y, StackIndex = -1 },
                     new AxisConfig { Id = "spo2", Axis = AxisTarget.Y, StackIndex = -2 },
                     new AxisConfig { Id = "respiratory-rate", Axis = AxisTarget.Y, StackIndex = -3 },
@@ -282,7 +283,6 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
 
         try
         {
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Fitting });
             _chart.SetData(new SetDataOptions
             {
                 DataSetId = DataSetId,
@@ -291,12 +291,21 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                     ["time"] = _time,
                 },
             });
-
-            _chart.SetAxisInterval(new SetAxisIntervalOptions
+            _chart.Update(new UpdateXYChartConfig
             {
-                Axis = AxisTarget.X,
-                Start = Math.Max(_time[0], _time[^1] - VisibleWindowSeconds),
-                End = _time[^1],
+                Axes =
+                [
+                    new UpdateAxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        ScrollStrategy = ScrollStrategy.Fitting,
+                        Interval = new AxisIntervalConfig
+                        {
+                            Start = Math.Max(_time[0], _time[^1] - VisibleWindowSeconds),
+                            End = _time[^1],
+                        },
+                    },
+                ],
             });
 
             _streamIndex = _time.Length;
@@ -322,11 +331,20 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
         if (_streamIndex >= _time.Length)
         {
             _chart.ClearData(new ClearDataOptions { DataSetId = DataSetId });
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.X, Strategy = ScrollStrategy.Scrolling });
-            _chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
+            _chart.Update(new UpdateXYChartConfig
             {
-                Axis = AxisTarget.X,
-                Length = VisibleWindowSeconds,
+                Axes =
+                [
+                    new UpdateAxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        ScrollStrategy = ScrollStrategy.Scrolling,
+                        DefaultInterval = new AxisDefaultIntervalConfig
+                        {
+                            Length = VisibleWindowSeconds,
+                        },
+                    },
+                ],
             });
             _streamIndex = 0;
         }

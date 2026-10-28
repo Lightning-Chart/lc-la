@@ -89,14 +89,11 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
             {
                 ContainerId = "lcla-root",
                 Title = "Vertical multiple-axis streaming",
-                DefaultAxisX = new DefaultAxisConfig { Title = "Vibration (mm/s)" },
-                DefaultAxisY = new DefaultAxisConfig { Title = "Time (s)" },
                 DataSets =
                 [
                     new DataSetConfig
                     {
                         Id = DataSetId,
-                        MaxSampleCount = 1_048_576,
                         Columns =
                         [
                             new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
@@ -108,7 +105,27 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                 ],
                 Axes =
                 [
-                    // Top X axis, parallel to the default bottom X
+                    // First X entry configures the default bottom axis.
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        Title = "Vibration (mm/s)",
+                        Interval = new AxisIntervalConfig { Start = 0, End = 4 },
+                    },
+                    // First Y entry configures the default left axis.
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        Title = "Time (s)",
+                        ScrollStrategy = ScrollStrategy.Scrolling,
+                        Interval = new AxisIntervalConfig
+                        {
+                            Start = WindowSeconds,
+                            End = 0,
+                            StopAxisAfter = false,
+                        },
+                    },
+                    // Additional top X axis.
                     new AxisConfig
                     {
                         Id = "temperature",
@@ -117,8 +134,9 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Opposite = true,
                         StackIndex = 0,
                         ParallelIndex = 0,
+                        Interval = new AxisIntervalConfig { Start = 40, End = 80 },
                     },
-                    // Second bottom X axis, parallel to vibration
+                    // Second bottom X axis.
                     new AxisConfig
                     {
                         Id = "pressure",
@@ -126,8 +144,9 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Title = "Pressure (bar)",
                         StackIndex = 0,
                         ParallelIndex = 1,
+                        Interval = new AxisIntervalConfig { Start = 3, End = 7 },
                     },
-                    // Additional time axis on the right
+                    // Additional time axis on the right.
                     new AxisConfig
                     {
                         Id = "time-right",
@@ -136,6 +155,13 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         Opposite = true,
                         StackIndex = 0,
                         ParallelIndex = 0,
+                        ScrollStrategy = ScrollStrategy.Scrolling,
+                        Interval = new AxisIntervalConfig
+                        {
+                            Start = WindowSeconds,
+                            End = 0,
+                            StopAxisAfter = false,
+                        },
                     },
                 ],
                 Series =
@@ -174,17 +200,9 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                     },
                 ],
             }, _lifetime.Token);
-            _chart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.X, Start = 0, End = 4, StopAxisAfter = true });
-            _chart.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "temperature", Start = 40, End = 80, StopAxisAfter = true });
-            _chart.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "pressure", Start = 3, End = 7, StopAxisAfter = true });
-            // Shared time axis: increasing values progress downward
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { Axis = AxisTarget.Y, Strategy = ScrollStrategy.Scrolling });
-            _chart.SetAxisInterval(new SetAxisIntervalOptions { Axis = AxisTarget.Y, Start = WindowSeconds, End = 0, Animate = false, StopAxisAfter = false });
 
             if (!_disposed)
             {
-                _chart.SetScrollStrategy(new SetScrollStrategyOptions { AxisId = "time-right", Strategy = ScrollStrategy.Scrolling });
-                _chart.SetAxisInterval(new SetAxisIntervalOptions { AxisId = "time-right", Start = WindowSeconds, End = 0, Animate = false, StopAxisAfter = false });
                 _status.Text = "Ready";
                 _streamButton.IsEnabled = true;
             }
