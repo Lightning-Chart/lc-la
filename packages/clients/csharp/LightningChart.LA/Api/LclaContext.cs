@@ -414,12 +414,38 @@ public class LclaContext : IAsyncDisposable
                 value["remove"] = lineScatter.Remove;
                 break;
 
+            case ScrollingHeatmapSeriesConfig scrollingHeatmap:
+                value["id"] = scrollingHeatmap.Id;
+                value["type"] = "scrollingHeatmap";
+                value["name"] = scrollingHeatmap.Name;
+                value["resolution"] = scrollingHeatmap.Resolution;
+                value["scrollDimension"] = 
+                    scrollingHeatmap.ScrollDimension == HeatmapScrollDimension.Rows ? "rows" : "columns";
+                value["xAxisId"] = scrollingHeatmap.XAxisId;
+                value["yAxisId"] = scrollingHeatmap.YAxisId;
+                value["start"] = PointToObject(scrollingHeatmap.Start);
+                value["step"] = PointToObject(scrollingHeatmap.Step);
+                break;
+
+            case UpdateScrollingHeatmapSeriesConfig scrollingHeatmap:
+                value["id"] = scrollingHeatmap.Id;
+                value["type"] = "scrollingHeatmap";
+                value["name"] = scrollingHeatmap.Name;
+                value["start"] = PointToObject(scrollingHeatmap.Start);
+                value["step"] = PointToObject(scrollingHeatmap.Step);
+                value["remove"] = scrollingHeatmap.Remove;
+                break;
+
             default:
                 throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
         }
 
         return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
     }
+
+    // Convert coordinates to the lowercase property names expected by the host.
+    private static object? PointToObject(PointConfig? point) =>
+        point is null ? null : new { x = point.X, y = point.Y };
 
     private static string? DataPatternToString(DataPattern? pattern) => pattern switch
     {
@@ -732,6 +758,41 @@ public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
     public string? X { get; set; }
     public string? Y { get; set; }
     public string? Color { get; set; }
+}
+
+public class PointConfig
+{
+    public required double X { get; set; }
+    public required double Y { get; set; }
+}
+
+public enum HeatmapScrollDimension
+{
+    Columns,
+    Rows
+}
+
+
+/// <summary>
+/// Create a scrolling heatmap that receives matrix samples directly.
+/// </summary>
+public class ScrollingHeatmapSeriesConfig : SeriesConfig
+{
+    public required int Resolution { get; set; }
+    public required HeatmapScrollDimension ScrollDimension { get; set; }
+    public string? XAxisId { get; set; }
+    public string? YAxisId { get; set; }
+    public PointConfig? Start { get; set; }
+    public PointConfig? Step { get; set; }
+}
+
+/// <summary>
+/// Update editable settings or explicitly remove a scrolling heatmap.
+/// </summary>
+public class UpdateScrollingHeatmapSeriesConfig : UpdateSeriesConfig
+{
+    public PointConfig? Start { get; set; }
+    public PointConfig? Step { get; set; }
 }
 
 /// <summary>

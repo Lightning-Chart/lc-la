@@ -224,4 +224,119 @@ void main() {
       ],
     });
   });
+
+  for (final entry in {
+    HeatmapScrollDimension.columns: 'columns',
+    HeatmapScrollDimension.rows: 'rows',
+  }.entries) {
+    test('serializes scrolling heatmap creation: ${entry.value}', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      final chart = await session.createChart(
+        XYChartConfig(
+          axes: const [
+            AxisConfig(id: 'axis-x', axis: AxisTarget.x),
+            AxisConfig(id: 'axis-y', axis: AxisTarget.y),
+          ],
+          series: [
+            ScrollingHeatmapSeriesConfig(
+              id: 'heatmap',
+              name: 'Intensity',
+              resolution: 3,
+              scrollDimension: entry.key,
+              xAxisId: 'axis-x',
+              yAxisId: 'axis-y',
+              start: const PointConfig(x: 0, y: 0),
+              step: const PointConfig(x: 2, y: 5),
+            ),
+          ],
+        ),
+      );
+
+      expect(transport.fireAndForgetMessages, hasLength(1));
+      final meta = transport.fireAndForgetMessages.single;
+
+      expect(meta['category'], 'config');
+      expect(meta['action'], 'update');
+      expect(meta['chartId'], chart.chartId);
+      expect(meta['params'], {
+        'series': [
+          {
+            'id': 'heatmap',
+            'type': 'scrollingHeatmap',
+            'name': 'Intensity',
+            'resolution': 3,
+            'scrollDimension': entry.value,
+            'xAxisId': 'axis-x',
+            'yAxisId': 'axis-y',
+            'start': {'x': 0, 'y': 0},
+            'step': {'x': 2, 'y': 5},
+          },
+        ],
+      });
+    });
+  }
+
+  test('serializes scrolling heatmap updates and removal', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart(
+      const XYChartConfig(
+        series: [
+          ScrollingHeatmapSeriesConfig(
+            id: 'heatmap',
+            resolution: 3,
+            scrollDimension: HeatmapScrollDimension.columns,
+          ),
+        ],
+      ),
+    );
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          UpdateScrollingHeatmapSeriesConfig(
+            id: 'heatmap',
+            name: '',
+            start: PointConfig(x: 0, y: 10),
+          ),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages, hasLength(2));
+    expect(transport.fireAndForgetMessages.last['params'], {
+      'series': [
+        {
+          'id': 'heatmap',
+          'type': 'scrollingHeatmap',
+          'name': '',
+          'start': {'x': 0, 'y': 10},
+        },
+      ],
+    });
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          UpdateScrollingHeatmapSeriesConfig(id: 'heatmap', remove: true),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages, hasLength(3));
+    expect(transport.fireAndForgetMessages.last['params'], {
+      'series': [
+        {'id': 'heatmap', 'type': 'scrollingHeatmap', 'remove': true},
+      ],
+    });
+  });
 }
