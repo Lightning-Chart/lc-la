@@ -172,8 +172,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                                 Id = SeriesId,
                                 Name = "Simulated spectrum",
                                 Resolution = Resolution,
-                                ScrollDimension =
-                                    HeatmapScrollDimension.Columns,
+                                ScrollDimension = ScrollDimension.Columns,
                                 Start = new PointConfig { X = 0, Y = 0 },
                                 Step = new PointConfig
                                 {

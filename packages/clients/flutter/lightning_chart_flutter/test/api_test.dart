@@ -226,8 +226,8 @@ void main() {
   });
 
   for (final entry in {
-    HeatmapScrollDimension.columns: 'columns',
-    HeatmapScrollDimension.rows: 'rows',
+    ScrollDimension.columns: 'columns',
+    ScrollDimension.rows: 'rows',
   }.entries) {
     test('serializes scrolling heatmap creation: ${entry.value}', () async {
       final transport = _MockTransport();
@@ -294,7 +294,7 @@ void main() {
           ScrollingHeatmapSeriesConfig(
             id: 'heatmap',
             resolution: 3,
-            scrollDimension: HeatmapScrollDimension.columns,
+            scrollDimension: ScrollDimension.columns,
           ),
         ],
       ),

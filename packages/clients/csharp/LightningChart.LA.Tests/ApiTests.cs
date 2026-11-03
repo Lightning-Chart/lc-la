@@ -465,10 +465,10 @@ public class ApiTests
     }
 
     [Theory]
-    [InlineData(HeatmapScrollDimension.Columns, "columns")]
-    [InlineData(HeatmapScrollDimension.Rows, "rows")]
+    [InlineData(ScrollDimension.Columns, "columns")]
+    [InlineData(ScrollDimension.Rows, "rows")]
     public async Task CreateChart_SendsScrollingHeatmapConfiguration(
-        HeatmapScrollDimension dimension, string expectedDimension)
+        ScrollDimension dimension, string expectedDimension)
     {
         var transport = new MockTransport();
         var context = new LclaContext(transport, new LclaLicense { Key = "test-license" });
@@ -539,7 +539,7 @@ public class ApiTests
                 {
                     Id = "heatmap",
                     Resolution = 3,
-                    ScrollDimension = HeatmapScrollDimension.Columns,
+                    ScrollDimension = ScrollDimension.Columns,
                 },
             ],
         });

@@ -420,7 +420,7 @@ public class LclaContext : IAsyncDisposable
                 value["name"] = scrollingHeatmap.Name;
                 value["resolution"] = scrollingHeatmap.Resolution;
                 value["scrollDimension"] = 
-                    scrollingHeatmap.ScrollDimension == HeatmapScrollDimension.Rows ? "rows" : "columns";
+                    scrollingHeatmap.ScrollDimension == ScrollDimension.Rows ? "rows" : "columns";
                 value["xAxisId"] = scrollingHeatmap.XAxisId;
                 value["yAxisId"] = scrollingHeatmap.YAxisId;
                 value["start"] = PointToObject(scrollingHeatmap.Start);
@@ -766,7 +766,7 @@ public class PointConfig
     public required double Y { get; set; }
 }
 
-public enum HeatmapScrollDimension
+public enum ScrollDimension
 {
     Columns,
     Rows
@@ -779,7 +779,7 @@ public enum HeatmapScrollDimension
 public class ScrollingHeatmapSeriesConfig : SeriesConfig
 {
     public required int Resolution { get; set; }
-    public required HeatmapScrollDimension ScrollDimension { get; set; }
+    public required ScrollDimension ScrollDimension { get; set; }
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
     public PointConfig? Start { get; set; }

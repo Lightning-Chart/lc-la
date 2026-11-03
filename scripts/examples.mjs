@@ -6,7 +6,6 @@ export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * Examples contained in this repository.
- * Each directory contains one runnable project.
  */
 export const examples = [
     {

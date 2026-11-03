@@ -373,7 +373,7 @@ class ScrollingHeatmapSeriesConfig extends SeriesConfig {
   });
 
   final int resolution;
-  final HeatmapScrollDimension scrollDimension;
+  final ScrollDimension scrollDimension;
   final String? xAxisId;
   final String? yAxisId;
   final PointConfig? start;
@@ -400,11 +400,11 @@ class PointConfig {
   final double y;
 }
 
-enum HeatmapScrollDimension {
+enum ScrollDimension {
   columns('columns'),
   rows('rows');
 
-  const HeatmapScrollDimension(this.wireValue);
+  const ScrollDimension(this.wireValue);
 
   final String wireValue;
 }
