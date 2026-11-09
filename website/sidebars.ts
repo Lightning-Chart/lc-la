@@ -21,8 +21,8 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'features/context',
-        'features/data-management',
         'features/charts',
+        'features/data-management',
         'features/series',
         'features/axes',
         'features/user-interactions',

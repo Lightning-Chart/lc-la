@@ -24,10 +24,8 @@ The example below sets both default-axis titles and places the default Y axis on
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
 
-After rendering the chart container and initializing the context:
-
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     ContainerId = "signal-chart",
     Axes =
@@ -54,7 +52,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
 After loading the WebView and initializing the context:
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     Axes =
     [
@@ -80,7 +78,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
 After loading the WebView and initializing the context:
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     Axes =
     [
@@ -120,6 +118,9 @@ LightningChart.xy(
       opposite: true,
     ),
   ],
+  onChartCreated: (chart) {
+    _chart = chart;
+  },
 );
 ```
 
@@ -139,7 +140,7 @@ The following example keeps the default Y axis on the left and adds a second Y a
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     ContainerId = "signal-chart",
     Axes =
@@ -163,7 +164,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     Axes =
     [
@@ -186,7 +187,7 @@ var chart = await context.CreateChartAsync(new XYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-var chart = await context.CreateChartAsync(new XYChartConfig
+_chart = await _context.CreateChartAsync(new XYChartConfig
 {
     Axes =
     [
@@ -222,6 +223,9 @@ LightningChart.xy(
       opposite: true,
     ),
   ],
+  onChartCreated: (chart) {
+    _chart = chart;
+  },
 );
 ```
 
@@ -242,7 +246,7 @@ The following is an alternative to creating the additional axis with the chart.
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -261,7 +265,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -280,7 +284,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -298,7 +302,7 @@ chart.Update(new UpdateXYChartConfig
 </TabItem>
 <TabItem value="flutter" label="Flutter">
 
-Use the controller received through `onChartCreated`:
+The following examples use the local `chart` controller obtained as shown in [Updating a chart](./charts#updating-a-chart).
 
 ```dart
 chart.update(
@@ -361,7 +365,7 @@ The following update changes both default-axis titles, configures time ticks on 
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -389,7 +393,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -417,7 +421,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -484,7 +488,7 @@ The following update sets the default X-axis range and the range of a previously
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -514,7 +518,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -544,7 +548,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -617,7 +621,7 @@ The following update configures scrolling with a trailing window of 20 units on 
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -637,7 +641,7 @@ chart.Update(new UpdateXYChartConfig
 To keep scrolling after explicitly setting the current interval:
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -659,7 +663,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -679,7 +683,7 @@ chart.Update(new UpdateXYChartConfig
 To keep scrolling after explicitly setting the current interval:
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -701,7 +705,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -721,7 +725,7 @@ chart.Update(new UpdateXYChartConfig
 To keep scrolling after explicitly setting the current interval:
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -819,7 +823,7 @@ The following removes a previously created, unused additional axis.
 <TabItem value="blazor" label="Blazor">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -836,7 +840,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="maui" label="MAUI">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -853,7 +857,7 @@ chart.Update(new UpdateXYChartConfig
 <TabItem value="uno" label="Uno">
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [

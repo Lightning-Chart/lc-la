@@ -143,39 +143,49 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         {
             _context = CreateContext(_transport);
 
-            _chart = await _context.CreateChartAsync(
-                new XYChartConfig
-                {
-                    ContainerId = "lcla-root",
-                    Title = "",
-                },
-                _lifetime.Token);
-
-            if (_disposed) return;
-
-            _context.ConfigureDataSets(
-            [
-                new DataSetConfig
-                {
-                    Id = DataSetId,
-                    MaxSampleCount = 50_000,
-                    Columns =
-                    [
-                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
-                        new DataSetColumnConfig { Id = "altitude" },
-                        new DataSetColumnConfig { Id = "speed" },
-                        new DataSetColumnConfig { Id = "climb" },
-                    ],
-                },
-            ]);
-
-           _chart.Update(new UpdateXYChartConfig
+            _chart = await _context.CreateChartAsync(new XYChartConfig
             {
+                ContainerId = "lcla-root",
+                Title = "",
+                DataSets =
+                [
+                    new DataSetConfig
+                    {
+                        Id = DataSetId,
+                        MaxSampleCount = 50_000,
+                        Columns =
+                        [
+                            new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                            new DataSetColumnConfig { Id = "altitude" },
+                            new DataSetColumnConfig { Id = "speed" },
+                            new DataSetColumnConfig { Id = "climb" },
+                        ],
+                    },
+                ],
                 Axes =
                 [
-                    new UpdateAxisConfig { Axis = AxisTarget.X, ScrollStrategy = ScrollStrategy.Scrolling },
-                    new AxisConfig { Id = "speed", Axis = AxisTarget.Y, StackIndex = -1 },
-                    new AxisConfig { Id = "climb", Axis = AxisTarget.Y, StackIndex = -2 },
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        ScrollStrategy = ScrollStrategy.Scrolling,
+                    },
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        StackIndex = 0,
+                    },
+                    new AxisConfig
+                    {
+                        Id = "speed",
+                        Axis = AxisTarget.Y,
+                        StackIndex = -1,
+                    },
+                    new AxisConfig
+                    {
+                        Id = "climb",
+                        Axis = AxisTarget.Y,
+                        StackIndex = -2,
+                    },
                 ],
                 Series =
                 [
@@ -209,7 +219,9 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                         Color = "#BBA6F2",
                     },
                 ],
-            });
+            }, _lifetime.Token);
+
+            if (_disposed) return;
 
             _telemetryReady = true;
             StartWhenReady();
@@ -252,6 +264,27 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                         ],
                     }
                 ],
+                Axes =
+                [
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        DefaultInterval = new AxisDefaultIntervalConfig
+                        {
+                            Start = 28.7548,
+                            End = 28.7597,
+                        },
+                    },
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        DefaultInterval = new AxisDefaultIntervalConfig
+                        {
+                            Start = 62.39327,
+                            End = 62.39552,
+                        },
+                    },
+                ],
                 Series =
                 [
                     new LineSeriesConfig
@@ -277,23 +310,6 @@ public sealed partial class MainPage : Page, IAsyncDisposable
             _lifetime.Token);
 
             if (_disposed) return;
-
-            _routeChart.Update(new UpdateXYChartConfig
-            {
-                Axes =
-                [
-                    new UpdateAxisConfig
-                    {
-                        Axis = AxisTarget.X,
-                        DefaultInterval = new AxisDefaultIntervalConfig { Start = 28.7548, End = 28.7597 },
-                    },
-                    new UpdateAxisConfig
-                    {
-                        Axis = AxisTarget.Y,
-                        DefaultInterval = new AxisDefaultIntervalConfig { Start = 62.39327, End = 62.39552 },
-                    },
-                ],
-            });
 
             _routeReady = true;
             StartWhenReady();

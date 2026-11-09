@@ -27,6 +27,8 @@ flutter run -d chrome --dart-define=LCJS_LICENSE_KEY=your-license-key
 Read it when constructing the widget:
 
 ```dart
+import 'package:lightning_chart_flutter/lightning_chart_flutter.dart';
+
 const licenseKey = String.fromEnvironment('LCJS_LICENSE_KEY');
 
 const license = LclaLicense(
@@ -38,9 +40,46 @@ const license = LclaLicense(
 
 `appTitle` and `company` default to trial values. Set both for app deployment licenses.
 
+## Creating a chart
+
+Pass `license` to `LightningChart.xy`. The widget initializes and owns its chart resources; you do not create a separate context.
+
+The following creates a line series using the `"time"` and `"value"` columns of the `"signals"` dataset. Add the widget to your application's layout:
+
+```dart
+LightningChart.xy(
+  license: license,
+  title: 'Signal chart',
+  dataSets: const [
+    DataSetConfig(
+      id: 'signals',
+      maxSampleCount: 1_000_000,
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'signal',
+      dataSetId: 'signals',
+      x: 'time',
+      y: 'value',
+      name: 'Signal',
+    ),
+  ],
+);
+```
+
 ## Historical data
 
 Acquire data through the repository, HTTP client, or file workflow your Flutter application normally uses. Pass the resulting typed arrays as `initialData` when creating the chart.
+
+Here, `signalRepository` represents your application's data source. The following belongs in an asynchronous data-loading method, rather than directly in a widget's synchronous `build` method:
 
 ```dart
 final samples = await signalRepository.loadHistoricalSamples();
@@ -63,7 +102,7 @@ return LightningChart.xy(
   ],
   series: const [
     LineSeriesConfig(
-      id: 'value',
+      id: 'signal',
       dataSetId: 'signals',
       x: 'time',
       y: 'value',
@@ -82,7 +121,9 @@ return LightningChart.xy(
 );
 ```
 
-`timestamps` and `values` are `Float64List` instances with equal lengths.
+`timestamps` and `values` are `Float64List` instances with equal lengths. Timestamps are in milliseconds.
+
+Use your application's asynchronous loading UI, such as a `FutureBuilder`, to display the resulting widget.
 
 ## Real-time data
 
@@ -96,7 +137,9 @@ import 'dart:async';
 StreamSubscription<dynamic>? _subscription;
 ```
 
-The following creates a chart with a ten-second scrolling window and starts listening after the chart is ready:
+Here, `signalRepository.liveBatches` represents your application's incoming data stream. Each batch supplies `timestamps` and `values` as `Float64List` instances, with timestamps in milliseconds.
+
+The following belongs inside the stateful widget's `build` method. It creates a chart with a ten-second scrolling window and starts listening after the chart is ready:
 
 ```dart
 return LightningChart.xy(
@@ -125,7 +168,7 @@ return LightningChart.xy(
   ],
   series: const [
     LineSeriesConfig(
-      id: 'value',
+      id: 'signal',
       dataSetId: 'signals',
       x: 'time',
       y: 'value',
