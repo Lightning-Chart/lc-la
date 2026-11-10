@@ -26,9 +26,17 @@ import type {
   UpdateAxisConfig,
   SeriesConfig,
   UpdateSeriesConfig,
+  LineSeriesConfig,
+  UpdateLineSeriesConfig,
+  ScatterSeriesConfig,
+  UpdateScatterSeriesConfig,
+  LineScatterSeriesConfig,
+  UpdateLineScatterSeriesConfig,
   ScrollStrategy,
+  ScrollingHeatmapSeriesConfig,
+  UpdateScrollingHeatmapSeriesConfig,
 } from '../types.js'
-import { hostState, type DataSetState, type AxisState, type ChartState } from './state.js'
+import { hostState, type DataSetState, type AxisState, type ChartState, } from './state.js'
 
 const DEFAULT_MAX_SAMPLE_COUNT = 2_000_000
 
@@ -182,10 +190,10 @@ function createDataSet(config: DataSetConfig): DataSetState {
 // --- Series management ---
 
 function configureSeries(chartState: ChartState, configs: (SeriesConfig | UpdateSeriesConfig)[], envelopeId: string): ResponseEnvelope {
- for (const seriesConfig of configs) {
+  for (const seriesConfig of configs) {
     const existing = chartState.series.get(seriesConfig.id)
 
-    // Remove only when explicitly requested.
+    // Removal is shared by all series types.
     if ('remove' in seriesConfig && seriesConfig.remove === true) {
       if (!existing) {
         return { id: envelopeId, type: 'error', error: `Series not found: ${seriesConfig.id}` }
@@ -195,101 +203,238 @@ function configureSeries(chartState: ChartState, configs: (SeriesConfig | Update
       continue
     }
 
-    // Existing series retain their type and assigned axes.
-    if (existing) {
-      if (
-        (seriesConfig.type !== undefined &&
-          seriesConfig.type !== (existing.config.type ?? 'line')) ||
-        ('xAxisId' in seriesConfig &&
-          seriesConfig.xAxisId !== undefined &&
-          seriesConfig.xAxisId !== existing.config.xAxisId) ||
-        ('yAxisId' in seriesConfig &&
-          seriesConfig.yAxisId !== undefined &&
-          seriesConfig.yAxisId !== existing.config.yAxisId)
-      ) {
-        return { id: envelopeId, type: 'error', error: 'Series type and assigned axes cannot be changed after creation' }
-      }
+    // Route each series type explicitly.
+    let result: ResponseEnvelope
+
+    switch (seriesConfig.type) {
+      case undefined:
+      case 'line':
+      case 'scatter':
+      case 'line+scatter':
+        result = configurePointLineAreaSeries(chartState, seriesConfig, envelopeId)
+        break
+
+      case 'scrollingHeatmap':
+        result = configureScrollingHeatmapSeries(chartState, seriesConfig, envelopeId)
+        break
+
+      default:
+        return { id: envelopeId, type: 'error', error: 'Unsupported series type' }
     }
 
-    // Omitted bindings retain their existing values.
-    const dataSetId = seriesConfig.dataSetId ?? existing?.config.dataSetId
-    const x = seriesConfig.x ?? existing?.config.x
-    const y = seriesConfig.y ?? existing?.config.y
-
-    if (dataSetId === undefined || x === undefined || y === undefined) {
-      return { id: envelopeId, type: 'error', error: 'A new series requires DataSetId, X, and Y' }
-    }
-
-    const dsState = hostState.getDataSet(chartState.clientId, dataSetId)
-    if (!dsState) {
-      return { id: envelopeId, type: 'error', error: `DataSet not found: ${dataSetId}` }
-    }
-
-    for (const column of [x, y]) {
-      if (!dsState.columns.includes(column)) {
-        return { id: envelopeId, type: 'error', error: `Column "${column}" not found in dataset "${dataSetId}"` }
-      }
-    }
-
-    const config: SeriesConfig = {
-      id: seriesConfig.id,
-      type: seriesConfig.type ?? existing?.config.type ?? 'line',
-      dataSetId,
-      x,
-      y,
-      name: seriesConfig.name ?? existing?.config.name,
-      color: seriesConfig.color ?? existing?.config.color,
-      xAxisId: existing
-        ? existing.config.xAxisId
-        : 'xAxisId' in seriesConfig ? seriesConfig.xAxisId : undefined,
-      yAxisId: existing
-        ? existing.config.yAxisId
-        : 'yAxisId' in seriesConfig ? seriesConfig.yAxisId : undefined,
-    }
-
-    if (existing) {
-      // Rebind the existing series only when its data selection changes.
-      if (
-        existing.config.dataSetId !== config.dataSetId ||
-        existing.config.x !== config.x ||
-        existing.config.y !== config.y
-      ) {
-        existing.series.setDataSet(dsState.dataSet, { x, y })
-      }
-
-      applySeriesStyle(existing.series, config)
-      existing.config = config
-      continue
-    }
-
-    const xAxis = config.xAxisId === undefined ? chartState.defaultXAxis : chartState.axes.get(config.xAxisId)
-    const yAxis = config.yAxisId === undefined ? chartState.defaultYAxis : chartState.axes.get(config.yAxisId)
-
-    if (!xAxis || xAxis.target !== 'x' || !yAxis || yAxis.target !== 'y') {
-      return { id: envelopeId, type: 'error', error: 'Series axis not found or has the wrong orientation' }
-    }
-
-    const series = chartState.chart.addPointLineAreaSeries({
-      xAxis: xAxis.axis,
-      yAxis: yAxis.axis,
-    })
-    series.setDataSet(dsState.dataSet, { x, y })
-    series.setAreaFillStyle(emptyFill)
-    applySeriesStyle(series, config)
-
-    chartState.series.set(config.id, {
-      id: config.id,
-      series,
-      config,
-      xAxis,
-      yAxis,
-    })
+    if (result.type === 'error') return result
   }
 
   return { id: envelopeId, type: 'response' }
 }
 
-function applySeriesStyle(series: PointLineAreaSeries, config: SeriesConfig) {
+// Line, scatter, and line-with-points series share the same LCJS implementation.
+function configurePointLineAreaSeries(
+  chartState: ChartState, 
+  seriesConfig:
+    | LineSeriesConfig
+    | ScatterSeriesConfig
+    | LineScatterSeriesConfig
+    | UpdateLineSeriesConfig
+    | UpdateScatterSeriesConfig
+    | UpdateLineScatterSeriesConfig, 
+  envelopeId: string
+): ResponseEnvelope {
+  const existing = chartState.series.get(seriesConfig.id)
+
+  // This handler accepts only line, scatter, and line-with-points states.
+  if (
+    existing &&
+    existing.type !== 'line' &&
+    existing.type !== 'scatter' &&
+    existing.type !== 'line+scatter'
+  ) {
+    return { id: envelopeId, type: 'error', error: 'Series type cannot be changed after creation' }
+  }
+
+  // Existing series retain their type and assigned axes.
+  if (existing) {
+    if (
+      (seriesConfig.type !== undefined && 
+        seriesConfig.type !== (existing.config.type ?? 'line')) ||
+      ('xAxisId' in seriesConfig &&
+        seriesConfig.xAxisId !== undefined &&
+        seriesConfig.xAxisId !== existing.config.xAxisId) ||
+      ('yAxisId' in seriesConfig &&
+        seriesConfig.yAxisId !== undefined &&
+        seriesConfig.yAxisId !== existing.config.yAxisId)
+    ) {
+      return { id: envelopeId, type: 'error', error: 'Series type and assigned axes cannot be changed after creation' }
+    }
+  }
+
+  // Omitted bindings retain their existing values.
+  const dataSetId = seriesConfig.dataSetId ?? existing?.config.dataSetId
+  const x = seriesConfig.x ?? existing?.config.x
+  const y = seriesConfig.y ?? existing?.config.y
+
+  if (dataSetId === undefined || x === undefined || y === undefined) {
+    return { id: envelopeId, type: 'error', error: 'A new series requires DataSetId, X, and Y' }
+  }
+
+  const dsState = hostState.getDataSet(chartState.clientId, dataSetId)
+  if (!dsState) {
+    return { id: envelopeId, type: 'error', error: `DataSet not found: ${dataSetId}` }
+  }
+
+  for (const column of [x, y]) {
+    if (!dsState.columns.includes(column)) {
+      return { id: envelopeId, type: 'error', error: `Column "${column}" not found in dataset "${dataSetId}"` }
+    }
+  }
+
+  const config: LineSeriesConfig | ScatterSeriesConfig | LineScatterSeriesConfig = {
+    id: seriesConfig.id,
+    type: seriesConfig.type ?? existing?.config.type ?? 'line',
+    dataSetId,
+    x,
+    y,
+    name: seriesConfig.name ?? existing?.config.name,
+    color: seriesConfig.color ?? existing?.config.color,
+    xAxisId: existing
+      ? existing.config.xAxisId
+      : 'xAxisId' in seriesConfig ? seriesConfig.xAxisId : undefined,
+    yAxisId: existing
+      ? existing.config.yAxisId
+      : 'yAxisId' in seriesConfig ? seriesConfig.yAxisId : undefined,
+  }
+
+  if (existing) {
+    // Rebind the existing series only when its data selection changes.
+    if (
+      existing.config.dataSetId !== config.dataSetId ||
+      existing.config.x !== config.x ||
+      existing.config.y !== config.y
+    ) {
+      existing.series.setDataSet(dsState.dataSet, { x, y })
+    }
+
+    applySeriesStyle(existing.series, config)
+    existing.config = config
+    return { id: envelopeId, type: 'response' }
+  }
+
+  const xAxis = config.xAxisId === undefined ? chartState.defaultXAxis : chartState.axes.get(config.xAxisId)
+  const yAxis = config.yAxisId === undefined ? chartState.defaultYAxis : chartState.axes.get(config.yAxisId)
+
+  if (!xAxis || xAxis.target !== 'x' || !yAxis || yAxis.target !== 'y') {
+    return { id: envelopeId, type: 'error', error: 'Series axis not found or has the wrong orientation' }
+  }
+
+  const series = chartState.chart.addPointLineAreaSeries({
+    xAxis: xAxis.axis,
+    yAxis: yAxis.axis,
+  })
+  series.setDataSet(dsState.dataSet, { x, y })
+  series.setAreaFillStyle(emptyFill)
+  applySeriesStyle(series, config)
+
+  const state = { id: config.id, series, xAxis, yAxis }
+
+  // Store the configuration together with its matching state type.
+  switch (config.type) {
+    case undefined:
+    case 'line':
+      chartState.series.set(config.id, { ...state, type: 'line', config })
+      break
+
+    case 'scatter':
+      chartState.series.set(config.id, { ...state, type: 'scatter', config })
+      break
+
+    case 'line+scatter':
+      chartState.series.set(config.id, { ...state, type: 'line+scatter', config })
+      break
+  }
+
+  return { id: envelopeId, type: 'response' }
+}
+
+function configureScrollingHeatmapSeries(
+  chartState: ChartState,
+  seriesConfig: ScrollingHeatmapSeriesConfig | UpdateScrollingHeatmapSeriesConfig,
+  envelopeId: string
+): ResponseEnvelope {
+  const existing = chartState.series.get(seriesConfig.id)
+  
+  if (existing) {
+    if (existing.type !== 'scrollingHeatmap') {
+      return { id: envelopeId, type: 'error', error: 'Series type cannot be changed after creation' } 
+    }
+
+    // Shape and assigned axes are creation-only settings.
+    if (
+      ('resolution' in seriesConfig &&
+        seriesConfig.resolution !== existing.config.resolution) ||
+      ('scrollDimension' in seriesConfig &&
+        seriesConfig.scrollDimension !== existing.config.scrollDimension) ||
+      ('xAxisId' in seriesConfig &&
+        seriesConfig.xAxisId !== undefined &&
+        seriesConfig.xAxisId !== existing.config.xAxisId) ||
+      ('yAxisId' in seriesConfig &&
+        seriesConfig.yAxisId !== undefined &&
+        seriesConfig.yAxisId !== existing.config.yAxisId)
+    ) {
+      return {
+        id: envelopeId,
+        type: 'error',
+        error: 'Heatmap shape and assigned axes cannot be changed after creation',
+      }
+    }
+
+    if (seriesConfig.name !== undefined) existing.series.setName(seriesConfig.name)
+    if (seriesConfig.start !== undefined) existing.series.setStart(seriesConfig.start)
+    if (seriesConfig.step !== undefined) existing.series.setStep(seriesConfig.step)
+
+    return { id: envelopeId, type:'response' }
+  }
+
+  if (!('resolution' in seriesConfig) || !('scrollDimension' in seriesConfig)) {
+    return { id: envelopeId, type: 'error', error: 'A new scrolling heatmap requires resolution and scrollDimension' }
+  }
+
+  const xAxis = seriesConfig.xAxisId === undefined
+    ? chartState.defaultXAxis
+    : chartState.axes.get(seriesConfig.xAxisId)
+
+  const yAxis = seriesConfig.yAxisId === undefined
+    ? chartState.defaultYAxis
+    : chartState.axes.get(seriesConfig.yAxisId)
+
+  if (!xAxis || xAxis.target !== 'x' || !yAxis || yAxis.target !== 'y') {
+    return { id: envelopeId, type: 'error', error: 'Series axis not found or has the wrong orientation' }
+  }
+
+  const series = chartState.chart.addHeatmapScrollingGridSeries({
+    heatmapDataType: 'intensity',
+    resolution: seriesConfig.resolution,
+    scrollDimension: seriesConfig.scrollDimension,
+    xAxis: xAxis.axis,
+    yAxis: yAxis.axis,
+  })
+
+  if (seriesConfig.name !== undefined) series.setName(seriesConfig.name)
+  if (seriesConfig.start !== undefined) series.setStart(seriesConfig.start)
+  if (seriesConfig.step !== undefined) series.setStep(seriesConfig.step)
+
+  chartState.series.set(seriesConfig.id, {
+    type: 'scrollingHeatmap',
+    id: seriesConfig.id,
+    series,
+    config: { ...seriesConfig },
+    xAxis,
+    yAxis,
+  })
+
+  return {id: envelopeId, type: 'response' }
+}
+
+function applySeriesStyle(series: PointLineAreaSeries, config: LineSeriesConfig | ScatterSeriesConfig | LineScatterSeriesConfig) {
   if (config.name !== undefined) series.setName(config.name)
   const color = config.color ? ColorHEX(config.color) : undefined
   const type = config.type ?? 'line'
@@ -303,7 +448,7 @@ function applySeriesStyle(series: PointLineAreaSeries, config: SeriesConfig) {
   if (type === 'scatter') {
     series.setStrokeStyle(emptyLine)
   } else if (series.getStrokeStyle() === emptyLine) {
-    // Restore the line using the current point color
+    // Restore the line using the current point color.
     series.setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: series.getPointFillStyle() }))
   }
 

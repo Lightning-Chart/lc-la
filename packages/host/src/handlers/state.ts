@@ -2,11 +2,27 @@
  * Host state: manages LCJS chart instances, datasets, axes, and series.
  *
  * Datasets are shared within a client context.
- * Each series maps dataset columns to X and Y and references its axes.
+ * Series reference their axes. Dataset-backed series also map named columns.
  */
 
-import type { Axis, ChartXY, PointLineAreaSeries, LightningChart, DataSetXY, OfficialTheme } from '@lightningchart/lcjs'
-import type { AxisTarget, AxisConfig, SeriesConfig } from '../types.js'
+import type { 
+    Axis, 
+    ChartXY, 
+    PointLineAreaSeries, 
+    HeatmapScrollingGridSeriesIntensityValues, 
+    LightningChart, 
+    DataSetXY, 
+    OfficialTheme 
+} from '@lightningchart/lcjs'
+import type { 
+    AxisTarget, 
+    AxisConfig, 
+    LineSeriesConfig,
+    ScatterSeriesConfig,
+    LineScatterSeriesConfig,
+    ScrollingHeatmapSeriesConfig, 
+} from '../types.js'
+
 export interface DataSetState {
   id: string
   dataSet: DataSetXY
@@ -19,13 +35,48 @@ export interface AxisState {
   config: AxisConfig
 }
 
-export interface SeriesState {
+export interface LineSeriesState {
+  type: 'line'
   id: string
   series: PointLineAreaSeries
-  config: SeriesConfig
+  config: LineSeriesConfig
   xAxis: AxisState
   yAxis: AxisState
 }
+
+export interface ScatterSeriesState {
+  type: 'scatter'
+  id: string
+  series: PointLineAreaSeries
+  config: ScatterSeriesConfig
+  xAxis: AxisState
+  yAxis: AxisState
+}
+
+export interface LineScatterSeriesState {
+  type: 'line+scatter'
+  id: string
+  series: PointLineAreaSeries
+  config: LineScatterSeriesConfig
+  xAxis: AxisState
+  yAxis: AxisState
+}
+
+export interface ScrollingHeatmapSeriesState {
+  type: 'scrollingHeatmap'
+  id: string
+  series: HeatmapScrollingGridSeriesIntensityValues
+  config: ScrollingHeatmapSeriesConfig
+  xAxis: AxisState
+  yAxis: AxisState
+}
+
+// Each entry identifies its series type and corresponding configuration.
+export type SeriesState =
+  | LineSeriesState
+  | ScatterSeriesState
+  | LineScatterSeriesState
+  | ScrollingHeatmapSeriesState
 
 export interface ChartState {
   id: string
@@ -104,7 +155,9 @@ export class HostState {
     for (const chart of this.charts.values()) {
       if (chart.clientId !== clientId) continue
       for (const series of chart.series.values()) {
-        if (series.config.dataSetId === dataSetId) return true
+        if ('dataSetId' in series.config && series.config.dataSetId === dataSetId) {
+            return true
+        }
       }
     }
     return false

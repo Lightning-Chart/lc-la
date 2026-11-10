@@ -360,6 +360,55 @@ class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
   final String? color;
 }
 
+class ScrollingHeatmapSeriesConfig extends SeriesConfig {
+  const ScrollingHeatmapSeriesConfig({
+    required super.id,
+    super.name,
+    required this.resolution,
+    required this.scrollDimension,
+    this.xAxisId,
+    this.yAxisId,
+    this.start,
+    this.step,
+  });
+
+  final int resolution;
+  final ScrollDimension scrollDimension;
+  final String? xAxisId;
+  final String? yAxisId;
+  final PointConfig? start;
+  final PointConfig? step;
+}
+
+class UpdateScrollingHeatmapSeriesConfig extends UpdateSeriesConfig {
+  const UpdateScrollingHeatmapSeriesConfig({
+    required super.id,
+    super.name,
+    super.remove,
+    this.start,
+    this.step,
+  });
+
+  final PointConfig? start;
+  final PointConfig? step;
+}
+
+class PointConfig {
+  const PointConfig({required this.x, required this.y});
+
+  final double x;
+  final double y;
+}
+
+enum ScrollDimension {
+  columns('columns'),
+  rows('rows');
+
+  const ScrollDimension(this.wireValue);
+
+  final String wireValue;
+}
+
 enum ScrollStrategy {
   scrolling('scrolling'),
   fitting('fitting'),
@@ -417,4 +466,39 @@ class ClearDataOptions {
   const ClearDataOptions({required this.dataSetId});
 
   final String dataSetId;
+}
+
+class SetMatrixDataOptions {
+  const SetMatrixDataOptions({required this.seriesId, required this.values});
+
+  final String seriesId;
+  final Float32List values;
+}
+
+class InvalidateMatrixDataOptions {
+  const InvalidateMatrixDataOptions({
+    required this.seriesId,
+    required this.iColumn,
+    required this.iRow,
+    required this.columns,
+    required this.rows,
+    required this.values,
+  });
+
+  final String seriesId;
+  final int iColumn;
+  final int iRow;
+  final int columns;
+  final int rows;
+  final Float32List values;
+}
+
+class AppendMatrixDataOptions {
+  const AppendMatrixDataOptions({
+    required this.seriesId,
+    required this.samples,
+  });
+
+  final String seriesId;
+  final List<Float32List> samples;
 }

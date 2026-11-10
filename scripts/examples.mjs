@@ -6,23 +6,22 @@ export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * Examples contained in this repository.
- * Each directory contains one runnable project.
  */
 export const examples = [
-    {
-        name: 'BlazorServerEcg',
-        client: 'blazor-server',
-        label: 'Multiple ECG streams',
-        directory: 'examples/blazor-server/BlazorServerEcg',
-        project: 'BlazorServerEcg.csproj',
-        steps: [['dotnet', 'build']],
-    },
     {
         name: 'BlazorServerComparison',
         client: 'blazor-server',
         label: 'Charting tool comparison',
         directory: 'examples/blazor-server/BlazorServerComparison',
         project: 'BlazorServerComparison.csproj',
+        steps: [['dotnet', 'build']],
+    },
+    {
+        name: 'BlazorServerEcg',
+        client: 'blazor-server',
+        label: 'Multiple ECG streams',
+        directory: 'examples/blazor-server/BlazorServerEcg',
+        project: 'BlazorServerEcg.csproj',
         steps: [['dotnet', 'build']],
     },
     {
@@ -34,11 +33,11 @@ export const examples = [
         steps: [['dotnet', 'build']],
     },
     {
-        name: 'MauiVitalSigns',
+        name: 'MauiHeatmaps',
         client: 'maui',
-        label: 'Patient vital signs',
-        directory: 'examples/maui/MauiVitalSigns',
-        project: 'MauiVitalSigns.csproj',
+        label: 'Heatmaps',
+        directory: 'examples/maui/MauiHeatmaps',
+        project: 'MauiHeatmaps.csproj',
         framework: 'net10.0-windows10.0.19041.0',
         steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
         platform: 'win32',
@@ -49,6 +48,16 @@ export const examples = [
         label: 'Multiple axes',
         directory: 'examples/maui/MauiMultipleAxes',
         project: 'MauiMultipleAxes.csproj',
+        framework: 'net10.0-windows10.0.19041.0',
+        steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
+        platform: 'win32',
+    },
+    {
+        name: 'MauiVitalSigns',
+        client: 'maui',
+        label: 'Patient vital signs',
+        directory: 'examples/maui/MauiVitalSigns',
+        project: 'MauiVitalSigns.csproj',
         framework: 'net10.0-windows10.0.19041.0',
         steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
         platform: 'win32',

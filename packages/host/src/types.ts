@@ -9,6 +9,7 @@ export interface MessageEnvelope {
   clientId?: string
   chartId?: string
   dataSetId?: string
+  seriesId?: string
   params?: Record<string, unknown>
 }
 
@@ -162,15 +163,39 @@ export interface LineScatterSeriesConfig {
   color?: string
 }
 
+// Scrolling heatmaps receive matrix samples directly, without a dataset
+export interface ScrollingHeatmapSeriesConfig {
+  id: string
+  type: 'scrollingHeatmap'
+  name?: string
+  resolution: number
+  scrollDimension: 'columns' | 'rows'
+  xAxisId?: string
+  yAxisId?: string
+  start?: { x: number; y: number }
+  step?: { x: number; y: number }
+}
+
+export interface UpdateScrollingHeatmapSeriesConfig {
+  id: string
+  type: 'scrollingHeatmap'
+  name?: string
+  start?: { x: number; y: number }
+  step?: { x: number; y: number }
+  remove?: boolean
+}
+
 export type SeriesConfig =
   | LineSeriesConfig
   | ScatterSeriesConfig
   | LineScatterSeriesConfig
+  | ScrollingHeatmapSeriesConfig
 
 export type UpdateSeriesConfig =
   | UpdateLineSeriesConfig
   | UpdateScatterSeriesConfig
   | UpdateLineScatterSeriesConfig
+  | UpdateScrollingHeatmapSeriesConfig
 
 // Chart creation
 export interface XYChartConfig {
@@ -191,4 +216,20 @@ export interface UpdateXYChartConfig {
   dataSets?: (DataSetConfig | UpdateDataSetConfig)[]
   axes?: (AxisConfig | UpdateAxisConfig)[]
   series?: (SeriesConfig | UpdateSeriesConfig)[]
+}
+
+// Matrix data actions (data/setMatrix, data/invalidateMatrix, data/appendMatrix).
+// Target a series by seriesId. Values are always a flat float32 BIJ part named "values",
+// interpreted in the dataOrder / scrollDimension the series was created with.
+
+export interface InvalidateMatrixParams {
+  iColumn: number
+  iRow: number
+  columns: number
+  rows: number
+}
+
+export interface AppendMatrixParams {
+  /** Number of values per appended sample (= series resolution). values.length must be a multiple of it. */
+  sampleLength: number
 }
