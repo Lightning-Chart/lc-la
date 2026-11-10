@@ -47,50 +47,92 @@ enum LclaTheme {
   final String wireValue;
 }
 
+/// Configuration for creating an XY chart.
 class XYChartConfig {
   const XYChartConfig({
     this.title,
     this.containerId,
     this.dataSets,
-    this.channels,
+    this.axes,
+    this.series,
     this.animationsEnabled,
   });
 
   final String? title;
   final String? containerId;
   final List<DataSetConfig>? dataSets;
-  final List<ChannelConfig>? channels;
+
+  /// The first X/Y entries configure the default axes.
+  /// Omit this list to use the normal default axes.
+  /// Additional axes require an ID.
+  final List<AxisConfig>? axes;
+  final List<SeriesConfig>? series;
   final bool? animationsEnabled;
 
   XYChartConfig copyWith({
     String? title,
     String? containerId,
     List<DataSetConfig>? dataSets,
-    List<ChannelConfig>? channels,
+    List<AxisConfig>? axes,
+    List<SeriesConfig>? series,
     bool? animationsEnabled,
   }) {
     return XYChartConfig(
       title: title ?? this.title,
       containerId: containerId ?? this.containerId,
       dataSets: dataSets ?? this.dataSets,
-      channels: channels ?? this.channels,
+      axes: axes ?? this.axes,
+      series: series ?? this.series,
       animationsEnabled: animationsEnabled ?? this.animationsEnabled,
     );
   }
 }
 
-class DataSetConfig {
+/// Update a chart. Omitted objects and properties remain unchanged.
+/// Creation configurations add objects.
+/// Update configurations modify existing objects or explicitly remove them.
+class UpdateXYChartConfig {
+  const UpdateXYChartConfig({
+    this.title,
+    this.dataSets,
+    this.axes,
+    this.series,
+  });
+
+  final String? title;
+  final List<IDataSetConfig>? dataSets;
+  final List<IAxisConfig>? axes;
+  final List<ISeriesConfig>? series;
+}
+
+/// Dataset creation or update configuration.
+abstract interface class IDataSetConfig {}
+
+/// Create a dataset with named columns.
+/// Columns cannot be changed after creation.
+class DataSetConfig implements IDataSetConfig {
   const DataSetConfig({
     required this.id,
     required this.columns,
-    this.xDataPattern,
     this.maxSampleCount,
   });
 
   final String id;
-  final DataPattern? xDataPattern;
   final List<DataSetColumnConfig> columns;
   final int? maxSampleCount;
+}
+
+/// Update maximum number of samples in dataset or remove a dataset.
+class UpdateDataSetConfig implements IDataSetConfig {
+  const UpdateDataSetConfig({
+    required this.id,
+    this.maxSampleCount,
+    this.remove,
+  });
+
+  final String id;
+  final int? maxSampleCount;
+  final bool? remove;
 }
 
 class DataSetColumnConfig {
@@ -110,34 +152,212 @@ enum DataPattern {
   final String? wireValue;
 }
 
-class ChannelConfig {
-  const ChannelConfig({
-    required this.id,
-    required this.dataSetId,
-    required this.column,
-    this.name,
-    this.color,
-    this.type = ChannelType.line,
-    this.stackIndex,
+class AxisIntervalConfig {
+  const AxisIntervalConfig({
+    this.start,
+    this.end,
+    this.animate,
+    this.stopAxisAfter,
   });
 
-  final String id;
-  final String dataSetId;
-  final String column;
-  final String? name;
-  final String? color;
-  final ChannelType type;
-  final int? stackIndex;
+  final double? start;
+  final double? end;
+  final bool? animate;
+  final bool? stopAxisAfter;
 }
 
-enum ChannelType {
-  line('line'),
-  scatter('scatter'),
-  lineScatter('line+scatter');
+class AxisDefaultIntervalConfig {
+  const AxisDefaultIntervalConfig({this.start, this.end, this.length});
 
-  const ChannelType(this.wireValue);
+  final double? start;
+  final double? end;
+  final double? length;
+}
 
-  final String wireValue;
+/// Axis creation or update configuration.
+abstract interface class IAxisConfig {}
+
+/// At chart creation, the first X/Y entries configure the default axes.
+/// Additional axes require an ID.
+class AxisConfig implements IAxisConfig {
+  const AxisConfig({
+    this.id,
+    required this.axis,
+    this.title,
+    this.opposite,
+    this.stackIndex,
+    this.parallelIndex,
+    this.interval,
+    this.defaultInterval,
+    this.tickStrategy,
+    this.scrollStrategy,
+  });
+
+  final String? id;
+  final AxisTarget axis;
+  final String? title;
+  final bool? opposite;
+  final int? stackIndex;
+  final int? parallelIndex;
+  final AxisIntervalConfig? interval;
+  final AxisDefaultIntervalConfig? defaultInterval;
+  final TickStrategy? tickStrategy;
+  final ScrollStrategy? scrollStrategy;
+}
+
+/// Update an axis by ID, or select a default axis using axis.
+/// Omitted settings remain unchanged.
+class UpdateAxisConfig implements IAxisConfig {
+  const UpdateAxisConfig({
+    this.id,
+    this.axis,
+    this.title,
+    this.interval,
+    this.defaultInterval,
+    this.tickStrategy,
+    this.scrollStrategy,
+    this.remove,
+  });
+
+  final String? id;
+  final AxisTarget? axis;
+  final String? title;
+  final AxisIntervalConfig? interval;
+  final AxisDefaultIntervalConfig? defaultInterval;
+  final TickStrategy? tickStrategy;
+  final ScrollStrategy? scrollStrategy;
+  final bool? remove;
+}
+
+/// Series creation or update configuration.
+abstract interface class ISeriesConfig {}
+
+abstract class SeriesConfig implements ISeriesConfig {
+  const SeriesConfig({required this.id, this.name});
+
+  final String id;
+  final String? name;
+}
+
+/// Update an existing series by ID.
+/// Omitted settings remain unchanged.
+abstract class UpdateSeriesConfig implements ISeriesConfig {
+  const UpdateSeriesConfig({required this.id, this.name, this.remove});
+
+  final String id;
+  final String? name;
+  final bool? remove;
+}
+
+class LineSeriesConfig extends SeriesConfig {
+  const LineSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+}
+
+class UpdateLineSeriesConfig extends UpdateSeriesConfig {
+  const UpdateLineSeriesConfig({
+    required super.id,
+    super.name,
+    super.remove,
+    this.dataSetId,
+    this.x,
+    this.y,
+    this.color,
+  });
+
+  final String? dataSetId;
+  final String? x;
+  final String? y;
+  final String? color;
+}
+
+class ScatterSeriesConfig extends SeriesConfig {
+  const ScatterSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+}
+
+class UpdateScatterSeriesConfig extends UpdateSeriesConfig {
+  const UpdateScatterSeriesConfig({
+    required super.id,
+    super.name,
+    super.remove,
+    this.dataSetId,
+    this.x,
+    this.y,
+    this.color,
+  });
+
+  final String? dataSetId;
+  final String? x;
+  final String? y;
+  final String? color;
+}
+
+class LineScatterSeriesConfig extends SeriesConfig {
+  const LineScatterSeriesConfig({
+    required super.id,
+    super.name,
+    required this.dataSetId,
+    required this.x,
+    required this.y,
+    this.xAxisId,
+    this.yAxisId,
+    this.color,
+  });
+
+  final String dataSetId;
+  final String x;
+  final String y;
+  final String? xAxisId;
+  final String? yAxisId;
+  final String? color;
+}
+
+class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
+  const UpdateLineScatterSeriesConfig({
+    required super.id,
+    super.name,
+    super.remove,
+    this.dataSetId,
+    this.x,
+    this.y,
+    this.color,
+  });
+
+  final String? dataSetId;
+  final String? x;
+  final String? y;
+  final String? color;
 }
 
 enum ScrollStrategy {
@@ -169,75 +389,14 @@ enum TickStrategy {
   final String wireValue;
 }
 
-class SetTitleOptions {
-  const SetTitleOptions({required this.title});
-
-  final String title;
-}
-
-class SetScrollStrategyOptions {
-  const SetScrollStrategyOptions({this.axisX, this.axisY});
-
-  final ScrollStrategy? axisX;
-  final ScrollStrategy? axisY;
-}
-
-class SetAxisIntervalOptions {
-  const SetAxisIntervalOptions({
-    required this.axis,
-    this.start,
-    this.end,
-    this.stackIndex,
-    this.animate,
-    this.stopAxisAfter,
-  });
-
-  final AxisTarget axis;
-  final double? start;
-  final double? end;
-  final int? stackIndex;
-  final bool? animate;
-  final bool? stopAxisAfter;
-}
-
-class SetDefaultAxisIntervalOptions {
-  const SetDefaultAxisIntervalOptions({
-    required this.axis,
-    this.start,
-    this.end,
-    this.length,
-    this.stackIndex,
-  });
-
-  final AxisTarget axis;
-  final double? start;
-  final double? end;
-  final double? length;
-  final int? stackIndex;
-}
-
-class SetTickStrategyOptions {
-  const SetTickStrategyOptions({
-    required this.axis,
-    required this.strategy,
-    this.stackIndex,
-  });
-
-  final AxisTarget axis;
-  final TickStrategy strategy;
-  final int? stackIndex;
-}
-
 class SetDataOptions {
   const SetDataOptions({
     required this.dataSetId,
-    required this.x,
     required this.columns,
     this.maxSampleCount,
   });
 
   final String dataSetId;
-  final Float64List x;
   final Map<String, Float64List> columns;
   final int? maxSampleCount;
 }
@@ -245,13 +404,11 @@ class SetDataOptions {
 class AppendDataOptions {
   const AppendDataOptions({
     required this.dataSetId,
-    required this.x,
     required this.columns,
     this.maxSampleCount,
   });
 
   final String dataSetId;
-  final Float64List x;
   final Map<String, Float64List> columns;
   final int? maxSampleCount;
 }

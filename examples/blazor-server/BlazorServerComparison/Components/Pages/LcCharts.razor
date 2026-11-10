@@ -124,20 +124,36 @@
                 new DataSetConfig
                 {
                     Id = "static-data",
-                    XDataPattern = DataPattern.Progressive,
-                    MaxSampleCount = 2_000_000,
-                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                        new DataSetColumnConfig { Id = "value" },
+                    ],
                 },
             ],
-            Channels =
+            Axes =
             [
-                new ChannelConfig
+                new AxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    TickStrategy = TickStrategy.Numeric,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
+                },
+                new AxisConfig
+                {
+                    Axis = AxisTarget.Y,
+                    Interval = new AxisIntervalConfig { Start = -1.25, End = 1.25 },
+                },
+            ],
+            Series =
+            [
+                new LineSeriesConfig
                 {
                     Id = "static-value",
                     DataSetId = "static-data",
-                    Column = "value",
+                    X = "time",
+                    Y = "value",
                     Name = "Value",
-                    Type = ChannelType.Line,
                     Color = "#f4b942",
                 },
             ],
@@ -148,29 +164,11 @@
         _staticChart.SetData(new SetDataOptions
         {
             DataSetId = "static-data",
-            X = historicalData.X,
             Columns = new Dictionary<string, double[]>
             {
+                ["time"] = historicalData.X,
                 ["value"] = historicalData.Y,
             },
-        });
-
-        _staticChart.SetTickStrategy(new SetTickStrategyOptions
-        {
-            Axis = AxisTarget.X,
-            Strategy = TickStrategy.Numeric,
-        });
-        _staticChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
-        {
-            Axis = AxisTarget.X,
-            Length = 5,
-        });
-        _staticChart.SetAxisInterval(new SetAxisIntervalOptions
-        {
-            Axis = AxisTarget.Y,
-            Start = -1.25,
-            End = 1.25,
-            Animate = false,
         });
 
         _realtimeChart = await _context.CreateChartAsync(new XYChartConfig
@@ -182,39 +180,39 @@
                 new DataSetConfig
                 {
                     Id = "realtime-data",
-                    XDataPattern = DataPattern.Progressive,
-                    MaxSampleCount = 2_000_000,
-                    Columns = [new DataSetColumnConfig { Id = "value" }],
+                    Columns =
+                    [
+                        new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                        new DataSetColumnConfig { Id = "value" },
+                    ],
                 },
             ],
-            Channels =
+            Axes =
             [
-                new ChannelConfig
+                new AxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    ScrollStrategy = ScrollStrategy.Scrolling,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
+                },
+                new AxisConfig
+                {
+                    Axis = AxisTarget.Y,
+                    Interval = new AxisIntervalConfig { Start = -1.25, End = 1.25, Animate = true },
+                },
+            ],
+            Series =
+            [
+                new LineSeriesConfig
                 {
                     Id = "realtime-value",
                     DataSetId = "realtime-data",
-                    Column = "value",
+                    X = "time",
+                    Y = "value",
                     Name = "Value",
-                    Type = ChannelType.Line,
                     Color = "#f4b942",
                 },
             ],
-        });
-        _realtimeChart.SetScrollStrategy(new SetScrollStrategyOptions
-        {
-            AxisX = ScrollStrategy.Scrolling,
-        });
-        _realtimeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions
-        {
-            Axis = AxisTarget.X,
-            Length = 5,
-        });
-        _realtimeChart.SetAxisInterval(new SetAxisIntervalOptions
-        {
-            Axis = AxisTarget.Y,
-            Start = -1.25,
-            End = 1.25,
-            Animate = true,
         });
 
         _ready = true;
@@ -249,9 +247,9 @@
                     _realtimeChart.AppendData(new AppendDataOptions
                     {
                         DataSetId = "realtime-data",
-                        X = batch.X,
                         Columns = new Dictionary<string, double[]>
                         {
+                            ["time"] = batch.X,
                             ["value"] = batch.Y,
                         },
                     });

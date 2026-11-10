@@ -29,11 +29,16 @@ class LclaChartSession {
 
     final id = _nextMessageId();
     final params = <String, Object?>{'type': 'xy'};
-    if (config?.containerId != null) {
-      params['containerId'] = config!.containerId;
-    }
-    if (config?.animationsEnabled != null) {
-      params['animationsEnabled'] = config!.animationsEnabled;
+
+    // Include chart and axis settings needed during creation.
+    if (config != null) {
+      params.addAll(
+        _removeNulls({
+          'containerId': config.containerId,
+          'animationsEnabled': config.animationsEnabled,
+          'axes': config.axes?.map(_axisToJson).toList(growable: false),
+        }),
+      );
     }
 
     final response = await _transport.send(
@@ -54,15 +59,16 @@ class LclaChartSession {
     final chart = LclaChart._(this, result['chartId']! as String);
     _charts.add(chart);
 
+    // Queue initial title, datasets, and series in order.
     if (config != null) {
       if (config.title != null) {
-        chart.setTitle(SetTitleOptions(title: config.title!));
+        chart.update(UpdateXYChartConfig(title: config.title));
       }
       if (config.dataSets != null && config.dataSets!.isNotEmpty) {
-        chart.configureDataSets(config.dataSets!);
+        chart.update(UpdateXYChartConfig(dataSets: config.dataSets));
       }
-      if (config.channels != null && config.channels!.isNotEmpty) {
-        chart.configureChannels(config.channels!);
+      if (config.series != null && config.series!.isNotEmpty) {
+        chart.update(UpdateXYChartConfig(series: config.series));
       }
     }
 
@@ -76,7 +82,7 @@ class LclaChartSession {
     _charts.clear();
   }
 
-  void configureDataSets(List<DataSetConfig> dataSets) {
+  void configureDataSets(List<IDataSetConfig> dataSets) {
     _sendFireAndForget([
       BijPart.json('meta', {
         'id': _nextMessageId(),
@@ -93,14 +99,12 @@ class LclaChartSession {
   void setData(SetDataOptions options) => _sendData(
     'set',
     options.dataSetId,
-    options.x,
     options.columns,
     options.maxSampleCount,
   );
   void appendData(AppendDataOptions options) => _sendData(
     'append',
     options.dataSetId,
-    options.x,
     options.columns,
     options.maxSampleCount,
   );
@@ -156,7 +160,6 @@ class LclaChartSession {
   void _sendData(
     String action,
     String dataSetId,
-    Float64List x,
     Map<String, Float64List> columns,
     int? maxSampleCount,
   ) {
@@ -172,7 +175,6 @@ class LclaChartSession {
     }
     _sendFireAndForget([
       BijPart.json('meta', meta),
-      BijPart.float64('x', x),
       ...columns.entries.map(
         (entry) => BijPart.float64(entry.key, entry.value),
       ),
@@ -206,117 +208,26 @@ class LclaChart {
   final String chartId;
   var _disposed = false;
 
-  void setTitle(SetTitleOptions options) {
+  /// Update the chart and its datasets, axes, and series.
+  /// Omitted objects and properties remain unchanged.
+  void update(UpdateXYChartConfig config) {
     _throwIfDisposed();
-    _client._sendFireAndForget([
-      BijPart.json('meta', {
-        'id': _client._nextMessageId(),
-        'category': 'config',
-        'action': 'title',
-        'clientId': _client._clientId,
-        'chartId': chartId,
-        'params': {'title': options.title},
-      }),
-    ]);
-  }
 
-  void setScrollStrategy(SetScrollStrategyOptions options) {
-    _throwIfDisposed();
-    final params = <String, Object?>{};
-    if (options.axisX != null) {
-      params['axisX'] = options.axisX!.wireValue;
-    }
-    if (options.axisY != null) {
-      params['axisY'] = options.axisY!.wireValue;
-    }
+    final params = _removeNulls({
+      'title': config.title,
+      'dataSets': config.dataSets?.map(_dataSetToJson).toList(growable: false),
+      'axes': config.axes?.map(_axisToJson).toList(growable: false),
+      'series': config.series?.map(_seriesToJson).toList(growable: false),
+    });
+
     _client._sendFireAndForget([
       BijPart.json('meta', {
         'id': _client._nextMessageId(),
         'category': 'config',
-        'action': 'scrollStrategy',
+        'action': 'update',
         'clientId': _client._clientId,
         'chartId': chartId,
         'params': params,
-      }),
-    ]);
-  }
-
-  void setAxisInterval(SetAxisIntervalOptions options) {
-    _throwIfDisposed();
-    _client._sendFireAndForget([
-      BijPart.json('meta', {
-        'id': _client._nextMessageId(),
-        'category': 'config',
-        'action': 'axisInterval',
-        'clientId': _client._clientId,
-        'chartId': chartId,
-        'params': _removeNulls({
-          'axis': options.axis.wireValue,
-          'start': options.start,
-          'end': options.end,
-          'stackIndex': options.stackIndex,
-          'animate': options.animate,
-          'stopAxisAfter': options.stopAxisAfter,
-        }),
-      }),
-    ]);
-  }
-
-  void setDefaultAxisInterval(SetDefaultAxisIntervalOptions options) {
-    _throwIfDisposed();
-    _client._sendFireAndForget([
-      BijPart.json('meta', {
-        'id': _client._nextMessageId(),
-        'category': 'config',
-        'action': 'defaultAxisInterval',
-        'clientId': _client._clientId,
-        'chartId': chartId,
-        'params': _removeNulls({
-          'axis': options.axis.wireValue,
-          'start': options.start,
-          'end': options.end,
-          'length': options.length,
-          'stackIndex': options.stackIndex,
-        }),
-      }),
-    ]);
-  }
-
-  void setTickStrategy(SetTickStrategyOptions options) {
-    _throwIfDisposed();
-    _client._sendFireAndForget([
-      BijPart.json('meta', {
-        'id': _client._nextMessageId(),
-        'category': 'config',
-        'action': 'tickStrategy',
-        'clientId': _client._clientId,
-        'chartId': chartId,
-        'params': _removeNulls({
-          'axis': options.axis.wireValue,
-          'strategy': options.strategy.wireValue,
-          'stackIndex': options.stackIndex,
-        }),
-      }),
-    ]);
-  }
-
-  void configureDataSets(List<DataSetConfig> dataSets) {
-    _throwIfDisposed();
-    _client.configureDataSets(dataSets);
-  }
-
-  void configureChannels(List<ChannelConfig> channels) {
-    _throwIfDisposed();
-    _client._sendFireAndForget([
-      BijPart.json('meta', {
-        'id': _client._nextMessageId(),
-        'category': 'config',
-        'action': 'channels',
-        'clientId': _client._clientId,
-        'chartId': chartId,
-        'params': {
-          'channels': channels.map(_channelToJson).toList(growable: false),
-        },
       }),
     ]);
   }
@@ -359,32 +270,177 @@ class LclaChart {
   }
 }
 
-Map<String, Object?> _dataSetToJson(DataSetConfig dataSet) {
+Map<String, Object?> _dataSetToJson(IDataSetConfig config) {
+  switch (config) {
+    case DataSetConfig():
+      return _removeNulls({
+        'id': config.id,
+        'columns': config.columns
+            .map(
+              (column) => _removeNulls({
+                'id': column.id,
+                'dataPattern': column.dataPattern?.wireValue,
+              }),
+            )
+            .toList(growable: false),
+        'maxSampleCount': config.maxSampleCount,
+      });
+
+    case UpdateDataSetConfig():
+      return _removeNulls({
+        'id': config.id,
+        'maxSampleCount': config.maxSampleCount,
+        'remove': config.remove,
+      });
+
+    default:
+      throw UnsupportedError(
+        'Serialization is not implemented for ${config.runtimeType}.',
+      );
+  }
+}
+
+Map<String, Object?> _axisToJson(IAxisConfig config) {
+  switch (config) {
+    case AxisConfig():
+      return _removeNulls({
+        'id': config.id,
+        'axis': config.axis.wireValue,
+        'title': config.title,
+        'opposite': config.opposite,
+        'stackIndex': config.stackIndex,
+        'parallelIndex': config.parallelIndex,
+        'interval': _axisIntervalToJson(config.interval),
+        'defaultInterval': _axisDefaultIntervalToJson(config.defaultInterval),
+        'tickStrategy': config.tickStrategy?.wireValue,
+        'scrollStrategy': config.scrollStrategy?.wireValue,
+      });
+
+    case UpdateAxisConfig():
+      return _removeNulls({
+        'id': config.id,
+        'axis': config.axis?.wireValue,
+        'title': config.title,
+        'interval': _axisIntervalToJson(config.interval),
+        'defaultInterval': _axisDefaultIntervalToJson(config.defaultInterval),
+        'tickStrategy': config.tickStrategy?.wireValue,
+        'scrollStrategy': config.scrollStrategy?.wireValue,
+        'remove': config.remove,
+      });
+
+    default:
+      throw UnsupportedError(
+        'Serialization is not implemented for ${config.runtimeType}.',
+      );
+  }
+}
+
+Map<String, Object?>? _axisIntervalToJson(AxisIntervalConfig? config) {
+  if (config == null) return null;
+
   return _removeNulls({
-    'id': dataSet.id,
-    'xDataPattern': dataSet.xDataPattern?.wireValue,
-    'columns': dataSet.columns
-        .map(
-          (column) => _removeNulls({
-            'id': column.id,
-            'dataPattern': column.dataPattern?.wireValue,
-          }),
-        )
-        .toList(growable: false),
-    'maxSampleCount': dataSet.maxSampleCount,
+    'start': config.start,
+    'end': config.end,
+    'animate': config.animate,
+    'stopAxisAfter': config.stopAxisAfter,
   });
 }
 
-Map<String, Object?> _channelToJson(ChannelConfig channel) {
+Map<String, Object?>? _axisDefaultIntervalToJson(
+  AxisDefaultIntervalConfig? config,
+) {
+  if (config == null) return null;
+
   return _removeNulls({
-    'id': channel.id,
-    'dataSetId': channel.dataSetId,
-    'column': channel.column,
-    'name': channel.name,
-    'color': channel.color,
-    'type': channel.type.wireValue,
-    'stackIndex': channel.stackIndex,
+    'start': config.start,
+    'end': config.end,
+    'length': config.length,
   });
+}
+
+Map<String, Object?> _seriesToJson(ISeriesConfig config) {
+  // The configuration class determines the serialized series type.
+  switch (config) {
+    case LineSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'line',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'xAxisId': config.xAxisId,
+        'yAxisId': config.yAxisId,
+        'color': config.color,
+      });
+
+    case UpdateLineSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'line',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'color': config.color,
+        'remove': config.remove,
+      });
+
+    case ScatterSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'scatter',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'xAxisId': config.xAxisId,
+        'yAxisId': config.yAxisId,
+        'color': config.color,
+      });
+
+    case UpdateScatterSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'scatter',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'color': config.color,
+        'remove': config.remove,
+      });
+
+    case LineScatterSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'line+scatter',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'xAxisId': config.xAxisId,
+        'yAxisId': config.yAxisId,
+        'color': config.color,
+      });
+
+    case UpdateLineScatterSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'line+scatter',
+        'name': config.name,
+        'dataSetId': config.dataSetId,
+        'x': config.x,
+        'y': config.y,
+        'color': config.color,
+        'remove': config.remove,
+      });
+
+    default:
+      throw UnsupportedError(
+        'Serialization is not implemented for ${config.runtimeType}.',
+      );
+  }
 }
 
 Map<String, Object?> _removeNulls(Map<String, Object?> source) {

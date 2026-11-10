@@ -25,7 +25,7 @@ class _Palette {
   static const diastolic = Color(0xFFD9BB8E);
   static const spo2 = Color(0xFF8EB9D9);
   static const respiratoryRate = Color(0xFFB0CB91);
-  // Convert the palette color to HEX color used by the channel configuration
+  // Convert the palette color to HEX color used by the series configuration
   static String chartHex(Color color) =>
       '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 }
@@ -230,15 +230,17 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     dataSets: const [
       DataSetConfig(
         id: 'ecg',
-        xDataPattern: DataPattern.progressive,
         maxSampleCount: 2000000,
-        columns: [DataSetColumnConfig(id: 'lead')],
+        columns: [
+          DataSetColumnConfig(id: 'time', dataPattern: DataPattern.progressive),
+          DataSetColumnConfig(id: 'lead'),
+        ],
       ),
       DataSetConfig(
         id: 'vitals',
-        xDataPattern: DataPattern.progressive,
         maxSampleCount: 1800,
         columns: [
+          DataSetColumnConfig(id: 'time', dataPattern: DataPattern.progressive),
           DataSetColumnConfig(id: 'heart-rate'),
           DataSetColumnConfig(id: 'systolic'),
           DataSetColumnConfig(id: 'diastolic'),
@@ -247,46 +249,76 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         ],
       ),
     ],
-    channels: [
-      ChannelConfig(
-        id: 'ecg',
-        dataSetId: 'ecg',
-        column: 'lead',
-        name: 'ECG',
-        color: _Palette.chartHex(_Palette.ecg),
+    axes: const [
+      AxisConfig(axis: AxisTarget.x, tickStrategy: TickStrategy.time),
+      AxisConfig(
+        axis: AxisTarget.y,
         stackIndex: 0,
+        interval: AxisIntervalConfig(start: -0.4, end: 1.2),
       ),
-      ChannelConfig(
-        id: 'systolic',
-        dataSetId: 'vitals',
-        column: 'systolic',
-        name: 'Systolic (mmHg)',
-        color: _Palette.chartHex(_Palette.bloodPressure),
+      AxisConfig(
+        id: 'blood-pressure',
+        axis: AxisTarget.y,
+        title: 'Blood pressure (mmHg)',
         stackIndex: -1,
       ),
-      ChannelConfig(
-        id: 'diastolic',
-        dataSetId: 'vitals',
-        column: 'diastolic',
-        name: 'Diastolic (mmHg)',
-        color: _Palette.chartHex(_Palette.diastolic),
-        stackIndex: -1,
-      ),
-      ChannelConfig(
+      AxisConfig(
         id: 'spo2',
-        dataSetId: 'vitals',
-        column: 'spo2',
-        name: 'SpO₂ (%)',
-        color: _Palette.chartHex(_Palette.spo2),
+        axis: AxisTarget.y,
+        title: 'SpO₂ (%)',
         stackIndex: -2,
       ),
-      ChannelConfig(
+      AxisConfig(
+        id: 'respiratory-rate',
+        axis: AxisTarget.y,
+        title: 'Respiratory rate (/min)',
+        stackIndex: -3,
+      ),
+    ],
+    series: [
+      LineSeriesConfig(
+        id: 'ecg',
+        dataSetId: 'ecg',
+        x: 'time',
+        y: 'lead',
+        name: 'ECG',
+        color: _Palette.chartHex(_Palette.ecg),
+      ),
+      LineSeriesConfig(
+        id: 'systolic',
+        dataSetId: 'vitals',
+        x: 'time',
+        y: 'systolic',
+        yAxisId: 'blood-pressure',
+        name: 'Systolic (mmHg)',
+        color: _Palette.chartHex(_Palette.bloodPressure),
+      ),
+      LineSeriesConfig(
+        id: 'diastolic',
+        dataSetId: 'vitals',
+        x: 'time',
+        y: 'diastolic',
+        yAxisId: 'blood-pressure',
+        name: 'Diastolic (mmHg)',
+        color: _Palette.chartHex(_Palette.diastolic),
+      ),
+      LineSeriesConfig(
+        id: 'spo2',
+        dataSetId: 'vitals',
+        x: 'time',
+        y: 'spo2',
+        yAxisId: 'spo2',
+        name: 'SpO₂ (%)',
+        color: _Palette.chartHex(_Palette.spo2),
+      ),
+      LineSeriesConfig(
         id: 'respiratory-rate',
         dataSetId: 'vitals',
-        column: 'respiratory-rate',
+        x: 'time',
+        y: 'respiratory-rate',
+        yAxisId: 'respiratory-rate',
         name: 'Respiratory rate (/min)',
         color: _Palette.chartHex(_Palette.respiratoryRate),
-        stackIndex: -3,
       ),
     ],
     onChartCreated: (chart) {
@@ -407,15 +439,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       final patient = await _PatientData.load();
       final ecg = await _EcgData.load();
       if (!mounted) return;
-      chart.setAxisInterval(
-        const SetAxisIntervalOptions(axis: AxisTarget.y, start: -0.4, end: 1.2),
-      );
-      chart.setTickStrategy(
-        const SetTickStrategyOptions(
-          axis: AxisTarget.x,
-          strategy: TickStrategy.time,
-        ),
-      );
       setState(() {
         _patient = patient;
         _ecg = ecg;
@@ -441,21 +464,26 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     _PatientData patient,
     _EcgData ecg,
   ) {
-    chart.setScrollStrategy(
-      const SetScrollStrategyOptions(axisX: ScrollStrategy.fitting),
+    chart.update(
+      const UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            scrollStrategy: ScrollStrategy.fitting,
+          ),
+        ],
+      ),
     );
     chart.setData(
       SetDataOptions(
         dataSetId: 'ecg',
-        x: ecg.time,
-        columns: {'lead': ecg.lead},
+        columns: {'time': ecg.time, 'lead': ecg.lead},
       ),
     );
     chart.setData(
       SetDataOptions(
         dataSetId: 'vitals',
-        x: patient.time,
-        columns: patient.columns,
+        columns: {'time': patient.time, ...patient.columns},
       ),
     );
   }
@@ -485,8 +513,10 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       chart.appendData(
         AppendDataOptions(
           dataSetId: 'ecg',
-          x: Float64List.sublistView(ecg.time, 0, _ecgIndex),
-          columns: {'lead': Float64List.sublistView(ecg.lead, 0, _ecgIndex)},
+          columns: {
+            'time': Float64List.sublistView(ecg.time, 0, _ecgIndex),
+            'lead': Float64List.sublistView(ecg.lead, 0, _ecgIndex),
+          },
         ),
       );
     }
@@ -494,20 +524,26 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       chart.appendData(
         AppendDataOptions(
           dataSetId: 'vitals',
-          x: Float64List.sublistView(patient.time, 0, _vitalIndex),
           columns: {
+            'time': Float64List.sublistView(patient.time, 0, _vitalIndex),
             for (final entry in patient.columns.entries)
               entry.key: Float64List.sublistView(entry.value, 0, _vitalIndex),
           },
         ),
       );
     }
-    chart.setAxisInterval(
-      SetAxisIntervalOptions(
-        axis: AxisTarget.x,
-        start: math.max(patient.time.first, _replayTimeMs - _windowMs),
-        end: math.max(patient.time.first + _windowMs, _replayTimeMs),
-        stopAxisAfter: false,
+    chart.update(
+      UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            interval: AxisIntervalConfig(
+              start: math.max(patient.time.first, _replayTimeMs - _windowMs),
+              end: math.max(patient.time.first + _windowMs, _replayTimeMs),
+              stopAxisAfter: false,
+            ),
+          ),
+        ],
       ),
     );
     setState(() {
@@ -519,13 +555,15 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   }
 
   void _configureReplayAxis(LightningChartController chart) {
-    chart.setScrollStrategy(
-      const SetScrollStrategyOptions(axisX: ScrollStrategy.scrolling),
-    );
-    chart.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(
-        axis: AxisTarget.x,
-        length: _windowMs,
+    chart.update(
+      const UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            scrollStrategy: ScrollStrategy.scrolling,
+            defaultInterval: AxisDefaultIntervalConfig(length: _windowMs),
+          ),
+        ],
       ),
     );
   }
@@ -583,8 +621,8 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         chart.appendData(
           AppendDataOptions(
             dataSetId: 'ecg',
-            x: Float64List.sublistView(ecg.time, ecgStart, _ecgIndex),
             columns: {
+              'time': Float64List.sublistView(ecg.time, ecgStart, _ecgIndex),
               'lead': Float64List.sublistView(ecg.lead, ecgStart, _ecgIndex),
             },
           ),
@@ -594,8 +632,8 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         chart.appendData(
           AppendDataOptions(
             dataSetId: 'vitals',
-            x: Float64List.sublistView(patient.time, start, _vitalIndex),
             columns: {
+              'time': Float64List.sublistView(patient.time, start, _vitalIndex),
               for (final entry in patient.columns.entries)
                 entry.key: Float64List.sublistView(
                   entry.value,
@@ -626,12 +664,18 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     chart.clearData(const ClearDataOptions(dataSetId: 'ecg'));
     chart.clearData(const ClearDataOptions(dataSetId: 'vitals'));
     _configureReplayAxis(chart);
-    chart.setAxisInterval(
-      SetAxisIntervalOptions(
-        axis: AxisTarget.x,
-        start: startTimeMs,
-        end: startTimeMs + _windowMs,
-        stopAxisAfter: false,
+    chart.update(
+      UpdateXYChartConfig(
+        axes: [
+          UpdateAxisConfig(
+            axis: AxisTarget.x,
+            interval: AxisIntervalConfig(
+              start: startTimeMs,
+              end: startTimeMs + _windowMs,
+              stopAxisAfter: false,
+            ),
+          ),
+        ],
       ),
     );
     _clock.reset();

@@ -1,6 +1,9 @@
 # LightningChart Flutter Example
 
-This Flutter example displays a patient monitoring dashboard using two datasets. The chart displays ECG, blood pressure, oxygen saturation, and respiratory rate. Metric cards show the current measurements in Monitor mode and recording statistics in Review mode.
+This Flutter example displays a patient monitoring dashboard with stacked
+ECG, blood pressure, oxygen saturation, and respiratory-rate sections.
+Systolic and diastolic share an axis. Metric cards show the current
+measurements in Monitor mode and recording statistics in Review mode.
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 

@@ -4,18 +4,17 @@ title: Flutter
 
 Use LightningChart Flutter on Web, Android, iOS, and macOS.
 
+Tested with Flutter 3.44.
+
 ## Install
 
 ```bash
 flutter pub add lightning_chart_flutter
 ```
 
-Tested with Flutter 3.44.
+## Example
 
-## Examples
-
-Explore the [Flutter examples](https://github.com/Lightning-Chart/lc-la/tree/master/examples/flutter). 
-Each example has its own README with instructions for running it locally.
+The [Flutter example on GitHub](https://github.com/Lightning-Chart/lc-la-example-flutter) displays a patient monitoring dashboard with ECG, blood pressure, oxygen saturation, and respiratory rate. Monitor mode shows current measurements, while Review mode shows recording statistics. Its README walks through running it locally.
 
 ## License key
 
@@ -28,6 +27,8 @@ flutter run -d chrome --dart-define=LCJS_LICENSE_KEY=your-license-key
 Read it when constructing the widget:
 
 ```dart
+import 'package:lightning_chart_flutter/lightning_chart_flutter.dart';
+
 const licenseKey = String.fromEnvironment('LCJS_LICENSE_KEY');
 
 const license = LclaLicense(
@@ -39,9 +40,46 @@ const license = LclaLicense(
 
 `appTitle` and `company` default to trial values. Set both for app deployment licenses.
 
+## Creating a chart
+
+Pass `license` to `LightningChart.xy`. The widget initializes and owns its chart resources; you do not create a separate context.
+
+The following creates a line series using the `"time"` and `"value"` columns of the `"signals"` dataset. Add the widget to your application's layout:
+
+```dart
+LightningChart.xy(
+  license: license,
+  title: 'Signal chart',
+  dataSets: const [
+    DataSetConfig(
+      id: 'signals',
+      maxSampleCount: 1_000_000,
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'signal',
+      dataSetId: 'signals',
+      x: 'time',
+      y: 'value',
+      name: 'Signal',
+    ),
+  ],
+);
+```
+
 ## Historical data
 
 Acquire data through the repository, HTTP client, or file workflow your Flutter application normally uses. Pass the resulting typed arrays as `initialData` when creating the chart.
+
+Here, `signalRepository` represents your application's data source. The following belongs in an asynchronous data-loading method, rather than directly in a widget's synchronous `build` method:
 
 ```dart
 final samples = await signalRepository.loadHistoricalSamples();
@@ -52,66 +90,122 @@ return LightningChart.xy(
   dataSets: const [
     DataSetConfig(
       id: 'signals',
-      maxSampleCount: 2_000_000,
-      columns: [DataSetColumnConfig(id: 'value')],
+      maxSampleCount: 1_000_000,
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
     ),
   ],
-  channels: const [
-    ChannelConfig(
-      id: 'value',
+  series: const [
+    LineSeriesConfig(
+      id: 'signal',
       dataSetId: 'signals',
-      column: 'value',
+      x: 'time',
+      y: 'value',
       name: 'Signal',
     ),
   ],
   initialData: [
     SetDataOptions(
       dataSetId: 'signals',
-      x: samples.timestamps,
-      columns: {'value': samples.values},
+      columns: {
+        'time': samples.timestamps,
+        'value': samples.values,
+      },
     ),
   ],
 );
 ```
 
-`timestamps` and `values` are `Float64List` instances with equal lengths.
+`timestamps` and `values` are `Float64List` instances with equal lengths. Timestamps are in milliseconds.
+
+Use your application's asynchronous loading UI, such as a `FutureBuilder`, to display the resulting widget.
 
 ## Real-time data
 
-Capture the controller after Flutter mounts the widget, then append batches received from a stream, WebSocket, or device. Configure the X axis to follow the latest data.
+For incoming data from a device, service, or WebSocket, append each received batch to the dataset.
+
+Store the subscription in your widget's state:
 
 ```dart
-LightningChartController? chart;
+import 'dart:async';
 
-LightningChart.xy(
-  license: license,
-  dataSets: dataSets,
-  channels: channels,
-  onChartCreated: (createdChart) {
-    chart = createdChart;
-    chart!.setScrollStrategy(
-      const SetScrollStrategyOptions(axisX: ScrollStrategy.scrolling),
-    );
-    chart!.setDefaultAxisInterval(
-      const SetDefaultAxisIntervalOptions(axis: AxisTarget.x, length: 10),
-    );
-  },
-);
-
-signalRepository.liveBatches.listen((batch) {
-  chart?.appendData(AppendDataOptions(
-    dataSetId: 'signals',
-    x: batch.timestamps,
-    columns: {'value': batch.values},
-  ));
-});
+StreamSubscription<dynamic>? _subscription;
 ```
 
-Cancel the stream subscription in `dispose` when the widget is removed. On Android, add the `INTERNET` permission; if loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` as described in the example README.
+Here, `signalRepository.liveBatches` represents your application's incoming data stream. Each batch supplies `timestamps` and `values` as `Float64List` instances, with timestamps in milliseconds.
+
+The following belongs inside the stateful widget's `build` method. It creates a chart with a ten-second scrolling window and starts listening after the chart is ready:
+
+```dart
+return LightningChart.xy(
+  license: license,
+  dataSets: const [
+    DataSetConfig(
+      id: 'signals',
+      maxSampleCount: 1_000_000,
+      columns: [
+        DataSetColumnConfig(
+          id: 'time',
+          dataPattern: DataPattern.progressive,
+        ),
+        DataSetColumnConfig(id: 'value'),
+      ],
+    ),
+  ],
+  axes: const [
+    AxisConfig(
+      axis: AxisTarget.x,
+      scrollStrategy: ScrollStrategy.scrolling,
+      defaultInterval: AxisDefaultIntervalConfig(
+        length: 10_000,
+      ),
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'signal',
+      dataSetId: 'signals',
+      x: 'time',
+      y: 'value',
+      name: 'Signal',
+    ),
+  ],
+  onChartCreated: (chart) {
+    _subscription = signalRepository.liveBatches.listen((batch) {
+      chart.appendData(AppendDataOptions(
+        dataSetId: 'signals',
+        columns: {
+          'time': batch.timestamps,
+          'value': batch.values,
+        },
+      ));
+    });
+  },
+);
+```
+
+Cancel the subscription when the widget is removed:
+
+```dart
+@override
+void dispose() {
+  _subscription?.cancel();
+  super.dispose();
+}
+```
+
+The chart widget releases its chart resources automatically.
+
+On Android, add the `INTERNET` permission. If loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` as described in the example README.
 
 ## More features
 
-LightningChart Flutter shares the same underlying features as every LightningChart LA client. This page introduces the general syntax and key use cases; for complete client-agnostic feature coverage, see [Features](../features/).
+LightningChart Flutter supports multiple axes, configurable series, historical data, and real-time streaming. For complete feature coverage, see [Features](../features/).
 
 ## Feedback and contributions
 

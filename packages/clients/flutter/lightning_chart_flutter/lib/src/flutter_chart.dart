@@ -21,7 +21,8 @@ class LightningChart extends StatefulWidget {
     required LclaLicense license,
     String? title,
     List<DataSetConfig> dataSets = const [],
-    List<ChannelConfig> channels = const [],
+    List<AxisConfig> axes = const [],
+    List<SeriesConfig> series = const [],
     List<SetDataOptions> initialData = const [],
     bool? animationsEnabled,
     LightningChartCreated? onChartCreated,
@@ -34,7 +35,8 @@ class LightningChart extends StatefulWidget {
          config: XYChartConfig(
            title: title,
            dataSets: dataSets,
-           channels: channels,
+           axes: axes,
+           series: series,
            animationsEnabled: animationsEnabled,
          ),
          initialData: initialData,
@@ -75,23 +77,33 @@ class _LightningChartState extends State<LightningChart> {
   @override
   void didUpdateWidget(covariant LightningChart oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     final chart = _chart;
-    if (chart == null) {
-      return;
+    if (chart == null) return;
+
+    // Send changed configuration sections together in one update.
+    final update = UpdateXYChartConfig(
+      title: widget.config.title != oldWidget.config.title
+          ? widget.config.title
+          : null,
+      dataSets: !identical(widget.config.dataSets, oldWidget.config.dataSets)
+          ? widget.config.dataSets
+          : null,
+      axes: !identical(widget.config.axes, oldWidget.config.axes)
+          ? widget.config.axes
+          : null,
+      series: !identical(widget.config.series, oldWidget.config.series)
+          ? widget.config.series
+          : null,
+    );
+
+    if (update.title != null ||
+        update.dataSets != null ||
+        update.axes != null ||
+        update.series != null) {
+      chart.update(update);
     }
 
-    if (!identical(widget.config.dataSets, oldWidget.config.dataSets) &&
-        widget.config.dataSets != null) {
-      chart.configureDataSets(widget.config.dataSets!);
-    }
-    if (!identical(widget.config.channels, oldWidget.config.channels) &&
-        widget.config.channels != null) {
-      chart.configureChannels(widget.config.channels!);
-    }
-    if (widget.config.title != oldWidget.config.title &&
-        widget.config.title != null) {
-      chart.setTitle(SetTitleOptions(title: widget.config.title!));
-    }
     if (!identical(widget.initialData, oldWidget.initialData)) {
       _applyInitialData(chart);
     }

@@ -1,0 +1,611 @@
+---
+title: Adding series
+sidebar_position: 5
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+A series determines how data is displayed in a chart. Each series requires an ID that is unique within the chart.
+
+
+## Series types
+
+Choose the configuration class for the visualization you need:
+- [`LineSeriesConfig`](./series#line-scatter-line-scatter) displays a line.
+- [`ScatterSeriesConfig`](./series#line-scatter-line-scatter) displays scatter points.
+- [`LineScatterSeriesConfig`](./series#line-scatter-line-scatter) displays a line with scatter points.
+
+The configuration class determines the series type. A series's ID, type, and assigned axes cannot be changed after creation.
+
+
+## Adding series
+
+Add series when creating a chart through its series list. To add a series afterward, include its creation configuration with a new unique ID in a chart update.
+A new series can reference datasets and axes created in the same chart configuration or update. Adding a series does not remove existing series.
+
+Omitted series and properties remain unchanged during updates. Removal must be requested explicitly.
+
+The examples continue [Adding charts](./charts), using the chart reference introduced there.
+
+### Line, Scatter, Line-Scatter
+
+#### At chart creation
+
+Add series to the chart's series list. Define their datasets in the same chart configuration or create the datasets beforehand.
+
+Line, scatter, and line with scatter points series select dataset columns for their X and Y values. Multiple series can share the same dataset and columns.
+
+The example below creates a dataset containing time, three temperature measurements, and humidity. A line series displays `"temperature-1"` and a scatter series displays `"temperature-2"`, both against `"time"` using the default axes.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "measurements",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "time" },
+                new DataSetColumnConfig { Id = "temperature-1" },
+                new DataSetColumnConfig { Id = "temperature-2" },
+                new DataSetColumnConfig { Id = "temperature-3" },
+                new DataSetColumnConfig { Id = "humidity" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-1",
+            Name = "Temperature 1",
+            Color = "#FFD400",
+        },
+        new ScatterSeriesConfig
+        {
+            Id = "series-2",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-2",
+            Name = "Temperature 2",
+            Color = "#6ACBFF",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+After loading the WebView and initializing the context:
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "measurements",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "time" },
+                new DataSetColumnConfig { Id = "temperature-1" },
+                new DataSetColumnConfig { Id = "temperature-2" },
+                new DataSetColumnConfig { Id = "temperature-3" },
+                new DataSetColumnConfig { Id = "humidity" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-1",
+            Name = "Temperature 1",
+            Color = "#FFD400",
+        },
+        new ScatterSeriesConfig
+        {
+            Id = "series-2",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-2",
+            Name = "Temperature 2",
+            Color = "#6ACBFF",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+After loading the WebView and initializing the context:
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    DataSets =
+    [
+        new DataSetConfig
+        {
+            Id = "measurements",
+            MaxSampleCount = 1_000_000,
+            Columns =
+            [
+                new DataSetColumnConfig { Id = "time" },
+                new DataSetColumnConfig { Id = "temperature-1" },
+                new DataSetColumnConfig { Id = "temperature-2" },
+                new DataSetColumnConfig { Id = "temperature-3" },
+                new DataSetColumnConfig { Id = "humidity" },
+            ],
+        },
+    ],
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-1",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-1",
+            Name = "Temperature 1",
+            Color = "#FFD400",
+        },
+        new ScatterSeriesConfig
+        {
+            Id = "series-2",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-2",
+            Name = "Temperature 2",
+            Color = "#6ACBFF",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Provide the datasets and series when creating the widget:
+
+```dart
+LightningChart.xy(
+  license: license,
+  dataSets: const [
+    DataSetConfig(
+      id: 'measurements',
+      maxSampleCount: 1_000_000,
+      columns: [
+        DataSetColumnConfig(id: 'time'),
+        DataSetColumnConfig(id: 'temperature-1'),
+        DataSetColumnConfig(id: 'temperature-2'),
+        DataSetColumnConfig(id: 'temperature-3'),
+        DataSetColumnConfig(id: 'humidity'),
+      ],
+    ),
+  ],
+  series: const [
+    LineSeriesConfig(
+      id: 'series-1',
+      dataSetId: 'measurements',
+      x: 'time',
+      y: 'temperature-1',
+      name: 'Temperature 1',
+      color: '#FFD400',
+    ),
+    ScatterSeriesConfig(
+      id: 'series-2',
+      dataSetId: 'measurements',
+      x: 'time',
+      y: 'temperature-2',
+      name: 'Temperature 2',
+      color: '#6ACBFF',
+    ),
+  ],
+  onChartCreated: (chart) {
+    _chart = chart;
+  },
+);
+```
+
+</TabItem>
+</Tabs>
+
+The series display data when samples are supplied to the dataset. See [Data management](./data-management) for loading historical data and appending incoming samples.
+
+#### After chart creation
+
+To add a series to an existing chart, include its creation configuration with a new unique ID in a chart update.
+
+The following adds a line with scatter points using the same dataset. It shares the `"time"` column with the existing series and selects `"temperature-3"` for its Y values. All three series use the default axes.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineScatterSeriesConfig
+        {
+            Id = "series-3",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-3",
+            Name = "Temperature 3",
+            Color = "#FF6AD5",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineScatterSeriesConfig
+        {
+            Id = "series-3",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-3",
+            Name = "Temperature 3",
+            Color = "#FF6AD5",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineScatterSeriesConfig
+        {
+            Id = "series-3",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "temperature-3",
+            Name = "Temperature 3",
+            Color = "#FF6AD5",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+The following examples use the local `chart` controller obtained as shown in [Updating a chart](./charts#updating-a-chart).
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    series: [
+      LineScatterSeriesConfig(
+        id: 'series-3',
+        dataSetId: 'measurements',
+        x: 'time',
+        y: 'temperature-3',
+        name: 'Temperature 3',
+        color: '#FF6AD5',
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+A new series can reference a dataset and axes created in the same chart update.
+
+
+## Series name and color
+
+The series name identifies it in the legend and cursor information. It is separate from the ID used to select the series in updates.
+
+Specify a hexadecimal color to choose the series color. Omit it when creating the series to use the automatically assigned color.
+
+Names and colors can be changed after creation. Omitting either property from an update preserves its existing value. An empty name clears the displayed name.
+
+
+## Assigning axes
+
+Series use the default X and Y axes when their axis IDs are omitted.
+
+To select another axis, supply the ID assigned to that axis. Default axes with assigned IDs can be selected in the same way as additional axes.
+
+First, add the Y axis shown in [Adding axes after creation](./axes#adding-axes-after-creation). Its example ID is `"additional-y"`. 
+The following adds a line series displaying humidity against time. It selects that additional Y axis while continuing to use the default X axis.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-4",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "humidity",
+            YAxisId = "additional-y",
+            Name = "Humidity",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-4",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "humidity",
+            YAxisId = "additional-y",
+            Name = "Humidity",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new LineSeriesConfig
+        {
+            Id = "series-4",
+            DataSetId = "measurements",
+            X = "time",
+            Y = "humidity",
+            YAxisId = "additional-y",
+            Name = "Humidity",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    series: [
+      LineSeriesConfig(
+        id: 'series-4',
+        dataSetId: 'measurements',
+        x: 'time',
+        y: 'humidity',
+        yAxisId: 'additional-y',
+        name: 'Humidity',
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+Axis bindings are set when the series is created and cannot be changed afterward. See [Configuring axes](./axes) for creating axes and assigning their IDs.
+
+
+## Updating series
+
+Use an update configuration matching the existing series type:
+
+- [`UpdateLineSeriesConfig`](./series#line-scatter-line-scatter-1) updates a line series.
+- [`UpdateScatterSeriesConfig`](./series#line-scatter-line-scatter-1) updates a scatter series.
+- [`UpdateLineScatterSeriesConfig`](./series#line-scatter-line-scatter-1) updates a line with scatter points.
+
+Select the series by its ID and supply the properties to change. Its name, color, dataset ID, and X/Y column bindings are editable. Omitted properties and series remain unchanged.
+
+A series's ID, type, and assigned axes cannot be changed after creation. To use another series type or different axes, remove the old series and create a new one.
+
+The following example changes the name and color of the first line series. Its dataset, column bindings, and assigned axes remain unchanged.
+
+### Line, Scatter, Line-Scatter
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            Name = "Updated series",
+            Color = "#00AC09",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            Name = "Updated series",
+            Color = "#00AC09",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateLineSeriesConfig
+        {
+            Id = "series-1",
+            Name = "Updated series",
+            Color = "#00AC09",
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    series: [
+      UpdateLineSeriesConfig(
+        id: 'series-1',
+        name: 'Updated series',
+        color: '#00AC09',
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+Changing a dataset or column binding reconnects the existing series to the selected data. The selected columns must exist in that dataset.
+
+## Removing series
+
+Remove a series through an update configuration matching its type. Only its ID and the removal flag are needed.
+
+The example below removes the scatter series added earlier.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScatterSeriesConfig
+        {
+            Id = "series-2",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScatterSeriesConfig
+        {
+            Id = "series-2",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScatterSeriesConfig
+        {
+            Id = "series-2",
+            Remove = true,
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    series: [
+      UpdateScatterSeriesConfig(
+        id: 'series-2',
+        remove: true,
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+
+## Updating data
+
+### Dataset data
+
+Use dataset operations to replace historical data or append incoming samples. Series bound to that dataset display the updated data without requiring another series configuration call. See [Data management](./data-management).

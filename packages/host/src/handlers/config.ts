@@ -1,7 +1,7 @@
 /**
- * Config handler: configure datasets, channels, title, scroll strategy,
+ * Config handler: configure datasets, axes, series, title, scroll strategy,
  * axis intervals, tick strategies.
- * The host creates/removes LCJS DataSetXY, series, and axes internally.
+ * The host creates/removes LCJS DataSet, series, and axes internally.
  */
 
 import {
@@ -14,23 +14,21 @@ import {
   emptyFill,
   emptyLine,
   type PointLineAreaSeries,
-  type Axis,
 } from '@lightningchart/lcjs'
 import type {
   MessageEnvelope,
   ResponseEnvelope,
   ConfigureDataSetsParams,
-  ConfigureChannelsParams,
-  ConfigureTitleParams,
-  ConfigureScrollStrategyParams,
-  ConfigureAxisIntervalParams,
-  ConfigureDefaultAxisIntervalParams,
-  ConfigureTickStrategyParams,
-  ChannelConfig,
+  UpdateXYChartConfig,
   DataSetConfig,
+  UpdateDataSetConfig,
+  AxisConfig,
+  UpdateAxisConfig,
+  SeriesConfig,
+  UpdateSeriesConfig,
   ScrollStrategy,
 } from '../types.js'
-import { hostState, type DataSetState } from './state.js'
+import { hostState, type DataSetState, type AxisState, type ChartState } from './state.js'
 
 const DEFAULT_MAX_SAMPLE_COUNT = 2_000_000
 
@@ -38,21 +36,57 @@ export function handleConfig(envelope: MessageEnvelope): ResponseEnvelope {
   switch (envelope.action) {
     case 'datasets':
       return handleDataSets(envelope)
-    case 'channels':
-      return handleChannels(envelope)
-    case 'title':
-      return handleTitle(envelope)
-    case 'scrollStrategy':
-      return handleScrollStrategy(envelope)
-    case 'axisInterval':
-      return handleAxisInterval(envelope)
-    case 'defaultAxisInterval':
-      return handleDefaultAxisInterval(envelope)
-    case 'tickStrategy':
-      return handleTickStrategy(envelope)
+    case 'update':
+      return handleChartUpdate(envelope)
     default:
       return { id: envelope.id, type: 'error', error: `Unknown config action: ${envelope.action}` }
   }
+}
+
+function handleChartUpdate(envelope: MessageEnvelope): ResponseEnvelope {
+  const chartId = envelope.chartId
+  if (!chartId) return { id: envelope.id, type: 'error', error: 'Missing chartId' }
+
+  const chartState = hostState.getChart(chartId)
+  if (!chartState) return { id: envelope.id, type: 'error', error: `Chart not found: ${chartId}` }
+
+  const params = envelope.params as unknown as UpdateXYChartConfig
+  if (!params) return { id: envelope.id, type: 'error', error: 'Missing params' }
+
+  // Create datasets and axes before series can reference them.
+  if (params.dataSets !== undefined) {
+    const result = configureDataSets(chartState.clientId, params.dataSets, envelope.id)
+    if (result.type === 'error') return result
+  }
+
+  if (params.axes !== undefined) {
+    const result = configureAxes(chartState, params.axes, envelope.id)
+    if (result.type === 'error') return result
+  }
+
+  if (params.series !== undefined) {
+    const result = configureSeries(chartState, params.series, envelope.id)
+    if (result.type === 'error') return result
+  }
+
+  // Process requested removals after the requested series changes.
+  if (params.axes !== undefined) {
+    const result = removeAxes(chartState, params.axes, envelope.id)
+    if (result.type === 'error') return result
+  }
+
+  if (params.dataSets !== undefined) {
+    const result = removeDataSets(
+      chartState.clientId, params.dataSets, envelope.id,
+    )
+    if (result.type === 'error') return result
+  }
+
+  if (params.title !== undefined) {
+    chartState.chart.setTitle(params.title)
+  }
+
+  return { id: envelope.id, type: 'response' }
 }
 
 // --- Dataset management ---
@@ -63,30 +97,74 @@ function handleDataSets(envelope: MessageEnvelope): ResponseEnvelope {
     return { id: envelope.id, type: 'error', error: 'Missing datasets in params' }
   }
 
-  const dataSets = hostState.getDataSets(envelope.clientId ?? 'default')
+  const clientId = envelope.clientId ?? 'default'
+  const result = configureDataSets(clientId, params.datasets, envelope.id)
+  if (result.type === 'error') return result
 
-  // Create or update datasets
-  for (const dsConfig of params.datasets) {
+  return removeDataSets(clientId, params.datasets, envelope.id)
+}
+
+// Shared by context dataset configuration and chart updates.
+function configureDataSets(clientId: string, configs: (DataSetConfig | UpdateDataSetConfig)[], envelopeId: string): ResponseEnvelope {
+  const dataSets = hostState.getDataSets(clientId)
+
+  for (const dsConfig of configs) {
+    // Removals are handled separately, after series bindings are updated.
+    if ('remove' in dsConfig && dsConfig.remove === true) continue
     const existing = dataSets.get(dsConfig.id)
+    const columns = 'columns' in dsConfig ? dsConfig.columns : undefined
+
     if (existing) {
-      const existingCols = existing.columns.slice().sort()
-      const newCols = dsConfig.columns.map((c) => c.id).slice().sort()
-      if (existingCols.join(',') !== newCols.join(',')) {
-        const newDs = createDataSet(dsConfig)
-        dataSets.set(dsConfig.id, newDs)
+      if (columns !== undefined) {
+        const existingCols = existing.columns.slice().sort()
+        const newCols = columns.map((column) => column.id).sort()
+        if (existingCols.join(',') !== newCols.join(',')) {
+          return { id: envelopeId, type: 'error', error: `Columns cannot be changed for existing dataset "${dsConfig.id}"` }
+        }
+      }
+
+      // Retention limits can increase, but must never decrease.
+      if (dsConfig.maxSampleCount !== undefined) {
+        const current = existing.dataSet.getMaxSampleCount()
+        if (current === undefined || dsConfig.maxSampleCount > current) {
+          existing.dataSet.setMaxSampleCount(dsConfig.maxSampleCount)
+        }
       }
     } else {
-      dataSets.set(dsConfig.id, createDataSet(dsConfig))
+      if (columns === undefined) {
+        return { id: envelopeId, type: 'error', error: `Columns are required for new dataset "${dsConfig.id}"` }
+      }
+
+      dataSets.set(dsConfig.id, createDataSet({
+        id: dsConfig.id,
+        columns,
+        maxSampleCount: dsConfig.maxSampleCount,
+      }))
     }
   }
 
-  return { id: envelope.id, type: 'response' }
+  return { id: envelopeId, type: 'response' }
+}
+
+function removeDataSets(clientId: string, configs: (DataSetConfig | UpdateDataSetConfig)[], envelopeId: string): ResponseEnvelope {
+  const dataSets = hostState.getDataSets(clientId)
+
+  for (const dsConfig of configs) {
+    if (!('remove' in dsConfig) || dsConfig.remove !== true) continue
+    if (!dataSets.has(dsConfig.id)) {
+      return { id: envelopeId, type: 'error', error: `DataSet not found: ${dsConfig.id}` }
+    }
+    if (hostState.isDataSetInUse(clientId, dsConfig.id)) {
+      return { id: envelopeId, type: 'error', error: `Cannot remove dataset "${dsConfig.id}" while it is used by a series` }
+    }
+    dataSets.delete(dsConfig.id)
+  }
+
+  return { id: envelopeId, type: 'response' }
 }
 
 function createDataSet(config: DataSetConfig): DataSetState {
-  const schema: Record<string, { pattern?: 'progressive' | 'regressive' | null }> = {
-    x: { pattern: config.xDataPattern !== undefined ? config.xDataPattern : 'progressive' },
-  }
+  const schema: Record<string, { pattern: 'progressive' | 'regressive' | null }> = {}
   for (const col of config.columns) {
     schema[col.id] = { pattern: col.dataPattern !== undefined ? col.dataPattern : null }
   }
@@ -101,205 +179,290 @@ function createDataSet(config: DataSetConfig): DataSetState {
   }
 }
 
-// --- Channel management ---
+// --- Series management ---
 
-function handleChannels(envelope: MessageEnvelope): ResponseEnvelope {
-  const chartId = envelope.chartId
-  if (!chartId) {
-    return { id: envelope.id, type: 'error', error: 'Missing chartId' }
-  }
+function configureSeries(chartState: ChartState, configs: (SeriesConfig | UpdateSeriesConfig)[], envelopeId: string): ResponseEnvelope {
+ for (const seriesConfig of configs) {
+    const existing = chartState.series.get(seriesConfig.id)
 
-  const chartState = hostState.getChart(chartId)
-  if (!chartState) {
-    return { id: envelope.id, type: 'error', error: `Chart not found: ${chartId}` }
-  }
-
-  const params = envelope.params as unknown as ConfigureChannelsParams
-  if (!params?.channels) {
-    return { id: envelope.id, type: 'error', error: 'Missing channels in params' }
-  }
-
-  const requestedIds = new Set(params.channels.map((ch) => ch.id))
-
-  // Remove channels no longer in config
-  for (const [id, channelState] of chartState.channels) {
-    if (!requestedIds.has(id)) {
-      channelState.series.dispose()
-      chartState.channels.delete(id)
+    // Remove only when explicitly requested.
+    if ('remove' in seriesConfig && seriesConfig.remove === true) {
+      if (!existing) {
+        return { id: envelopeId, type: 'error', error: `Series not found: ${seriesConfig.id}` }
+      }
+      existing.series.dispose()
+      chartState.series.delete(seriesConfig.id)
+      continue
     }
-  }
 
-  // Create or update channels
-  for (const channelConfig of params.channels) {
-    const existing = chartState.channels.get(channelConfig.id)
+    // Existing series retain their type and assigned axes.
     if (existing) {
-      applyChannelStyle(existing.series, channelConfig)
-    } else {
-      const dsState = hostState.getDataSet(chartState.clientId, channelConfig.dataSetId)
-      if (!dsState) {
-        return { id: envelope.id, type: 'error', error: `DataSet not found: ${channelConfig.dataSetId}` }
+      if (
+        (seriesConfig.type !== undefined &&
+          seriesConfig.type !== (existing.config.type ?? 'line')) ||
+        ('xAxisId' in seriesConfig &&
+          seriesConfig.xAxisId !== undefined &&
+          seriesConfig.xAxisId !== existing.config.xAxisId) ||
+        ('yAxisId' in seriesConfig &&
+          seriesConfig.yAxisId !== undefined &&
+          seriesConfig.yAxisId !== existing.config.yAxisId)
+      ) {
+        return { id: envelopeId, type: 'error', error: 'Series type and assigned axes cannot be changed after creation' }
       }
-      if (!dsState.columns.includes(channelConfig.column)) {
-        return { id: envelope.id, type: 'error', error: `Column "${channelConfig.column}" not found in dataset "${channelConfig.dataSetId}"` }
+    }
+
+    // Omitted bindings retain their existing values.
+    const dataSetId = seriesConfig.dataSetId ?? existing?.config.dataSetId
+    const x = seriesConfig.x ?? existing?.config.x
+    const y = seriesConfig.y ?? existing?.config.y
+
+    if (dataSetId === undefined || x === undefined || y === undefined) {
+      return { id: envelopeId, type: 'error', error: 'A new series requires DataSetId, X, and Y' }
+    }
+
+    const dsState = hostState.getDataSet(chartState.clientId, dataSetId)
+    if (!dsState) {
+      return { id: envelopeId, type: 'error', error: `DataSet not found: ${dataSetId}` }
+    }
+
+    for (const column of [x, y]) {
+      if (!dsState.columns.includes(column)) {
+        return { id: envelopeId, type: 'error', error: `Column "${column}" not found in dataset "${dataSetId}"` }
+      }
+    }
+
+    const config: SeriesConfig = {
+      id: seriesConfig.id,
+      type: seriesConfig.type ?? existing?.config.type ?? 'line',
+      dataSetId,
+      x,
+      y,
+      name: seriesConfig.name ?? existing?.config.name,
+      color: seriesConfig.color ?? existing?.config.color,
+      xAxisId: existing
+        ? existing.config.xAxisId
+        : 'xAxisId' in seriesConfig ? seriesConfig.xAxisId : undefined,
+      yAxisId: existing
+        ? existing.config.yAxisId
+        : 'yAxisId' in seriesConfig ? seriesConfig.yAxisId : undefined,
+    }
+
+    if (existing) {
+      // Rebind the existing series only when its data selection changes.
+      if (
+        existing.config.dataSetId !== config.dataSetId ||
+        existing.config.x !== config.x ||
+        existing.config.y !== config.y
+      ) {
+        existing.series.setDataSet(dsState.dataSet, { x, y })
       }
 
-      const yAxis = resolveYAxis(chartState, channelConfig.stackIndex)
-
-      const series = chartState.chart.addPointLineAreaSeries({ yAxis })
-      series.setDataSet(dsState.dataSet, { x: 'x', y: channelConfig.column })
-      series.setAreaFillStyle(emptyFill)
-
-      if (channelConfig.name) {
-        series.setName(channelConfig.name)
-      }
-      applyChannelStyle(series, channelConfig)
-
-      chartState.channels.set(channelConfig.id, {
-        id: channelConfig.id,
-        series,
-        dataSetId: channelConfig.dataSetId,
-        column: channelConfig.column,
-      })
-    }
-  }
-
-  return { id: envelope.id, type: 'response' }
-}
-
-function resolveYAxis(chartState: { chart: { axisY: Axis; addAxisY: (opts?: { iStack?: number }) => Axis }; axes: Map<number, Axis> }, stackIndex?: number): Axis {
-  if (stackIndex === undefined || stackIndex === 0) {
-    return chartState.chart.axisY
-  }
-
-  const existing = chartState.axes.get(stackIndex)
-  if (existing) return existing
-
-  const axis = chartState.chart.addAxisY({ iStack: stackIndex, type: 'linear-highPrecision' } as any)
-  chartState.axes.set(stackIndex, axis)
-  return axis
-}
-
-function applyChannelStyle(series: PointLineAreaSeries, config: ChannelConfig) {
-  const color = config.color ? ColorHEX(config.color) : undefined
-  const channelType = config.type ?? 'line'
-
-  if (color) {
-    const fill = new SolidFill({ color })
-
-    if (channelType === 'line' || channelType === 'line+scatter') {
-      series.setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: fill }))
-    } else {
-      series.setStrokeStyle(emptyLine)
+      applySeriesStyle(existing.series, config)
+      existing.config = config
+      continue
     }
 
-    if (channelType === 'scatter' || channelType === 'line+scatter') {
-      series.setPointFillStyle(fill)
-      series.setPointSize(6)
-    } else {
-      series.setPointSize(0)
+    const xAxis = config.xAxisId === undefined ? chartState.defaultXAxis : chartState.axes.get(config.xAxisId)
+    const yAxis = config.yAxisId === undefined ? chartState.defaultYAxis : chartState.axes.get(config.yAxisId)
+
+    if (!xAxis || xAxis.target !== 'x' || !yAxis || yAxis.target !== 'y') {
+      return { id: envelopeId, type: 'error', error: 'Series axis not found or has the wrong orientation' }
     }
-  }
-}
 
-// --- Axis configuration ---
+    const series = chartState.chart.addPointLineAreaSeries({
+      xAxis: xAxis.axis,
+      yAxis: yAxis.axis,
+    })
+    series.setDataSet(dsState.dataSet, { x, y })
+    series.setAreaFillStyle(emptyFill)
+    applySeriesStyle(series, config)
 
-function resolveAxis(envelope: MessageEnvelope, axis: 'x' | 'y', stackIndex?: number): { axis: Axis; error?: undefined } | { axis?: undefined; error: ResponseEnvelope } {
-  const chartId = envelope.chartId
-  if (!chartId) {
-    return { error: { id: envelope.id, type: 'error', error: 'Missing chartId' } }
-  }
-
-  const chartState = hostState.getChart(chartId)
-  if (!chartState) {
-    return { error: { id: envelope.id, type: 'error', error: `Chart not found: ${chartId}` } }
-  }
-
-  if (axis === 'x') {
-    return { axis: chartState.chart.axisX }
-  }
-
-  if (stackIndex !== undefined && stackIndex !== 0) {
-    const stacked = chartState.axes.get(stackIndex)
-    if (!stacked) {
-      return { error: { id: envelope.id, type: 'error', error: `Y axis with stackIndex ${stackIndex} not found` } }
-    }
-    return { axis: stacked }
-  }
-
-  return { axis: chartState.chart.axisY }
-}
-
-function handleAxisInterval(envelope: MessageEnvelope): ResponseEnvelope {
-  const params = envelope.params as unknown as ConfigureAxisIntervalParams
-  if (!params?.axis) {
-    return { id: envelope.id, type: 'error', error: 'Missing axis in params' }
-  }
-
-  const result = resolveAxis(envelope, params.axis, params.stackIndex)
-  if (result.error) return result.error
-
-  result.axis.setInterval({
-    start: params.start,
-    end: params.end,
-    animate: params.animate,
-    stopAxisAfter: params.stopAxisAfter,
-  })
-
-  return { id: envelope.id, type: 'response' }
-}
-
-function handleDefaultAxisInterval(envelope: MessageEnvelope): ResponseEnvelope {
-  const params = envelope.params as unknown as ConfigureDefaultAxisIntervalParams
-  if (!params?.axis) {
-    return { id: envelope.id, type: 'error', error: 'Missing axis in params' }
-  }
-
-  const result = resolveAxis(envelope, params.axis, params.stackIndex)
-  if (result.error) return result.error
-
-  if (params.length !== undefined) {
-    // Trailing window: follow latest data with fixed-width interval
-    const len = params.length
-    result.axis.setDefaultInterval((state: { dataMax: number | undefined }) => ({
-      end: state.dataMax ?? 0,
-      start: (state.dataMax ?? 0) - len,
-      stopAxisAfter: false,
-    }))
-  } else {
-    // Static default interval
-    result.axis.setDefaultInterval({
-      start: params.start,
-      end: params.end,
+    chartState.series.set(config.id, {
+      id: config.id,
+      series,
+      config,
+      xAxis,
+      yAxis,
     })
   }
 
-  return { id: envelope.id, type: 'response' }
+  return { id: envelopeId, type: 'response' }
 }
 
-function handleTickStrategy(envelope: MessageEnvelope): ResponseEnvelope {
-  const params = envelope.params as unknown as ConfigureTickStrategyParams
-  if (!params?.axis || !params?.strategy) {
-    return { id: envelope.id, type: 'error', error: 'Missing axis or strategy in params' }
+function applySeriesStyle(series: PointLineAreaSeries, config: SeriesConfig) {
+  if (config.name !== undefined) series.setName(config.name)
+  const color = config.color ? ColorHEX(config.color) : undefined
+  const type = config.type ?? 'line'
+
+  if (color) {
+    const fill = new SolidFill({ color })
+    series.setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: fill }))
+    series.setPointFillStyle(fill)
   }
 
-  const result = resolveAxis(envelope, params.axis, params.stackIndex)
-  if (result.error) return result.error
-
-  switch (params.strategy) {
-    case 'dateTime':
-      result.axis.setTickStrategy(AxisTickStrategies.DateTime)
-      break
-    case 'time':
-      result.axis.setTickStrategy(AxisTickStrategies.Time)
-      break
-    case 'numeric':
-      result.axis.setTickStrategy(AxisTickStrategies.Numeric)
-      break
-    default:
-      return { id: envelope.id, type: 'error', error: `Unknown tick strategy: ${params.strategy}` }
+  if (type === 'scatter') {
+    series.setStrokeStyle(emptyLine)
+  } else if (series.getStrokeStyle() === emptyLine) {
+    // Restore the line using the current point color
+    series.setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: series.getPointFillStyle() }))
   }
 
-  return { id: envelope.id, type: 'response' }
+  series.setPointSize(type === 'line' ? 0 : 6)
+}
+
+// --- Axis management ---
+
+function configureAxes(chartState: ChartState, configs: (AxisConfig | UpdateAxisConfig)[], envelopeId: string): ResponseEnvelope {
+  for (const axisConfig of configs) {
+    // Explicit removals are processed after series changes.
+    if ('remove' in axisConfig && axisConfig.remove === true) continue
+
+    if (axisConfig.axis !== undefined && axisConfig.axis !== 'x' && axisConfig.axis !== 'y') {
+      return { id: envelopeId, type: 'error', error: 'Invalid axis orientation' }
+    }
+
+    if (
+      axisConfig.tickStrategy !== undefined &&
+      !['numeric', 'dateTime', 'time'].includes(axisConfig.tickStrategy)
+    ) {
+      return { id: envelopeId, type: 'error', error: `Unknown tick strategy: ${axisConfig.tickStrategy}` }
+    }
+
+    // An ID selects a named axis. Orientation alone selects a default axis.
+    const existing = axisConfig.id !== undefined
+      ? chartState.axes.get(axisConfig.id)
+      : axisConfig.axis === 'x'
+        ? chartState.defaultXAxis
+        : axisConfig.axis === 'y'
+          ? chartState.defaultYAxis
+          : undefined
+
+    if (existing) {
+      if (
+        (axisConfig.axis !== undefined && axisConfig.axis !== existing.target) ||
+        ('opposite' in axisConfig &&
+          axisConfig.opposite !== undefined &&
+          axisConfig.opposite !== existing.config.opposite) ||
+        ('stackIndex' in axisConfig &&
+          axisConfig.stackIndex !== undefined &&
+          axisConfig.stackIndex !== existing.config.stackIndex) ||
+        ('parallelIndex' in axisConfig &&
+          axisConfig.parallelIndex !== undefined &&
+          axisConfig.parallelIndex !== existing.config.parallelIndex)
+      ) {
+        return { id: envelopeId, type: 'error', error: 'Axis orientation and positioning cannot be changed after creation' }
+      }
+
+      applyAxisConfig(existing, axisConfig)
+      continue
+    }
+
+    // A new additional axis needs both an ID and an orientation.
+    if (!axisConfig.id || axisConfig.axis === undefined) {
+      return { id: envelopeId, type: 'error', error: 'A new axis requires an ID and an orientation' }
+    }
+
+    const config: AxisConfig = { ...axisConfig, axis: axisConfig.axis }
+    const options = {
+      opposite: config.opposite,
+      iStack: config.stackIndex,
+      iParallel: config.parallelIndex,
+      type: 'linear-highPrecision' as const,
+    }
+    const axis = config.axis === 'x' ? chartState.chart.addAxisX(options) : chartState.chart.addAxisY(options)
+    const axisState: AxisState = { target: config.axis, axis, config }
+
+    chartState.axes.set(config.id!, axisState)
+    applyAxisConfig(axisState, config)
+  }
+
+  return { id: envelopeId, type: 'response' }
+}
+
+function removeAxes(chartState: ChartState, configs: (AxisConfig | UpdateAxisConfig)[], envelopeId: string): ResponseEnvelope {
+  for (const axisConfig of configs) {
+    if (!('remove' in axisConfig) || axisConfig.remove !== true) continue
+
+    const existing = axisConfig.id !== undefined
+      ? chartState.axes.get(axisConfig.id)
+      : axisConfig.axis === 'x'
+        ? chartState.defaultXAxis
+        : axisConfig.axis === 'y'
+          ? chartState.defaultYAxis
+          : undefined
+
+    if (!existing) {
+      return { id: envelopeId, type: 'error', error: 'Axis to remove was not found' }
+    }
+
+    if (axisConfig.axis !== undefined && axisConfig.axis !== existing.target) {
+      return { id: envelopeId, type: 'error', error: 'Axis has the wrong orientation' }
+    }
+
+    // Default axes cannot be removed, including through their optional IDs.
+    if (existing === chartState.defaultXAxis || existing === chartState.defaultYAxis) {
+      return { id: envelopeId, type: 'error', error: 'Default axes cannot be removed' }
+    }
+
+    for (const series of chartState.series.values()) {
+      if (series.xAxis === existing || series.yAxis === existing) {
+        return { id: envelopeId, type: 'error', error: 'Cannot remove an axis while it is used by a series' }
+      }
+    }
+
+    existing.axis.dispose()
+    chartState.axes.delete(axisConfig.id!)
+  }
+
+  return { id: envelopeId, type: 'response' }
+}
+
+function applyAxisConfig(axisState: AxisState, axisConfig: AxisConfig | UpdateAxisConfig): void {
+  const { axis, config } = axisState
+
+  if (axisConfig.title !== undefined) axis.setTitle(axisConfig.title)
+
+  if (axisConfig.tickStrategy !== undefined) {
+    switch (axisConfig.tickStrategy) {
+      case 'dateTime':
+        axis.setTickStrategy(AxisTickStrategies.DateTime)
+        break
+      case 'time':
+        axis.setTickStrategy(AxisTickStrategies.Time)
+        break
+      case 'numeric':
+        axis.setTickStrategy(AxisTickStrategies.Numeric)
+        break
+    }
+  }
+
+  if (axisConfig.scrollStrategy !== undefined) {
+    axis.setScrollStrategy(resolveScrollStrategy(axisConfig.scrollStrategy))
+  }
+
+  if (axisConfig.defaultInterval !== undefined) {
+    const update = axisConfig.defaultInterval
+
+    if (update.length !== undefined) {
+      const length = update.length
+      axis.setDefaultInterval((state) => ({
+        start: (state.dataMax ?? 0) - length,
+        end: state.dataMax ?? 0,
+        stopAxisAfter: false,
+      }))
+      config.defaultInterval = { length }
+    } else if (update.start !== undefined || update.end !== undefined) {
+      const interval = {
+        start: update.start ?? config.defaultInterval?.start,
+        end: update.end ?? config.defaultInterval?.end,
+      }
+      axis.setDefaultInterval(interval)
+      config.defaultInterval = interval
+    }
+  }
+
+  // Apply only the supplied interval values to the current axis range.
+  if (axisConfig.interval !== undefined) axis.setInterval(axisConfig.interval)
 }
 
 // --- Scroll strategy ---
@@ -313,47 +476,4 @@ function resolveScrollStrategy(strategy: ScrollStrategy) {
     case 'expansion':
       return AxisScrollStrategies.expansion()
   }
-}
-
-function handleScrollStrategy(envelope: MessageEnvelope): ResponseEnvelope {
-  const chartId = envelope.chartId
-  if (!chartId) {
-    return { id: envelope.id, type: 'error', error: 'Missing chartId' }
-  }
-
-  const chartState = hostState.getChart(chartId)
-  if (!chartState) {
-    return { id: envelope.id, type: 'error', error: `Chart not found: ${chartId}` }
-  }
-
-  const params = envelope.params as unknown as ConfigureScrollStrategyParams
-  if (params?.axisX) {
-    chartState.chart.axisX.setScrollStrategy(resolveScrollStrategy(params.axisX))
-  }
-  if (params?.axisY) {
-    chartState.chart.axisY.setScrollStrategy(resolveScrollStrategy(params.axisY))
-  }
-
-  return { id: envelope.id, type: 'response' }
-}
-
-// --- Title ---
-
-function handleTitle(envelope: MessageEnvelope): ResponseEnvelope {
-  const chartId = envelope.chartId
-  if (!chartId) {
-    return { id: envelope.id, type: 'error', error: 'Missing chartId' }
-  }
-
-  const chartState = hostState.getChart(chartId)
-  if (!chartState) {
-    return { id: envelope.id, type: 'error', error: `Chart not found: ${chartId}` }
-  }
-
-  const params = envelope.params as unknown as ConfigureTitleParams
-  if (params?.title !== undefined) {
-    chartState.chart.setTitle(params.title)
-  }
-
-  return { id: envelope.id, type: 'response' }
 }

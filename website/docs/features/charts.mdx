@@ -1,0 +1,316 @@
+---
+title: Adding charts
+sidebar_position: 4
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+LightningChart LA creates interactive XY charts with panning and zooming enabled by default. Use your application's normal layout components to position and size each chart.
+
+## Creating a chart
+
+Set the chart title and animation settings when creating a chart. You can also supply datasets, axes, and series in the initial configuration.
+See [Data management](./data-management), [Adding series](./series), and [Configuring axes](./axes) for complete configuration examples.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Render a chart container in your component:
+
+```html
+<div id="signal-chart" style="height: 480px"></div>
+```
+
+The following continues the example from [Creating a context](./context). It creates a chart after the container has rendered and the context has been initialized:
+
+```csharp
+private LclaChart? _chart;
+
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+    if (!firstRender) return;
+
+    var license = new LclaLicense
+    {
+        Key = Configuration["LCJS_LICENSE_KEY"]!,
+    };
+
+    _context = new LclaContext(new BlazorTransport(JSRuntime), license);
+
+    _chart = await _context.CreateChartAsync(new XYChartConfig
+    {
+        ContainerId = "signal-chart",
+        Title = "Signal chart",
+    });
+}
+```
+
+Animations are enabled by default. Omit the setting to keep that default. To disable animations, set `AnimationsEnabled = false` in `XYChartConfig`.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+The following continues the page from [Creating a context](./context).
+
+Add a chart field beside `_context`:
+
+```csharp
+private LclaChart? _chart;
+```
+
+Replace the existing `Navigated` event subscription inside the constructor with this version. It creates the chart after navigation succeeds and the context has been initialized:
+
+```csharp
+_webView.Navigated += async (_, args) =>
+{
+    if (args.Result != WebNavigationResult.Success ||
+        _transport is null ||
+        _context is not null)
+    {
+        return;
+    }
+
+    var licenseKey = Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
+        ?? throw new InvalidOperationException("LCJS_LICENSE_KEY is not configured.");
+
+    var license = new LclaLicense
+    {
+        Key = licenseKey,
+    };
+
+    _context = new LclaContext(_transport, license);
+
+    _chart = await _context.CreateChartAsync(new XYChartConfig
+    {
+        Title = "Signal chart",
+    });
+};
+```
+
+Keep the existing `Loaded` event subscription. Size and position the chart through the WebView's native layout.
+
+Animations are enabled by default. To disable them, set `AnimationsEnabled = false` in `XYChartConfig`.
+
+</TabItem>
+
+<TabItem value="uno" label="Uno">
+
+The following continues the page from [Creating a context](./context).
+
+Add a chart field beside `_context`:
+
+```csharp
+private LclaChart? _chart;
+```
+
+Replace the existing `NavigationCompleted` event subscription inside the constructor with this version. It creates the chart after navigation succeeds and the context has been initialized:
+
+```csharp
+_webView.NavigationCompleted += async (_, args) =>
+{
+    if (!args.IsSuccess ||
+        _transport is null ||
+        _context is not null)
+    {
+        return;
+    }
+
+    var licenseKey = Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
+        ?? throw new InvalidOperationException("LCJS_LICENSE_KEY is not configured.");
+
+    var license = new LclaLicense
+    {
+        Key = licenseKey,
+    };
+
+    _context = new LclaContext(_transport, license);
+
+    _chart = await _context.CreateChartAsync(new XYChartConfig
+    {
+        Title = "Signal chart",
+    });
+};
+```
+
+Keep the existing `Loaded` event subscription. Size and position the chart through the WebView's native layout.
+
+Animations are enabled by default. To disable them, set `AnimationsEnabled = false` in `XYChartConfig`.
+
+</TabItem>
+
+<TabItem value="flutter" label="Flutter">
+
+Continue with the `license` configuration from [Creating a context](./context).
+
+Add the Flutter widgets import alongside the existing client-library import:
+
+```dart
+import 'package:flutter/widgets.dart';
+```
+
+Below the license declaration, add this widget:
+
+```dart
+class SignalChart extends StatefulWidget {
+  const SignalChart({super.key});
+
+  @override
+  State<SignalChart> createState() => _SignalChartState();
+}
+
+class _SignalChartState extends State<SignalChart> {
+  LightningChartController? _chart;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 480,
+      child: LightningChart.xy(
+        license: license,
+        title: 'Signal chart',
+        onChartCreated: (chart) {
+          _chart = chart;
+        },
+      ),
+    );
+  }
+}
+```
+
+Place `const SignalChart()` in your application's widget tree.
+
+`onChartCreated` receives the controller when the chart is ready. The example stores it in `_chart` so other methods in `_SignalChartState` can update the chart or supply data.
+
+Animations are enabled by default. To disable them, set `animationsEnabled: false` in `LightningChart.xy`.
+
+</TabItem>
+</Tabs>
+
+Without an axes list, the chart uses its normal default X and Y axes. Add series to connect the chart to data.
+
+The following examples use the `_chart` reference introduced above. Apply updates and supply data after chart creation has completed.
+
+## Updating a chart
+
+Use an update configuration to change the chart title or configure datasets, axes, and series after creation. Omitted objects and properties remain unchanged.
+The chart's container and animation setting cannot be changed after creation.
+
+
+
+The following changes only the chart title:
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Title = "Updated signal chart",
+});
+```
+
+</TabItem>
+
+<TabItem value="flutter" label="Flutter">
+
+Inside a method of `_SignalChartState`, obtain the stored controller and check that the chart is ready:
+
+```dart
+final chart = _chart;
+if (chart == null) return;
+
+chart.update(
+  const UpdateXYChartConfig(
+    title: 'Updated signal chart',
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+See the corresponding feature pages for supported properties and removal rules.
+
+
+## Removing a chart
+
+Release the chart when its view is no longer needed.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+if (_chart is not null)
+    await _chart.DisposeAsync();
+```
+
+Call this from your component's cleanup code.
+
+Removing a chart leaves other charts and shared datasets in the same context available. Disposing a context releases all charts it owns.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+To remove an individual chart, use the following inside an asynchronous page method:
+
+```csharp
+if (_chart is not null)
+{
+    await _chart.DisposeAsync();
+    _chart = null;
+}
+```
+
+The context cleanup shown on the Context page releases all remaining charts when the page unloads.
+
+Removing a chart leaves other charts and shared datasets in the same context available. Disposing a context releases all charts it owns.
+
+</TabItem>
+
+<TabItem value="uno" label="Uno">
+
+To remove an individual chart, use the following inside an asynchronous page method:
+
+```csharp
+if (_chart is not null)
+{
+    await _chart.DisposeAsync();
+    _chart = null;
+}
+```
+
+The context cleanup shown on the Context page releases all remaining charts when the page unloads.
+
+Removing a chart leaves other charts and shared datasets in the same context available. Disposing a context releases all charts it owns.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Remove `SignalChart` from the widget tree to release its chart resources.
+
+If you add application-owned data subscriptions or timers to `_SignalChartState`, cancel them in its `dispose` method.
+
+</TabItem>
+</Tabs>

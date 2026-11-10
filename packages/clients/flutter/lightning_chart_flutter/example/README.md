@@ -1,13 +1,13 @@
 # LightningChart Flutter Package Example
 
-This package-local example demonstrates the Flutter-native LCLA API:
+This example displays temperature measurements from two sensors using LightningChart Flutter:
 
 ```dart
 LightningChart.xy(
   license: license,
   title: 'Temperature',
   dataSets: [...],
-  channels: [...],
+  series: [...],
   initialData: [...],
 )
 ```
@@ -20,5 +20,3 @@ From this directory:
 flutter create . --platforms=android,ios,macos,web
 flutter run -d chrome --dart-define=LIGHTNINGCHART_LICENSE=your-license-key
 ```
-
-The generated platform folders are intentionally not committed. The Dart example app lives in `lib/main.dart`.

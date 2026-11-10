@@ -3,8 +3,9 @@
  */
 
 import { lightningChart, Themes } from '@lightningchart/lcjs'
-import type { MessageEnvelope, ResponseEnvelope, CreateChartParams, LclaTheme } from '../types.js'
-import { hostState, type ChartState } from './state.js'
+import type { MessageEnvelope, ResponseEnvelope, CreateChartParams, AxisConfig, LclaTheme } from '../types.js'
+import { hostState, type AxisState, type ChartState } from './state.js'
+import { handleConfig } from './config.js'
 
 let chartCounter = 0
 
@@ -72,11 +73,36 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
     return { id: envelope.id, type: 'error', error: `Unsupported chart type: ${chartType}` }
   }
 
+  const axes = params?.axes ?? []
+
+  // The first axis of each orientation configures its default axis.
+  const defaultXAxisConfig: AxisConfig = axes.find((axis) => axis.axis === 'x') ?? { axis: 'x' }
+  const defaultYAxisConfig: AxisConfig = axes.find((axis) => axis.axis === 'y') ?? { axis: 'y' }
+
+  // Additional axes require IDs. All assigned IDs must be unique.
+  const axisIds = new Set<string>()
+
+  for (const axisConfig of axes) {
+    if (axisConfig.axis !== 'x' && axisConfig.axis !== 'y') {
+      return { id: envelope.id, type: 'error', error: 'Invalid axis orientation' }
+    }
+    const isDefault = axisConfig === defaultXAxisConfig || axisConfig === defaultYAxisConfig
+    if (!isDefault && !axisConfig.id) {
+      return { id: envelope.id, type: 'error', error: 'Additional axes require an ID' }
+    }
+    if (axisConfig.id != null) {
+      if (!axisConfig.id || axisIds.has(axisConfig.id)) {
+        return { id: envelope.id, type: 'error', error: `Axis ID must be non-empty and unique: "${axisConfig.id}"` }
+      }
+      axisIds.add(axisConfig.id)
+    }
+  }
+
   const lcjs = hostState.getLcjs()
   const chartId = `chart-${++chartCounter}`
   const clientId = envelope.clientId ?? 'default'
 
-  // Use the user-provided container or create one
+  // Use the supplied container or create one.
   let container: HTMLDivElement
   if (params?.containerId) {
     const existing = document.getElementById(params.containerId)
@@ -97,25 +123,68 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
   const chart = lcjs.ChartXY({
     container,
     ...(theme ? { theme } : {}),
-    defaultAxisX: { type: 'linear-highPrecision' },
-    defaultAxisY: { type: 'linear-highPrecision' },
+    defaultAxisX: {
+      type: 'linear-highPrecision',
+      opposite: defaultXAxisConfig.opposite ?? false,
+      iStack: defaultXAxisConfig.stackIndex,
+      iParallel: defaultXAxisConfig.parallelIndex,
+    },
+    defaultAxisY: {
+      type: 'linear-highPrecision',
+      opposite: defaultYAxisConfig.opposite ?? false,
+      iStack: defaultYAxisConfig.stackIndex,
+      iParallel: defaultYAxisConfig.parallelIndex,
+    },
   })
 
-  // Keep wheel zoom available while a live X axis is scrolling. The explicit
-  // stopScroll flag releases automatic following as soon as the user zooms.
-  if (params?.animationsEnabled === false) {
-    chart.setAnimationsEnabled(false)
+  if (params?.animationsEnabled === false) chart.setAnimationsEnabled(false)
+
+  const defaultXAxis: AxisState = {
+    target: 'x',
+    axis: chart.axisX,
+    config: { ...defaultXAxisConfig },
   }
 
+  const defaultYAxis: AxisState = {
+    target: 'y',
+    axis: chart.axisY,
+    config: { ...defaultYAxisConfig },
+  }
   const state: ChartState = {
     id: chartId,
     clientId,
     chart,
-    channels: new Map(),
+    series: new Map(),
+    defaultXAxis,
+    defaultYAxis,
     axes: new Map(),
     ownsContainer,
   }
+
+  // IDs on default axes identify the existing default objects.
+  if (defaultXAxisConfig.id != null) state.axes.set(defaultXAxisConfig.id, defaultXAxis)
+  if (defaultYAxisConfig.id != null) state.axes.set(defaultYAxisConfig.id, defaultYAxis)
+
   hostState.addChart(chartId, state)
+
+  // Apply initial settings through the shared configuration path.
+  const result = handleConfig({
+    ...envelope,
+    category: 'config',
+    action: 'update',
+    chartId,
+    params: {
+      title: params?.title,
+      dataSets: params?.dataSets,
+      axes,
+      series: params?.series,
+    },
+  })
+
+  if (result.type === 'error') {
+    handleDispose({ ...envelope, chartId })
+    return result
+  }
 
   return { id: envelope.id, type: 'response', result: { chartId } }
 }

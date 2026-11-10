@@ -1,31 +1,40 @@
 /**
- * Host state: manages LCJS chart instances, datasets, and channels.
+ * Host state: manages LCJS chart instances, datasets, axes, and series.
  *
- * Each chart has N datasets (each a DataSetXY with shared X + named Y columns).
- * Each channel binds to a dataset column and renders via a PointLineAreaSeries.
+ * Datasets are shared within a client context.
+ * Each series maps dataset columns to X and Y and references its axes.
  */
 
 import type { Axis, ChartXY, PointLineAreaSeries, LightningChart, DataSetXY, OfficialTheme } from '@lightningchart/lcjs'
-
+import type { AxisTarget, AxisConfig, SeriesConfig } from '../types.js'
 export interface DataSetState {
   id: string
   dataSet: DataSetXY
   columns: string[]
 }
 
-export interface ChannelState {
+export interface AxisState {
+  target: AxisTarget
+  axis: Axis
+  config: AxisConfig
+}
+
+export interface SeriesState {
   id: string
   series: PointLineAreaSeries
-  dataSetId: string
-  column: string
+  config: SeriesConfig
+  xAxis: AxisState
+  yAxis: AxisState
 }
 
 export interface ChartState {
   id: string
   clientId: string
   chart: ChartXY
-  channels: Map<string, ChannelState>
-  axes: Map<number, Axis>
+  series: Map<string, SeriesState>
+  axes: Map<string, AxisState>
+  defaultXAxis: AxisState
+  defaultYAxis: AxisState
   ownsContainer: boolean
 }
 
@@ -88,6 +97,17 @@ export class HostState {
 
   getDataSet(clientId: string, id: string): DataSetState | undefined {
     return this.dataSetsByClient.get(clientId)?.get(id)
+  }
+
+  // Dataset removal must account for every chart in the same context.
+  isDataSetInUse(clientId: string, dataSetId: string): boolean {
+    for (const chart of this.charts.values()) {
+      if (chart.clientId !== clientId) continue
+      for (const series of chart.series.values()) {
+        if (series.config.dataSetId === dataSetId) return true
+      }
+    }
+    return false
   }
 }
 

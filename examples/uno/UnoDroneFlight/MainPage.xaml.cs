@@ -143,64 +143,86 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         {
             _context = CreateContext(_transport);
 
-            _chart = await _context.CreateChartAsync(
-                new XYChartConfig
-                {
-                    ContainerId = "lcla-root",
-                    Title = "",
-                },
-                _lifetime.Token);
+            _chart = await _context.CreateChartAsync(new XYChartConfig
+            {
+                ContainerId = "lcla-root",
+                Title = "",
+                DataSets =
+                [
+                    new DataSetConfig
+                    {
+                        Id = DataSetId,
+                        MaxSampleCount = 50_000,
+                        Columns =
+                        [
+                            new DataSetColumnConfig { Id = "time", DataPattern = DataPattern.Progressive },
+                            new DataSetColumnConfig { Id = "altitude" },
+                            new DataSetColumnConfig { Id = "speed" },
+                            new DataSetColumnConfig { Id = "climb" },
+                        ],
+                    },
+                ],
+                Axes =
+                [
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        ScrollStrategy = ScrollStrategy.Scrolling,
+                    },
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        StackIndex = 0,
+                    },
+                    new AxisConfig
+                    {
+                        Id = "speed",
+                        Axis = AxisTarget.Y,
+                        StackIndex = -1,
+                    },
+                    new AxisConfig
+                    {
+                        Id = "climb",
+                        Axis = AxisTarget.Y,
+                        StackIndex = -2,
+                    },
+                ],
+                Series =
+                [
+                    new LineSeriesConfig
+                    {
+                        Id = "altitude",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "altitude",
+                        Name = "Relative altitude (m)",
+                        Color = "#8BF584",
+                    },
+                    new LineSeriesConfig
+                    {
+                        Id = "speed",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "speed",
+                        YAxisId = "speed",
+                        Name = "Horizontal speed (km/h)",
+                        Color = "#FFC56A",
+                    },
+                    new LineSeriesConfig
+                    {
+                        Id = "climb",
+                        DataSetId = DataSetId,
+                        X = "time",
+                        Y = "climb",
+                        YAxisId = "climb",
+                        Name = "Vertical speed (m/s)",
+                        Color = "#BBA6F2",
+                    },
+                ],
+            }, _lifetime.Token);
 
             if (_disposed) return;
 
-            _context.ConfigureDataSets(
-            [
-                new DataSetConfig
-                {
-                    Id = DataSetId,
-                    XDataPattern = DataPattern.Progressive,
-                    MaxSampleCount = 50_000,
-                    Columns =
-                    [
-                        new DataSetColumnConfig { Id = "altitude" },
-                        new DataSetColumnConfig { Id = "speed" },
-                        new DataSetColumnConfig { Id = "climb" },
-                    ],
-                },
-            ]);
-
-            _chart.ConfigureChannels(
-            [
-                new ChannelConfig
-                {
-                    Id = "altitude",
-                    DataSetId = DataSetId,
-                    Column = "altitude",
-                    Name = "Relative altitude (m)",
-                    Color = "#8BF584",
-                    StackIndex = 0,
-                },
-                new ChannelConfig
-                {
-                    Id = "speed",
-                    DataSetId = DataSetId,
-                    Column = "speed",
-                    Name = "Horizontal speed (km/h)",
-                    Color = "#FFC56A",
-                    StackIndex = -1,
-                },
-                new ChannelConfig
-                {
-                    Id = "climb",
-                    DataSetId = DataSetId,
-                    Column = "climb",
-                    Name = "Vertical speed (m/s)",
-                    Color = "#BBA6F2",
-                    StackIndex = -2,
-                },
-            ]);
-
-            _chart.SetScrollStrategy(new SetScrollStrategyOptions { AxisX = ScrollStrategy.Scrolling });
             _telemetryReady = true;
             StartWhenReady();
         }
@@ -233,43 +255,62 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                     new DataSetConfig
                     {
                         Id = RouteDataSetId,
-                        XDataPattern = DataPattern.None,
                         MaxSampleCount = _flight.Longitude.Length,
                         Columns = 
                         [ 
+                            new DataSetColumnConfig { Id = "longitude" },
                             new DataSetColumnConfig { Id = "latitude" }, 
                             new DataSetColumnConfig { Id = "position" } 
                         ],
                     }
                 ],
-                Channels = 
+                Axes =
                 [
-                    new ChannelConfig
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.X,
+                        DefaultInterval = new AxisDefaultIntervalConfig
+                        {
+                            Start = 28.7548,
+                            End = 28.7597,
+                        },
+                    },
+                    new AxisConfig
+                    {
+                        Axis = AxisTarget.Y,
+                        DefaultInterval = new AxisDefaultIntervalConfig
+                        {
+                            Start = 62.39327,
+                            End = 62.39552,
+                        },
+                    },
+                ],
+                Series =
+                [
+                    new LineSeriesConfig
                     {
                         Id = "route",
                         DataSetId = RouteDataSetId,
-                        Column = "latitude",
+                        X = "longitude",
+                        Y = "latitude",
                         Name = "Flight route",
-                        Type = ChannelType.Line,
                         Color = "#8BF584",
                     },
-                    new ChannelConfig
+                    new ScatterSeriesConfig
                     {
                         Id = "position",
                         DataSetId = RouteDataSetId,
-                        Column = "position",
+                        X = "longitude",
+                        Y = "position",
                         Name = "Current position",
-                        Type = ChannelType.Scatter,
                         Color = "#FFC56A",
-                    }
-                ]
+                    },
+                ],
             },
             _lifetime.Token);
 
             if (_disposed) return;
 
-            _routeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Start = 28.7548, End = 28.7597 });
-            _routeChart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.Y, Start = 62.39327, End = 62.39552 });
             _routeReady = true;
             StartWhenReady();
         }
@@ -298,7 +339,17 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         if (_disposed || _chart is null || _context is null || _flight is null || !_telemetryReady || !_routeReady || _playing)
             return;
 
-        _chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = WindowMs });
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Axes =
+            [
+                new UpdateAxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = WindowMs },
+                },
+            ],
+        });
         _playing = true;
         _playButton.Content = "Pause";
         _clock.Start();
@@ -320,7 +371,17 @@ public sealed partial class MainPage : Page, IAsyncDisposable
             return;
 
         _context.ClearData(new ClearDataOptions { DataSetId = DataSetId });
-        _chart.SetDefaultAxisInterval(new SetDefaultAxisIntervalOptions { Axis = AxisTarget.X, Length = WindowMs });
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Axes =
+            [
+                new UpdateAxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = WindowMs },
+                },
+            ],
+        });
         _clock.Reset();
         if (_playing) _clock.Start();
         _nextIndex = 0;
@@ -347,9 +408,9 @@ public sealed partial class MainPage : Page, IAsyncDisposable
                 _context.AppendData(new AppendDataOptions
                 {
                     DataSetId = DataSetId,
-                    X = _flight.TimeMs[start.._nextIndex],
                     Columns = new Dictionary<string, double[]>
                     {
+                        ["time"] = _flight.TimeMs[start.._nextIndex],
                         ["altitude"] = _flight.Altitude[start.._nextIndex],
                         ["speed"] = _flight.Speed[start.._nextIndex],
                         ["climb"] = _flight.Climb[start.._nextIndex],
@@ -399,9 +460,9 @@ public sealed partial class MainPage : Page, IAsyncDisposable
         _routeContext.SetData(new SetDataOptions
         {
             DataSetId = RouteDataSetId,
-            X = _flight.Longitude[..count],
             Columns = new Dictionary<string, double[]>
             {
+                ["longitude"] = _flight.Longitude[..count],
                 ["latitude"] = _flight.Latitude[..count],
                 ["position"] = position,
             },
