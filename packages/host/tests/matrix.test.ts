@@ -9,11 +9,15 @@ vi.mock('@lightningchart/lcjs', () => ({
   },
   HeatmapScrollingGridSeriesIntensityValues: class {
     addIntensityValues = vi.fn()
+    invalidateIntensityValues = vi.fn()
   },
 }))
 
 type MockGrid = { invalidateIntensityValues: ReturnType<typeof vi.fn> }
-type MockScrolling = { addIntensityValues: ReturnType<typeof vi.fn> }
+type MockScrolling = {
+  addIntensityValues: ReturnType<typeof vi.fn>
+  invalidateIntensityValues: ReturnType<typeof vi.fn>
+}
 
 const gridSeries = () => new (HeatmapGridSeriesIntensityValues as unknown as new () => MockGrid)()
 const scrollingSeries = () => new (HeatmapScrollingGridSeriesIntensityValues as unknown as new () => MockScrolling)()
@@ -57,14 +61,40 @@ describe('Matrix data', () => {
     const res = applyMatrixData(envelope('appendMatrix', { sampleLength: 3 }), series, values)
 
     expect(res.type).toBe('response')
+    expect(series.invalidateIntensityValues).not.toHaveBeenCalled()
     const samples = series.addIntensityValues.mock.calls[0]![0] as Float32Array[]
     expect(samples.map((s) => Array.from(s))).toEqual([[1, 2, 3], [4, 5, 6]])
     expect(samples.every((s) => s.buffer === values.buffer)).toBe(true)
   })
 
+  it.each([0, 4])('writes scrolling samples at index %i without copying', (iSample) => {
+    const series = scrollingSeries()
+    const values = new Float32Array([1, 2, 3, 4, 5, 6])
+    const res = applyMatrixData(envelope('appendMatrix', { sampleLength: 3, iSample }), series, values)
+    expect(res.type).toBe('response')
+    expect(series.addIntensityValues).not.toHaveBeenCalled()
+    expect(series.invalidateIntensityValues).toHaveBeenCalledTimes(1)
+
+    const update = series.invalidateIntensityValues.mock.calls[0]![0] as {
+      iSample: number
+      values: Float32Array[]
+    }
+    expect(update.iSample).toBe(iSample)
+    expect(update.values.map((sample) => Array.from(sample))).toEqual([[1, 2, 3], [4, 5, 6]])
+    expect(update.values.every((sample) => sample.buffer === values.buffer)).toBe(true)
+  })
+
+  it.each([-1, 1.5])('rejects invalid scrolling sample index %s', (iSample) => {
+    const series = scrollingSeries()
+    const res = applyMatrixData(envelope('appendMatrix', { sampleLength: 3, iSample }), series, new Float32Array(3))
+    expect(res.type).toBe('error')
+    expect(res.error).toContain('iSample must be a non-negative integer')
+    expect(series.addIntensityValues).not.toHaveBeenCalled()
+    expect(series.invalidateIntensityValues).not.toHaveBeenCalled()
+  })
+
   it('rejects appended values that are not whole samples', () => {
     const res = applyMatrixData(envelope('appendMatrix', { sampleLength: 4 }), scrollingSeries(), new Float32Array(6))
-
     expect(res.type).toBe('error')
     expect(res.error).toContain('not a multiple')
   })
@@ -77,7 +107,6 @@ describe('Matrix data', () => {
 
   it('splits 1M values into 1000 samples', () => {
     const samples = splitSamples(new Float32Array(1_000_000), 1000)
-
     expect(samples).toHaveLength(1000)
     expect(samples.every((s) => s.length === 1000)).toBe(true)
   })

@@ -74,7 +74,19 @@ export function applyMatrixData(envelope: MessageEnvelope, series: unknown, valu
       if (values.length % sampleLength !== 0) {
         return error(envelope, `appendMatrix values length ${values.length} is not a multiple of sampleLength ${sampleLength}`)
       }
-      series.addIntensityValues(splitSamples(values, sampleLength))
+
+      const iSample = params?.iSample
+      if (iSample !== undefined && !isIndex(iSample)) {
+        return error(envelope, 'appendMatrix iSample must be a non-negative integer')
+      }
+
+      const samples = splitSamples(values, sampleLength)
+      if (iSample !== undefined) {
+        series.invalidateIntensityValues({ iSample, values: samples })
+      } else {
+        series.addIntensityValues(samples)
+      }
+
       return ok(envelope)
     }
 

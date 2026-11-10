@@ -132,7 +132,7 @@ public class LclaChart : IAsyncDisposable
     }
 
     /// <summary>
-    /// Append samples (columns or rows, along the scroll dimension) to a scrolling heatmap series.
+    /// Append samples, or write samples starting at ISample when supplied.
     /// Every sample must have the same length, matching the series resolution.
     /// </summary>
     public void AppendMatrixData(AppendMatrixDataOptions options)
@@ -152,7 +152,15 @@ public class LclaChart : IAsyncDisposable
             samples[i].CopyTo(values, i * sampleLength);
         }
 
-        SendMatrixData("appendMatrix", options.SeriesId, new { sampleLength }, values);
+        var parameters = new Dictionary<string, object?>
+        {
+            ["sampleLength"] = sampleLength,
+        };
+
+        if (options.ISample.HasValue)
+            parameters["iSample"] = options.ISample.Value;
+
+        SendMatrixData("appendMatrix", options.SeriesId, parameters, values);
     }
 
     private void SendMatrixData(string action, string seriesId, object? parameters, float[] values)
@@ -237,4 +245,8 @@ public class AppendMatrixDataOptions
 {
     public required string SeriesId { get; set; }
     public required IReadOnlyList<float[]> Samples { get; set; }
+    /// <summary>
+    /// Starting grid sample index. Omit to append after existing samples.
+    /// </summary>
+    public int? ISample { get; set; }
 }

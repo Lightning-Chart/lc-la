@@ -281,9 +281,8 @@ class LclaChart {
     }, options.values);
   }
 
-  /// Appends samples (columns or rows, along the scroll dimension) to a
-  /// scrolling heatmap series. Every sample must have the same length,
-  /// matching the series resolution.
+  /// Appends samples, or writes samples starting at iSample when supplied.
+  /// Every sample must have the same length, matching the series resolution.
   void appendMatrixData(AppendMatrixDataOptions options) {
     _throwIfDisposed();
     final samples = options.samples;
@@ -302,6 +301,7 @@ class LclaChart {
 
     _sendMatrixData('appendMatrix', options.seriesId, {
       'sampleLength': sampleLength,
+      if (options.iSample != null) 'iSample': options.iSample,
     }, values);
   }
 

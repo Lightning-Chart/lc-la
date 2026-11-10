@@ -675,8 +675,11 @@ public class ApiTests
         }));
     }
 
-    [Fact]
-    public async Task AppendMatrixData_FlattensSamplesIntoOnePart()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(4)]
+    public async Task AppendMatrixData_FlattensSamplesIntoOnePart(int? iSample)
     {
         var transport = new MockTransport();
         var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
@@ -686,18 +689,27 @@ public class ApiTests
         {
             SeriesId = "spectrogram",
             Samples = [[1, 2, 3], [4, 5, 6]],
+            ISample = iSample,
         });
 
         var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
         var meta = (JsonElement)decoded["meta"];
+        var parameters = meta.GetProperty("params");
+
         Assert.Equal("appendMatrix", meta.GetProperty("action").GetString());
-        Assert.Equal(3, meta.GetProperty("params").GetProperty("sampleLength").GetInt32());
+        Assert.Equal(3, parameters.GetProperty("sampleLength").GetInt32());
         Assert.Equal(new float[] { 1, 2, 3, 4, 5, 6 }, (float[])decoded["values"]);
 
-        Assert.Throws<ArgumentException>(() => chart.AppendMatrixData(new AppendMatrixDataOptions
-        {
-            SeriesId = "spectrogram",
-            Samples = [[1, 2, 3], [4, 5]],
-        }));
+        if (iSample.HasValue)
+            Assert.Equal(iSample.Value, parameters.GetProperty("iSample").GetInt32());
+        else
+            Assert.False(parameters.TryGetProperty("iSample", out _));
+
+        Assert.Throws<ArgumentException>(() => chart.AppendMatrixData(
+            new AppendMatrixDataOptions
+            {
+                SeriesId = "spectrogram",
+                Samples = [[1, 2, 3], [4, 5]],
+            }));
     }
 }

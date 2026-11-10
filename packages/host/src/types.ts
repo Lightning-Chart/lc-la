@@ -232,4 +232,6 @@ export interface InvalidateMatrixParams {
 export interface AppendMatrixParams {
   /** Number of values per appended sample (= series resolution). values.length must be a multiple of it. */
   sampleLength: number
+  /** Starting grid sample index. Omit to append after existing samples. */
+  iSample?: number
 }

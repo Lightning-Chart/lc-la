@@ -497,8 +497,12 @@ class AppendMatrixDataOptions {
   const AppendMatrixDataOptions({
     required this.seriesId,
     required this.samples,
+    this.iSample,
   });
 
   final String seriesId;
   final List<Float32List> samples;
+
+  /// Starting grid sample index. Omit to append after existing samples.
+  final int? iSample;
 }

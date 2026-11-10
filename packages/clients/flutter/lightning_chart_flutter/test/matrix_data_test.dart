@@ -113,4 +113,29 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  for (final iSample in [0, 4]) {
+    test('appendMatrixData sends sample index $iSample', () async {
+      final (chart, transport) = await _createChart();
+
+      chart.appendMatrixData(
+        AppendMatrixDataOptions(
+          seriesId: 'spectrogram',
+          samples: [
+            Float32List.fromList([1, 2, 3]),
+            Float32List.fromList([4, 5, 6]),
+          ],
+          iSample: iSample,
+        ),
+      );
+
+      final message = transport.sent.last;
+      final meta = message['meta']! as Map<String, Object?>;
+
+      expect(meta['action'], 'appendMatrix');
+      expect(meta['seriesId'], 'spectrogram');
+      expect(meta['params'], {'sampleLength': 3, 'iSample': iSample});
+      expect(message['values'], Float32List.fromList([1, 2, 3, 4, 5, 6]));
+    });
+  }
 }

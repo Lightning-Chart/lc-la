@@ -6,13 +6,13 @@ namespace MauiHeatmaps;
 public sealed class MainPage : ContentPage, IAsyncDisposable
 {
     private const string SeriesId = "scrolling-heatmap";
-    private const int Resolution = 1024;
+    private const int DataSampleSize = 1024;
     private const int HistoricalColumns = 3000;
     private const int ColumnsPerBatch = 10;
     private const int UpdatesPerSecond = 30;
-    private const double ColumnStep =
-        1d / (ColumnsPerBatch * UpdatesPerSecond);
-    private const double WindowSeconds = 10;
+    private const double ColumnStep = 1d / (ColumnsPerBatch * UpdatesPerSecond);
+    private const double ColumnStepMs = ColumnStep * 1000;
+    private const double ViewMs = 10 * 1000;
 
     private readonly WebView _scrollingView = new();
     private readonly WebView _staticView = new();
@@ -25,6 +25,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
     private LclaChart? _scrollingChart;
     private LclaChart? _staticChart;
 
+    private double? _tFirstSample;
     private Task _streamTask = Task.CompletedTask;
     private bool _initializing;
     private bool _creatingScrollingChart;
@@ -63,35 +64,22 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
 
         try
         {
-            _scrollingTransport =
-                await WebViewTransport.StartAsync(_lifetime.Token);
-            _staticTransport =
-                await WebViewTransport.StartAsync(_lifetime.Token);
-
+            _scrollingTransport = await WebViewTransport.StartAsync(_lifetime.Token);
+            _staticTransport = await WebViewTransport.StartAsync(_lifetime.Token);
             _lifetime.Token.ThrowIfCancellationRequested();
-
-            _scrollingView.Source =
-                _scrollingTransport.Uri.AbsoluteUri;
-            _staticView.Source =
-                _staticTransport.Uri.AbsoluteUri;
+            _scrollingView.Source = _scrollingTransport.Uri.AbsoluteUri;
+            _staticView.Source = _staticTransport.Uri.AbsoluteUri;
         }
         catch (OperationCanceledException) when (_disposed) { }
-        catch (Exception exception)
-        {
-            ShowError(exception);
-        }
+        catch (Exception exception) { ShowError(exception); }
     }
 
-    private async void OnNavigated(
-        object? sender,
-        WebNavigatedEventArgs args)
+    private async void OnNavigated(object? sender, WebNavigatedEventArgs args)
     {
         if (_disposed) return;
 
         var scrolling = ReferenceEquals(sender, _scrollingView);
-        var transport = scrolling
-            ? _scrollingTransport
-            : _staticTransport;
+        var transport = scrolling ? _scrollingTransport : _staticTransport;
 
         if (transport is null ||
             !Uri.TryCreate(args.Url, UriKind.Absolute, out var uri) ||
@@ -118,86 +106,60 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
 
         try
         {
-            var licenseKey =
-                Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
-                ?? throw new InvalidOperationException(
-                    "Set LCJS_LICENSE_KEY before starting the example.");
+            var licenseKey = Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
+                ?? throw new InvalidOperationException("Set LCJS_LICENSE_KEY before starting the example.");
 
-            var context = new LclaContext(
-                transport,
-                new LclaLicense { Key = licenseKey });
+            var context = new LclaContext(transport, new LclaLicense { Key = licenseKey });
 
-            context.ErrorOccurred += (_, eventArgs) =>
-                ShowError(eventArgs.Exception);
+            context.ErrorOccurred += (_, eventArgs) => ShowError(eventArgs.Exception);
 
             if (scrolling)
             {
                 _scrollingContext = context;
 
-                _scrollingChart =
-                    await context.CreateChartAsync(new XYChartConfig
-                    {
-                        ContainerId = "lcla-root",
-                        Title = "Scrolling heatmap",
-                        AnimationsEnabled = false,
-                        Axes =
-                        [
-                            new AxisConfig
-                            {
-                                Axis = AxisTarget.X,
-                                Title = "Time (s)",
-                                ScrollStrategy =
-                                    ScrollStrategy.Scrolling,
-                                DefaultInterval =
-                                    new AxisDefaultIntervalConfig
-                                    {
-                                        Length = WindowSeconds,
-                                    },
-                            },
-                            new AxisConfig
-                            {
-                                Axis = AxisTarget.Y,
-                                Title = "Frequency bin",
-                                Interval = new AxisIntervalConfig
-                                {
-                                    Start = 0,
-                                    End = Resolution,
-                                },
-                            },
-                        ],
-                        Series =
-                        [
-                            new ScrollingHeatmapSeriesConfig
-                            {
-                                Id = SeriesId,
-                                Name = "Simulated spectrum",
-                                Resolution = Resolution,
-                                ScrollDimension = ScrollDimension.Columns,
-                                Start = new PointConfig { X = 0, Y = 0 },
-                                Step = new PointConfig
-                                {
-                                    X = ColumnStep,
-                                    Y = 1,
-                                },
-                                // TODO: Add LUT coloring and data cleaning.
-                            },
-                        ],
-                    }, _lifetime.Token);
+                _scrollingChart = await context.CreateChartAsync(new XYChartConfig
+                {
+                    ContainerId = "lcla-root",
+                    Title = "Scrolling heatmap",
+                    Axes =
+                    [
+                        new AxisConfig
+                        {
+                            Axis = AxisTarget.X,
+                            Title = "Time",
+                            TickStrategy = TickStrategy.DateTime,
+                            ScrollStrategy = ScrollStrategy.Scrolling,
+                            DefaultInterval = new AxisDefaultIntervalConfig { Length = ViewMs },
+                        },
+                        new AxisConfig
+                        {
+                            Axis = AxisTarget.Y,
+                            Title = "Frequency",
+                            Interval = new AxisIntervalConfig { Start = 0, End = DataSampleSize },
+                        },
+                    ],
+                    Series =
+                    [
+                        new ScrollingHeatmapSeriesConfig
+                        {
+                            Id = SeriesId,
+                            Resolution = DataSampleSize,
+                            ScrollDimension = ScrollDimension.Columns,
+                            Step = new PointConfig { X = ColumnStepMs, Y = 1 },
+                            // TODO: Add LUT coloring and data cleaning.
+                        },
+                    ],
+                }, _lifetime.Token);
 
-                // Generate ten seconds of simulated historical spectra.
                 var token = _lifetime.Token;
-                var history = await Task.Run(
-                    () => CreateSamples(0, HistoricalColumns, token),
-                    token);
+                var history = await Task.Run(() => CreateSamples(0, HistoricalColumns, token), token);
 
                 token.ThrowIfCancellationRequested();
 
-                _scrollingChart.AppendMatrixData(
-                    new AppendMatrixDataOptions
-                    {
-                        SeriesId = SeriesId,
-                        Samples = history,
-                    });
+                var firstHistoricalTimestampMs =
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - HistoricalColumns * ColumnStepMs;
+
+                HandleIncomingData(firstHistoricalTimestampMs, history);
 
                 _streamTask = Task.Run(() => StreamAsync(token));
             }
@@ -205,34 +167,49 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
             {
                 _staticContext = context;
 
-                _staticChart =
-                    await context.CreateChartAsync(new XYChartConfig
-                    {
-                        ContainerId = "lcla-root",
-                        Title = "Static heatmap",
-                        AnimationsEnabled = false,
-                        Axes =
-                        [
-                            new AxisConfig
-                            {
-                                Axis = AxisTarget.X,
-                                Title = "Column",
-                            },
-                            new AxisConfig
-                            {
-                                Axis = AxisTarget.Y,
-                                Title = "Row",
-                            },
-                        ],
-                        // TODO: Add the static heatmap series and LUT coloring.
-                    }, _lifetime.Token);
+                _staticChart = await context.CreateChartAsync(new XYChartConfig
+                {
+                    ContainerId = "lcla-root",
+                    Title = "Static heatmap",
+                    // TODO: Add the static heatmap series and LUT coloring.
+                }, _lifetime.Token);
             }
         }
         catch (OperationCanceledException) when (_disposed) { }
-        catch (Exception exception)
+        catch (Exception exception) { ShowError(exception); }
+    }
+
+    private void HandleIncomingData(double timestamp, IReadOnlyList<float[]> samples)
+    {
+        if (_tFirstSample is null)
         {
-            ShowError(exception);
+            _tFirstSample = timestamp;
+
+            // Anchor the grid to the first sample's actual timestamp.
+            _scrollingChart!.Update(new UpdateXYChartConfig
+            {
+                Series =
+                [
+                    new UpdateScrollingHeatmapSeriesConfig
+                    {
+                        Id = SeriesId,
+                        Start = new PointConfig { X = timestamp, Y = 0 },
+                    },
+                ],
+            });
         }
+
+        var sampleIndex = (int)Math.Round(
+            (timestamp - _tFirstSample.Value) / ColumnStepMs,
+            MidpointRounding.AwayFromZero);
+
+        // Samples in this batch occupy consecutive grid indexes.
+        _scrollingChart!.AppendMatrixData(new AppendMatrixDataOptions
+        {
+            SeriesId = SeriesId,
+            ISample = sampleIndex,
+            Samples = samples,
+        });
     }
 
     private static float[][] CreateSamples(
@@ -248,13 +225,11 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
 
             var time = (firstColumn + column) * ColumnStep;
             var phase = 2 * Math.PI * time / 30;
-
-            // Simulate two slowly shifting spectral peaks.
             var center1 = 240 + 90 * Math.Sin(phase);
             var center2 = 690 + 110 * Math.Cos(2 * phase);
-            var values = new float[Resolution];
+            var values = new float[DataSampleSize];
 
-            for (var bin = 0; bin < Resolution; bin++)
+            for (var bin = 0; bin < DataSampleSize; bin++)
             {
                 var distance1 = (bin - center1) / 35;
                 var distance2 = (bin - center2) / 55;
@@ -273,41 +248,42 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
         return samples;
     }
 
+
     private async Task StreamAsync(CancellationToken cancellationToken)
     {
-        long nextColumn = HistoricalColumns;
+        // Simulated acquisition timestamps use a UTC origin and elapsed time.
+        var startTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        long nextSample = 0;
 
-        using var timer = new PeriodicTimer(
-            TimeSpan.FromSeconds(1d / UpdatesPerSecond));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1d / UpdatesPerSecond));
 
         try
         {
             while (await timer.WaitForNextTickAsync(cancellationToken))
             {
-                // In a real application, obtain this batch from the data source.
-                var samples = CreateSamples(
-                    nextColumn,
-                    ColumnsPerBatch,
-                    cancellationToken);
+                // Elapsed time determines how many samples have been acquired.
+                var availableSamples = (long)(clock.Elapsed.TotalMilliseconds / ColumnStepMs);
+                var batchCount = (availableSamples - nextSample) / ColumnsPerBatch;
+
+                if (batchCount == 0) continue;
+
+                var sampleCount = checked((int)(batchCount * ColumnsPerBatch));
+                var timestamp = startTimestamp + nextSample * ColumnStepMs;
+
+                // In a real application, receive samples and their timestamps from the data source.
+                var samples = CreateSamples(HistoricalColumns + nextSample, sampleCount, cancellationToken);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                _scrollingChart!.AppendMatrixData(
-                    new AppendMatrixDataOptions
-                    {
-                        SeriesId = SeriesId,
-                        Samples = samples,
-                    });
+                HandleIncomingData(timestamp, samples);
 
-                nextColumn += ColumnsPerBatch;
+                nextSample  += sampleCount;
             }
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception exception)
-        {
-            ShowError(exception);
-        }
+        catch (Exception exception) { ShowError(exception); }
     }
 
     private void ShowError(Exception exception)
@@ -315,10 +291,7 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             if (!_disposed)
-                await DisplayAlertAsync(
-                    "Chart error",
-                    exception.Message,
-                    "OK");
+                await DisplayAlertAsync("Chart error", exception.Message, "OK");
         });
     }
 
