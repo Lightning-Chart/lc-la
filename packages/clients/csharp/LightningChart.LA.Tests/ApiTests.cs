@@ -449,6 +449,40 @@ public class ApiTests
     }
 
     [Fact]
+    public async Task DisposeContext_SendsDatasetCleanupAfterChartDisposal()
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(
+            transport,
+            new LclaLicense { Key = "test-license" });
+
+        var firstChart = await client.CreateChartAsync();
+        var secondChart = await client.CreateChartAsync();
+        transport.FireAndForgetMessages.Clear();
+
+        await client.DisposeAsync();
+
+        var messages = transport.FireAndForgetMessages
+            .Select(message => (JsonElement)BijDecoder.Decode(message)["meta"])
+            .ToArray();
+
+        Assert.Equal(3, messages.Length);
+
+        var clientId = messages[0].GetProperty("clientId").GetString();
+
+        Assert.All(messages, message =>
+        {
+            Assert.Equal("lifecycle", message.GetProperty("category").GetString());
+            Assert.Equal("dispose", message.GetProperty("action").GetString());
+            Assert.Equal(clientId, message.GetProperty("clientId").GetString());
+        });
+
+        Assert.Equal(firstChart.ChartId, messages[0].GetProperty("chartId").GetString());
+        Assert.Equal(secondChart.ChartId, messages[1].GetProperty("chartId").GetString());
+        Assert.False(messages[2].TryGetProperty("chartId", out _));
+    }
+
+    [Fact]
     public async Task DisposeChart_SendsLifecycleDispose()
     {
         var transport = new MockTransport();

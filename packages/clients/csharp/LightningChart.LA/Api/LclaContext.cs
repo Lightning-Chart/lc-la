@@ -525,6 +525,16 @@ public class LclaContext : IAsyncDisposable
             _ = chart.DisposeAsync();
         }
         _charts.Clear();
+
+        // Queue context dataset cleanup after the chart-disposal messages.
+        SendFireAndForget(new
+        {
+            id = NextId(),
+            category = "lifecycle",
+            action = "dispose",
+            clientId = _clientId,
+        });
+
         return ValueTask.CompletedTask;
     }
 

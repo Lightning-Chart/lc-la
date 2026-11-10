@@ -306,7 +306,7 @@ describe('Message Router', () => {
     expect(hostState.getDataSet('default', 'sensors')).toBeDefined()
   })
 
-  it('preserves client datasets until its final chart is disposed', () => {
+  it('preserves client datasets after all its charts are disposed', () => {
     const clientId = 'dataset-lifecycle-test'
     const firstChartId = createChart(clientId)
     const secondChartId = createChart(clientId)
@@ -346,9 +346,47 @@ describe('Message Router', () => {
 
     expect(secondDisposeResponse.type).toBe('response')
 
-    // The final client chart is gone, so its datasets are released
+    // Removing the last chart must not remove the context's datasets
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+    expect(hostState.getDataSet(clientId, 'signals')).toBeDefined()
+  })
+
+  it('removes only the disposed context datasets', () => {
+    const clientId = 'context-disposal-test'
+    const otherClientId = 'other-context-disposal-test'
+    const chartId = createChart(clientId)
+    const otherChartId = createChart(otherClientId)
+
+    configureDataSet(chartId, 'sensors', ['temperature'], clientId)
+    configureDataSet(otherChartId, 'sensors', ['temperature'], otherClientId)
+
+    const chartResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-chart',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+        chartId,
+      },
+    }))
+
+    expect(chartResponse.type).toBe('response')
+    expect(hostState.getChart(chartId)).toBeUndefined()
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+
+    const contextResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-context',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+      },
+    }))
+
+    expect(contextResponse.type).toBe('response')
     expect(hostState.getDataSet(clientId, 'sensors')).toBeUndefined()
-    expect(hostState.getDataSet(clientId, 'signals')).toBeUndefined()
+    expect(hostState.getDataSet(otherClientId, 'sensors')).toBeDefined()
+    expect(hostState.getChart(otherChartId)).toBeDefined()
   })
 
   it('handles config/series with stacked axes', () => {

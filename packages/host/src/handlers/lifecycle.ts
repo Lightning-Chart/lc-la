@@ -191,6 +191,13 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
 
 function handleDispose(envelope: MessageEnvelope): ResponseEnvelope {
   const chartId = envelope.chartId
+
+  // Context disposal: charts have already been disposed by the client.
+  if (chartId === undefined && envelope.clientId) {
+    hostState.removeDataSets(envelope.clientId)
+    return { id: envelope.id, type: 'response' }
+  }
+
   if (!chartId) {
     return { id: envelope.id, type: 'error', error: 'Missing chartId for dispose' }
   }

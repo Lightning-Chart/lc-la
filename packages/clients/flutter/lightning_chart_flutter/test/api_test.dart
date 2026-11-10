@@ -29,6 +29,30 @@ class _MockTransport implements LclaTransport {
 }
 
 void main() {
+  test('queues dataset cleanup after chart disposal', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart();
+    transport.fireAndForgetMessages.clear();
+
+    await session.dispose();
+
+    final messages = transport.fireAndForgetMessages;
+    expect(messages, hasLength(2));
+
+    for (final message in messages) {
+      expect(message['category'], 'lifecycle');
+      expect(message['action'], 'dispose');
+      expect(message['clientId'], messages.first['clientId']);
+    }
+
+    expect(messages.first['chartId'], chart.chartId);
+    expect(messages.last.containsKey('chartId'), isFalse);
+  });
   test('creates axes before queuing title, datasets, and series', () async {
     final transport = _MockTransport();
     final session = LclaChartSession(

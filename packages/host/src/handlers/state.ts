@@ -125,16 +125,7 @@ export class HostState {
   }
 
   removeChart(id: string): boolean {
-    const removedChart = this.charts.get(id)
-    if (!removedChart) return false
-
-    this.charts.delete(id)
-    const clientStillHasCharts = [...this.charts.values()]
-      .some((chart) => chart.clientId === removedChart.clientId)
-
-    if (!clientStillHasCharts) this.dataSetsByClient.delete(removedChart.clientId)
-
-    return true
+    return this.charts.delete(id)
   }
 
   getDataSets(clientId: string): Map<string, DataSetState> {
@@ -150,13 +141,18 @@ export class HostState {
     return this.dataSetsByClient.get(clientId)?.get(id)
   }
 
-  // Dataset removal must account for every chart in the same context.
+  // Remove this context's datasets when context is disposed.
+  removeDataSets(clientId: string): void {
+    this.dataSetsByClient.delete(clientId)
+  }
+
+  // Dataset can only be removed when there are no series attached to it.
   isDataSetInUse(clientId: string, dataSetId: string): boolean {
     for (const chart of this.charts.values()) {
       if (chart.clientId !== clientId) continue
       for (const series of chart.series.values()) {
         if ('dataSetId' in series.config && series.config.dataSetId === dataSetId) {
-            return true
+          return true
         }
       }
     }

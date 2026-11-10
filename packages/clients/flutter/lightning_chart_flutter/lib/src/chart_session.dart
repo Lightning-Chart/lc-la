@@ -80,6 +80,16 @@ class LclaChartSession {
       chart.dispose();
     }
     _charts.clear();
+
+    // Queue context dataset cleanup after the chart-disposal messages.
+    _sendFireAndForget([
+      BijPart.json('meta', {
+        'id': _nextMessageId(),
+        'category': 'lifecycle',
+        'action': 'dispose',
+        'clientId': _clientId,
+      }),
+    ]);
   }
 
   void configureDataSets(List<IDataSetConfig> dataSets) {
