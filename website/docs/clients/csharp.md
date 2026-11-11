@@ -29,42 +29,89 @@ var license = new LclaLicense
 };
 ```
 
-`AppTitle` and `Company` default to trial values. Set both for app deployment licenses. In a Blazor component, create the context after the chart container has rendered:
+`AppTitle` and `Company` default to trial values. Set both for app deployment licenses.
+
+## Creating a chart
+
+In a Blazor component, create the context and the chart after the container has rendered.
+
+The following reads the license key from the application's `LCJS_LICENSE_KEY` configuration setting. It creates a line series using the `"time"` and `"value"` columns of the `"signals"` dataset:
 
 ```csharp
 @using LightningChart.LA.Api
 @using LightningChart.LA.Blazor
-@inject IJSRuntime JS
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
 @inject IConfiguration Configuration
 
 <div id="signal-chart" style="height: 480px"></div>
 
 @code {
+    private BlazorTransport? _transport;
     private LclaContext? _context;
+    private LclaChart? _chart;
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender) return;
+
+        var license = new LclaLicense
         {
-            var license = new LclaLicense
-            {
-                Key = Configuration["LCJS_LICENSE_KEY"]!,
-            };
-            _context = new LclaContext(new BlazorTransport(JS), license);
-        }
+            Key = Configuration["LCJS_LICENSE_KEY"]!,
+            AppTitle = "My Blazor App",
+            Company = "My Company",
+        };
+
+        _transport = new BlazorTransport(JSRuntime);
+        _context = new LclaContext(_transport, license);
+
+        _chart = await _context.CreateChartAsync(new XYChartConfig
+        {
+            ContainerId = "signal-chart",
+            DataSets =
+            [
+                new DataSetConfig
+                {
+                    Id = "signals",
+                    MaxSampleCount = 1_000_000,
+                    Columns =
+                    [
+                        new DataSetColumnConfig
+                        {
+                            Id = "time",
+                            DataPattern = DataPattern.Progressive,
+                        },
+                        new DataSetColumnConfig { Id = "value" },
+                    ],
+                },
+            ],
+            Series =
+            [
+                new LineSeriesConfig
+                {
+                    Id = "signal",
+                    DataSetId = "signals",
+                    X = "time",
+                    Y = "value",
+                    Name = "Signal",
+                },
+            ],
+        });
     }
 }
 ```
-In this example, `signalService` represents your application's data source and supplies timestamps in milliseconds and signal values as `double[]` arrays.
+
 
 ## Historical data
 
-Load data from the service, file, or API used by your application, then replace the dataset with `SetData`. Create the chart once its container exists.
+After chart creation, load data from the service, file, or API used by your application, then supply the samples through `SetData`. Use the following inside an asynchronous component method.
+
+Here, `signalService.LoadAsync()` represents your application's data source and supplies timestamps in milliseconds and signal values as `double[]` arrays.
 
 ```csharp
 var samples = await signalService.LoadAsync();
 
-chart.SetData(new SetDataOptions
+_chart.SetData(new SetDataOptions
 {
     DataSetId = "signals",
     Columns = new Dictionary<string, double[]>
@@ -75,14 +122,19 @@ chart.SetData(new SetDataOptions
 });
 ```
 
+Calling `SetData` again replaces the dataset's samples while retaining its series bindings.
+
+
 ## Real-time data
 
 For incoming data from a device, background service, or SignalR hub, append each received batch to the dataset.
 
-The following continues with the chart created above. It configures the default X axis to follow incoming timestamps with a ten-second window.
+After chart creation, use the following inside an asynchronous component method. It configures the default X axis to follow incoming timestamps with a ten-second window.
+
+Here, `signalService.StreamAsync(cancellationToken)` represents your application's incoming batches. Each batch supplies timestamps in milliseconds and signal values as `double[]` arrays.
 
 ```csharp
-chart.Update(new UpdateXYChartConfig
+_chart.Update(new UpdateXYChartConfig
 {
     Axes =
     [
@@ -100,7 +152,7 @@ chart.Update(new UpdateXYChartConfig
 
 await foreach (var batch in signalService.StreamAsync(cancellationToken))
 {
-    chart.AppendData(new AppendDataOptions
+    _chart.AppendData(new AppendDataOptions
     {
         DataSetId = "signals",
         Columns = new Dictionary<string, double[]>

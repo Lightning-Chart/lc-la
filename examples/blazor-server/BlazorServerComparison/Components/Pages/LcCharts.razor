@@ -131,6 +131,20 @@
                     ],
                 },
             ],
+            Axes =
+            [
+                new AxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    TickStrategy = TickStrategy.Numeric,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
+                },
+                new AxisConfig
+                {
+                    Axis = AxisTarget.Y,
+                    Interval = new AxisIntervalConfig { Start = -1.25, End = 1.25 },
+                },
+            ],
             Series =
             [
                 new LineSeriesConfig
@@ -157,24 +171,6 @@
             },
         });
 
-        _staticChart.Update(new UpdateXYChartConfig
-        {
-            Axes =
-            [
-                new UpdateAxisConfig
-                {
-                    Axis = AxisTarget.X,
-                    TickStrategy = TickStrategy.Numeric,
-                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
-                },
-                new UpdateAxisConfig
-                {
-                    Axis = AxisTarget.Y,
-                    Interval = new AxisIntervalConfig { Start = -1.25, End = 1.25 },
-                },
-            ],
-        });
-
         _realtimeChart = await _context.CreateChartAsync(new XYChartConfig
         {
             ContainerId = "realtime-chart",
@@ -191,6 +187,20 @@
                     ],
                 },
             ],
+            Axes =
+            [
+                new AxisConfig
+                {
+                    Axis = AxisTarget.X,
+                    ScrollStrategy = ScrollStrategy.Scrolling,
+                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
+                },
+                new AxisConfig
+                {
+                    Axis = AxisTarget.Y,
+                    Interval = new AxisIntervalConfig { Start = -1.25, End = 1.25, Animate = true },
+                },
+            ],
             Series =
             [
                 new LineSeriesConfig
@@ -201,29 +211,6 @@
                     Y = "value",
                     Name = "Value",
                     Color = "#f4b942",
-                },
-            ],
-        });
-
-        _realtimeChart.Update(new UpdateXYChartConfig
-        {
-            Axes =
-            [
-                new UpdateAxisConfig
-                {
-                    Axis = AxisTarget.X,
-                    ScrollStrategy = ScrollStrategy.Scrolling,
-                    DefaultInterval = new AxisDefaultIntervalConfig { Length = 5 },
-                },
-                new UpdateAxisConfig
-                {
-                    Axis = AxisTarget.Y,
-                    Interval = new AxisIntervalConfig
-                    {
-                        Start = -1.25,
-                        End = 1.25,
-                        Animate = true,
-                    },
                 },
             ],
         });

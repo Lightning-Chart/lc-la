@@ -1,0 +1,293 @@
+---
+title: LCLA Context
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+An `LclaContext` is the shared charting environment for a client application. It owns the connection to the renderer, the available datasets, and any charts created from it. Create one context, then create as many charts as your application needs. This lets charts use the same data without copying it for every view.
+
+Every context requires an `LclaLicense`. Supply a LightningChart JS license key when creating it. Application deployment licenses can also include the application title and company information.
+
+:::note
+Flutter currently uses a different model: create charts directly, with each chart acting as its own context. Consequently, Flutter can only support up to 16 charts at once.
+:::
+
+## Creating a context
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Create the context in your `.razor` component after the chart container has rendered. 
+
+This example reads the license key from the application's `LCJS_LICENSE_KEY` configuration setting:
+
+```csharp
+@using LightningChart.LA.Api
+@using LightningChart.LA.Blazor
+@inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+
+@code {
+    private LclaContext? _context;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var license = new LclaLicense
+        {
+            Key = Configuration["LCJS_LICENSE_KEY"]!,
+        };
+
+        _context = new LclaContext(new BlazorTransport(JSRuntime), license);
+    }
+}
+```
+
+Continue to [Adding charts](./charts) to create a chart.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Use a `WebView` to display charts. Start its transport when the page loads, then create the context after navigation succeeds.
+
+This example reads the license key from the `LCJS_LICENSE_KEY` environment variable supplied to the application:
+
+```csharp
+using LightningChart.LA.Api;
+using LightningChart.LA.WebView;
+using Microsoft.Maui.Controls;
+
+public sealed class SignalPage : ContentPage
+{
+    private readonly WebView _webView = new();
+    private WebViewTransport? _transport;
+    private LclaContext? _context;
+
+    public SignalPage()
+    {
+        Content = _webView;
+
+        _webView.Navigated += async (_, args) =>
+        {
+            if (args.Result != WebNavigationResult.Success ||
+                _transport is null ||
+                _context is not null)
+            {
+                return;
+            }
+
+            var licenseKey = Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
+                ?? throw new InvalidOperationException("LCJS_LICENSE_KEY is not configured.");
+
+            var license = new LclaLicense
+            {
+                Key = licenseKey,
+            };
+
+            _context = new LclaContext(_transport, license);
+        };
+
+        Loaded += async (_, _) =>
+        {
+            if (_transport is not null) return;
+
+            _transport = await WebViewTransport.StartAsync();
+            _webView.Source = _transport.Uri.AbsoluteUri;
+        };
+    }
+}
+```
+
+Continue to [Adding charts](./charts) to add chart creation inside the navigation handler, after context initialization.
+
+</TabItem>
+
+<TabItem value="uno" label="Uno">
+
+Use a `WebView2` to display charts. Start its transport when the page loads, then create the context after navigation succeeds.
+
+This example reads the license key from the `LCJS_LICENSE_KEY` environment variable supplied to the application:
+
+```csharp
+using LightningChart.LA.Api;
+using LightningChart.LA.WebView;
+using Microsoft.UI.Xaml.Controls;
+
+public sealed class SignalPage : Page
+{
+    private readonly WebView2 _webView = new();
+    private WebViewTransport? _transport;
+    private LclaContext? _context;
+
+    public SignalPage()
+    {
+        Content = _webView;
+
+        _webView.NavigationCompleted += async (_, args) =>
+        {
+            if (!args.IsSuccess ||
+                _transport is null ||
+                _context is not null)
+            {
+                return;
+            }
+
+            var licenseKey = Environment.GetEnvironmentVariable("LCJS_LICENSE_KEY")
+                ?? throw new InvalidOperationException("LCJS_LICENSE_KEY is not configured.");
+
+            var license = new LclaLicense
+            {
+                Key = licenseKey,
+            };
+
+            _context = new LclaContext(_transport, license);
+        };
+
+        Loaded += async (_, _) =>
+        {
+            if (_transport is not null) return;
+
+            _transport = await WebViewTransport.StartAsync();
+            _webView.Source = _transport.Uri;
+        };
+    }
+}
+```
+
+Continue to [Adding charts](./charts) to add chart creation inside the navigation handler, after context initialization.
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Flutter creates the context through the chart widget. You do not construct an `LclaContext` separately.
+
+Prepare the license configuration to pass to the widget:
+
+```dart
+import 'package:lightning_chart_flutter/lightning_chart_flutter.dart';
+
+const license = LclaLicense(
+  key: String.fromEnvironment('LCJS_LICENSE_KEY'),
+);
+```
+
+Supply the key when running the application:
+
+```bash
+flutter run -d chrome --dart-define=LCJS_LICENSE_KEY=your-license-key
+```
+
+Continue to [Adding charts](./charts) to create the widget and receive its chart controller through `onChartCreated`.
+
+</TabItem>
+</Tabs>
+
+## Disposing a context
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Add this directive at the top of your `.razor` component:
+
+```csharp
+@implements IAsyncDisposable
+```
+
+Add the following method inside the component's existing `@code` block:
+
+```csharp
+public async ValueTask DisposeAsync()
+{
+    if (_context is not null)
+        await _context.DisposeAsync();
+}
+```
+
+Blazor calls this method when the component is removed. Disposing `_context` releases the charts it owns.
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Make the page implement `IAsyncDisposable`:
+
+```csharp
+public sealed class SignalPage : ContentPage, IAsyncDisposable
+```
+
+Add the following method inside the page. Dispose the context before disposing its transport:
+
+```csharp
+public async ValueTask DisposeAsync()
+{
+    if (_context is not null)
+    {
+        await _context.DisposeAsync();
+        _context = null;
+    }
+
+    if (_transport is not null)
+    {
+        await _transport.DisposeAsync();
+        _transport = null;
+    }
+}
+```
+
+Add this event subscription inside the page's constructor to release the resources when the page unloads:
+
+```csharp
+Unloaded += async (_, _) => await DisposeAsync();
+```
+
+If your application streams data, stop that operation before disposing the context.
+
+</TabItem>
+
+<TabItem value="uno" label="Uno">
+
+Make the page implement `IAsyncDisposable`:
+
+```csharp
+public sealed class SignalPage : Page, IAsyncDisposable
+```
+
+Add the following method inside the page. Dispose the context before disposing its transport:
+
+```csharp
+public async ValueTask DisposeAsync()
+{
+    if (_context is not null)
+    {
+        await _context.DisposeAsync();
+        _context = null;
+    }
+
+    if (_transport is not null)
+    {
+        await _transport.DisposeAsync();
+        _transport = null;
+    }
+}
+```
+
+Add this event subscription inside the page's constructor to release the resources when the page unloads:
+
+```csharp
+Unloaded += async (_, _) => await DisposeAsync();
+```
+
+If your application streams data, stop that operation before disposing the context.
+
+</TabItem>
+
+<TabItem value="flutter" label="Flutter">
+
+The chart widget releases its chart and context resources when removed from the widget tree. You do not dispose the context separately.
+
+Cancel any application-owned data subscriptions in the surrounding widget's `dispose` method.
+
+</TabItem>
+</Tabs>

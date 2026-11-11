@@ -71,24 +71,6 @@
 
             _context = new LclaContext(new BlazorTransport(JSRuntime), License);
 
-            for (var i = 1; i <= 12; i++)
-            {
-                var chart = await _context.CreateChartAsync(new XYChartConfig
-                {
-                    ContainerId = $"lcla-chart-{i}",
-                    Title = $"ECG {i}",
-                    AnimationsEnabled = true,
-                });
-
-                if (_disposed)
-                {
-                    await chart.DisposeAsync();
-                    return;
-                }
-
-                _charts.Add(chart);
-            }
-
             _context.ConfigureDataSets([
                 new DataSetConfig
                 {
@@ -102,17 +84,22 @@
                 },
             ]);
 
-            foreach (var chart in _charts)
+            for (var i = 1; i <= 12; i++)
             {
-                chart.Update(new UpdateXYChartConfig
+                var chart = await _context.CreateChartAsync(new XYChartConfig
                 {
+                    ContainerId = $"lcla-chart-{i}",
+                    Title = $"ECG {i}",
                     Axes =
                     [
-                        new UpdateAxisConfig
+                        new AxisConfig
                         {
                             Axis = AxisTarget.X,
                             ScrollStrategy = ScrollStrategy.Scrolling,
-                            DefaultInterval = new AxisDefaultIntervalConfig { Length = 1_000 },
+                            DefaultInterval = new AxisDefaultIntervalConfig
+                            {
+                                Length = 1_000,
+                            },
                         },
                     ],
                     Series =
@@ -128,6 +115,14 @@
                         },
                     ],
                 });
+
+                if (_disposed)
+                {
+                    await chart.DisposeAsync();
+                    return;
+                }
+
+                _charts.Add(chart);
             }
 
             _ready = true;

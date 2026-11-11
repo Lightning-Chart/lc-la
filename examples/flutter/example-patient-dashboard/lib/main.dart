@@ -250,7 +250,12 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       ),
     ],
     axes: const [
-      AxisConfig(axis: AxisTarget.y, stackIndex: 0),
+      AxisConfig(axis: AxisTarget.x, tickStrategy: TickStrategy.time),
+      AxisConfig(
+        axis: AxisTarget.y,
+        stackIndex: 0,
+        interval: AxisIntervalConfig(start: -0.4, end: 1.2),
+      ),
       AxisConfig(
         id: 'blood-pressure',
         axis: AxisTarget.y,
@@ -434,20 +439,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       final patient = await _PatientData.load();
       final ecg = await _EcgData.load();
       if (!mounted) return;
-      chart.update(
-        const UpdateXYChartConfig(
-          axes: [
-            UpdateAxisConfig(
-              axis: AxisTarget.y,
-              interval: AxisIntervalConfig(start: -0.4, end: 1.2),
-            ),
-            UpdateAxisConfig(
-              axis: AxisTarget.x,
-              tickStrategy: TickStrategy.time,
-            ),
-          ],
-        ),
-      );
       setState(() {
         _patient = patient;
         _ecg = ecg;

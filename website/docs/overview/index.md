@@ -22,4 +22,4 @@ The crux of all this is to eliminate complexity while delivering LightningChartâ
 â†³ Or review <Link to="/features/">feature availability</Link>
 
 LightningChart LA is licensed under LightningChart JS licensing terms.
-For commercials, technical support and other such details, refer to [LightningChart JS](https://lightningchart.com/js-charts/)
+For commercials, technical support and other such details, refer to [LightningChart JS](https://lightningchart.com/js-charts/).
