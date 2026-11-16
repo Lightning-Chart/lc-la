@@ -458,7 +458,7 @@ public class LclaContext : IAsyncDisposable
 
         // Serialize palette settings using the host's property names.
         if (value.TryGetValue("palette", out var paletteValue) &&
-            paletteValue is LUTConfig palette)
+            paletteValue is PaletteConfig palette)
         {
             value["palette"] = new Dictionary<string, object?>
             {
@@ -738,15 +738,15 @@ public class UpdateAxisConfig : IAxisConfig
     public bool? Remove { get; set; }
 }
 
-public class LUTStepConfig
+public class PaletteStepConfig
 {
     public required double Value { get; set; }
     public required string Color { get; set; }
 }
 
-public class LUTConfig
+public class PaletteConfig
 {
-    public required List<LUTStepConfig> Steps { get; set; }
+    public required List<PaletteStepConfig> Steps { get; set; }
     public bool? Interpolate { get; set; }
 }
 
@@ -786,7 +786,7 @@ public class LineSeriesConfig : SeriesConfig
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateLineSeriesConfig : UpdateSeriesConfig
@@ -796,7 +796,7 @@ public class UpdateLineSeriesConfig : UpdateSeriesConfig
     public string? Y { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class ScatterSeriesConfig : SeriesConfig
@@ -808,7 +808,7 @@ public class ScatterSeriesConfig : SeriesConfig
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateScatterSeriesConfig : UpdateSeriesConfig
@@ -818,7 +818,7 @@ public class UpdateScatterSeriesConfig : UpdateSeriesConfig
     public string? Y { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class LineScatterSeriesConfig : SeriesConfig
@@ -830,7 +830,7 @@ public class LineScatterSeriesConfig : SeriesConfig
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
@@ -840,7 +840,7 @@ public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
     public string? Y { get; set; }
     public string? Color { get; set; }
     public string? ColorBy { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class PointConfig
@@ -867,7 +867,7 @@ public class ScrollingHeatmapSeriesConfig : SeriesConfig
     public string? YAxisId { get; set; }
     public PointConfig? Start { get; set; }
     public PointConfig? Step { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
     public DataCleaningConfig? DataCleaning { get; set; }
 }
 
@@ -878,7 +878,7 @@ public class UpdateScrollingHeatmapSeriesConfig : UpdateSeriesConfig
 {
     public PointConfig? Start { get; set; }
     public PointConfig? Step { get; set; }
-    public LUTConfig? Palette { get; set; }
+    public PaletteConfig? Palette { get; set; }
     public DataCleaningConfig? DataCleaning { get; set; }
 }
 

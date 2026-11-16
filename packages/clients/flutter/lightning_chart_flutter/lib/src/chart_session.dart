@@ -584,7 +584,7 @@ Map<String, Object?>? _pointToJson(PointConfig? point) =>
     point == null ? null : {'x': point.x, 'y': point.y};
 
 // Convert palette settings to the property names expected by the host.
-Map<String, Object?>? _paletteToJson(LUTConfig? palette) {
+Map<String, Object?>? _paletteToJson(PaletteConfig? palette) {
   if (palette == null) return null;
 
   return _removeNulls({

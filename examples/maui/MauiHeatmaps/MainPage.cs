@@ -112,16 +112,16 @@ public sealed class MainPage : ContentPage, IAsyncDisposable
                         ScrollDimension = ScrollDimension.Columns,
                         Step = new PointConfig { X = ColumnStepMs, Y = 1 },
                         DataCleaning = new DataCleaningConfig { MinDataPointCount = 1000 },
-                        Palette = new LUTConfig
+                        Palette = new PaletteConfig
                         {
                             Steps =
                             [
-                                new LUTStepConfig { Value = 0, Color = "#101020" },
-                                new LUTStepConfig { Value = 15, Color = "#2030A0" },
-                                new LUTStepConfig { Value = 30, Color = "#00BFFF" },
-                                new LUTStepConfig { Value = 45, Color = "#00D080" },
-                                new LUTStepConfig { Value = 60, Color = "#FFE040" },
-                                new LUTStepConfig { Value = 75, Color = "#FF4020" },
+                                new PaletteStepConfig { Value = 0, Color = "#101020" },
+                                new PaletteStepConfig { Value = 15, Color = "#2030A0" },
+                                new PaletteStepConfig { Value = 30, Color = "#00BFFF" },
+                                new PaletteStepConfig { Value = 45, Color = "#00D080" },
+                                new PaletteStepConfig { Value = 60, Color = "#FFE040" },
+                                new PaletteStepConfig { Value = 75, Color = "#FF4020" },
                             ],
                             Interpolate = true,
                         },

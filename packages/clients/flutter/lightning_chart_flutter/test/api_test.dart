@@ -328,10 +328,10 @@ void main() {
               start: const PointConfig(x: 0, y: 0),
               step: const PointConfig(x: 2, y: 5),
               dataCleaning: const DataCleaningConfig(minDataPointCount: 1000),
-              palette: const LUTConfig(
+              palette: const PaletteConfig(
                 steps: [
-                  LUTStepConfig(value: 0, color: '#0000FF'),
-                  LUTStepConfig(value: 100, color: '#FF0000'),
+                  PaletteStepConfig(value: 0, color: '#0000FF'),
+                  PaletteStepConfig(value: 100, color: '#FF0000'),
                 ],
                 interpolate: true,
               ),
@@ -408,10 +408,10 @@ void main() {
             name: '',
             start: PointConfig(x: 0, y: 10),
             dataCleaning: DataCleaningConfig(minDataPointCount: 2000),
-            palette: LUTConfig(
+            palette: PaletteConfig(
               steps: [
-                LUTStepConfig(value: 0, color: '#000000'),
-                LUTStepConfig(value: 100, color: '#FFFFFF'),
+                PaletteStepConfig(value: 0, color: '#000000'),
+                PaletteStepConfig(value: 100, color: '#FFFFFF'),
               ],
               interpolate: false,
             ),
@@ -475,10 +475,10 @@ void main() {
             x: 'time',
             y: 'pressure',
             colorBy: 'temperature',
-            palette: LUTConfig(
+            palette: PaletteConfig(
               steps: [
-                LUTStepConfig(value: 0, color: '#0000FF'),
-                LUTStepConfig(value: 100, color: '#FF0000'),
+                PaletteStepConfig(value: 0, color: '#0000FF'),
+                PaletteStepConfig(value: 100, color: '#FF0000'),
               ],
             ),
           ),

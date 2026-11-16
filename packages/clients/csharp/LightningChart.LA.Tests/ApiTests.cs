@@ -592,12 +592,12 @@ public class ApiTests
                     Start = new PointConfig { X = 0, Y = 0 },
                     Step = new PointConfig { X = 2, Y = 5 },
                     DataCleaning = new DataCleaningConfig { MinDataPointCount = 1000 },
-                    Palette = new LUTConfig
+                    Palette = new PaletteConfig
                     {
                         Steps =
                         [
-                            new LUTStepConfig { Value = 0, Color = "#0000FF" },
-                            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
                         ],
                         Interpolate = true,
                     },
@@ -681,12 +681,12 @@ public class ApiTests
                     Name = "",
                     Start = new PointConfig { X = 0, Y = 10 },
                     DataCleaning = new DataCleaningConfig { MinDataPointCount = 2000 },
-                    Palette = new LUTConfig
+                    Palette = new PaletteConfig
                     {
                         Steps =
                         [
-                            new LUTStepConfig { Value = 0, Color = "#000000" },
-                            new LUTStepConfig { Value = 100, Color = "#FFFFFF" },
+                            new PaletteStepConfig { Value = 0, Color = "#000000" },
+                            new PaletteStepConfig { Value = 100, Color = "#FFFFFF" },
                         ],
                         Interpolate = false,
                     },
@@ -763,12 +763,12 @@ public class ApiTests
                     X = "time",
                     Y = "pressure",
                     ColorBy = "temperature",
-                    Palette = new LUTConfig
+                    Palette = new PaletteConfig
                     {
                         Steps =
                         [
-                            new LUTStepConfig { Value = 0, Color = "#0000FF" },
-                            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
                         ],
                     },
                 },

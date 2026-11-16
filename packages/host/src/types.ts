@@ -94,13 +94,13 @@ export interface AxisConfig {
 }
 
 // Palette steps map numeric values to hexadecimal colors
-export interface LUTStepConfig {
+export interface PaletteStepConfig {
   value: number
   color: string
 }
 
-export interface LUTConfig {
-  steps: LUTStepConfig[]
+export interface PaletteConfig {
+  steps: PaletteStepConfig[]
   interpolate?: boolean
 }
 
@@ -119,7 +119,7 @@ export interface UpdateLineSeriesConfig {
   y?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -134,7 +134,7 @@ export interface LineSeriesConfig {
   yAxisId?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
 }
 
 export interface UpdateScatterSeriesConfig {
@@ -146,7 +146,7 @@ export interface UpdateScatterSeriesConfig {
   y?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -161,7 +161,7 @@ export interface ScatterSeriesConfig {
   yAxisId?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
 }
 
 export interface UpdateLineScatterSeriesConfig {
@@ -173,7 +173,7 @@ export interface UpdateLineScatterSeriesConfig {
   y?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -188,7 +188,7 @@ export interface LineScatterSeriesConfig {
   yAxisId?: string
   color?: string
   colorBy?: string
-  palette?: LUTConfig
+  palette?: PaletteConfig
 }
 
 // Scrolling heatmaps receive matrix samples directly, without a dataset
@@ -202,7 +202,7 @@ export interface ScrollingHeatmapSeriesConfig {
   yAxisId?: string
   start?: { x: number; y: number }
   step?: { x: number; y: number }
-  palette?: LUTConfig
+  palette?: PaletteConfig
   dataCleaning?: DataCleaningConfig
 }
 
@@ -212,7 +212,7 @@ export interface UpdateScrollingHeatmapSeriesConfig {
   name?: string
   start?: { x: number; y: number }
   step?: { x: number; y: number }
-  palette?: LUTConfig
+  palette?: PaletteConfig
   dataCleaning?: DataCleaningConfig
   remove?: boolean
 }

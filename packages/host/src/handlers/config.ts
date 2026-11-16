@@ -37,7 +37,7 @@ import type {
   ScrollStrategy,
   ScrollingHeatmapSeriesConfig,
   UpdateScrollingHeatmapSeriesConfig,
-  LUTConfig,
+  PaletteConfig,
 } from '../types.js'
 import { hostState, type DataSetState, type AxisState, type ChartState, } from './state.js'
 
@@ -462,7 +462,7 @@ function configureScrollingHeatmapSeries(
   return {id: envelopeId, type: 'response' }
 }
 
-function createPalettedFill(palette: LUTConfig): PalettedFill {
+function createPalettedFill(palette: PaletteConfig): PalettedFill {
   return new PalettedFill({
     lookUpProperty: 'value',
     lut: new LUT({

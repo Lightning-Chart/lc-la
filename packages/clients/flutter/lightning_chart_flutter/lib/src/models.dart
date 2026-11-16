@@ -235,17 +235,17 @@ class UpdateAxisConfig implements IAxisConfig {
   final bool? remove;
 }
 
-class LUTStepConfig {
-  const LUTStepConfig({required this.value, required this.color});
+class PaletteStepConfig {
+  const PaletteStepConfig({required this.value, required this.color});
 
   final double value;
   final String color;
 }
 
-class LUTConfig {
-  const LUTConfig({required this.steps, this.interpolate});
+class PaletteConfig {
+  const PaletteConfig({required this.steps, this.interpolate});
 
-  final List<LUTStepConfig> steps;
+  final List<PaletteStepConfig> steps;
   final bool? interpolate;
 }
 
@@ -297,7 +297,7 @@ class LineSeriesConfig extends SeriesConfig {
   final String? yAxisId;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class UpdateLineSeriesConfig extends UpdateSeriesConfig {
@@ -318,7 +318,7 @@ class UpdateLineSeriesConfig extends UpdateSeriesConfig {
   final String? y;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class ScatterSeriesConfig extends SeriesConfig {
@@ -342,7 +342,7 @@ class ScatterSeriesConfig extends SeriesConfig {
   final String? yAxisId;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class UpdateScatterSeriesConfig extends UpdateSeriesConfig {
@@ -363,7 +363,7 @@ class UpdateScatterSeriesConfig extends UpdateSeriesConfig {
   final String? y;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class LineScatterSeriesConfig extends SeriesConfig {
@@ -387,7 +387,7 @@ class LineScatterSeriesConfig extends SeriesConfig {
   final String? yAxisId;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
@@ -408,7 +408,7 @@ class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
   final String? y;
   final String? color;
   final String? colorBy;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
 }
 
 class ScrollingHeatmapSeriesConfig extends SeriesConfig {
@@ -431,7 +431,7 @@ class ScrollingHeatmapSeriesConfig extends SeriesConfig {
   final String? yAxisId;
   final PointConfig? start;
   final PointConfig? step;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
   final DataCleaningConfig? dataCleaning;
 }
 
@@ -448,7 +448,7 @@ class UpdateScrollingHeatmapSeriesConfig extends UpdateSeriesConfig {
 
   final PointConfig? start;
   final PointConfig? step;
-  final LUTConfig? palette;
+  final PaletteConfig? palette;
   final DataCleaningConfig? dataCleaning;
 }
 

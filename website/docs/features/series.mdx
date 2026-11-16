@@ -385,12 +385,12 @@ _chart = await _context.CreateChartAsync(new XYChartConfig
             Resolution = 512,
             ScrollDimension = ScrollDimension.Columns,
             Step = new PointConfig { X = 5, Y = 1 },
-            Palette = new LUTConfig
+            Palette = new PaletteConfig
             {
                 Steps =
                 [
-                    new LUTStepConfig { Value = 0, Color = "#0000FF" },
-                    new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
                 ],
                 Interpolate = true,
             },
@@ -438,12 +438,12 @@ _chart = await _context.CreateChartAsync(new XYChartConfig
             Resolution = 512,
             ScrollDimension = ScrollDimension.Columns,
             Step = new PointConfig { X = 5, Y = 1 },
-            Palette = new LUTConfig
+            Palette = new PaletteConfig
             {
                 Steps =
                 [
-                    new LUTStepConfig { Value = 0, Color = "#0000FF" },
-                    new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
                 ],
                 Interpolate = true,
             },
@@ -491,12 +491,12 @@ _chart = await _context.CreateChartAsync(new XYChartConfig
             Resolution = 512,
             ScrollDimension = ScrollDimension.Columns,
             Step = new PointConfig { X = 5, Y = 1 },
-            Palette = new LUTConfig
+            Palette = new PaletteConfig
             {
                 Steps =
                 [
-                    new LUTStepConfig { Value = 0, Color = "#0000FF" },
-                    new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
                 ],
                 Interpolate = true,
             },
@@ -541,10 +541,10 @@ LightningChart.xy(
       resolution: 512,
       scrollDimension: ScrollDimension.columns,
       step: PointConfig(x: 5, y: 1),
-      palette: LUTConfig(
+      palette: PaletteConfig(
         steps: [
-          LUTStepConfig(value: 0, color: '#0000FF'),
-          LUTStepConfig(value: 100, color: '#FF0000'),
+          PaletteStepConfig(value: 0, color: '#0000FF'),
+          PaletteStepConfig(value: 100, color: '#FF0000'),
         ],
         interpolate: true,
       ),
@@ -608,13 +608,13 @@ new ScatterSeriesConfig
     Y = "temperature-2",
     Name = "Temperature 2",
     ColorBy = "humidity",
-    Palette = new LUTConfig
+    Palette = new PaletteConfig
     {
         Steps =
         [
-            new LUTStepConfig { Value = 0, Color = "#0000FF" },
-            new LUTStepConfig { Value = 50, Color = "#00FF00" },
-            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
         ],
         Interpolate = true,
     },
@@ -633,13 +633,13 @@ new ScatterSeriesConfig
     Y = "temperature-2",
     Name = "Temperature 2",
     ColorBy = "humidity",
-    Palette = new LUTConfig
+    Palette = new PaletteConfig
     {
         Steps =
         [
-            new LUTStepConfig { Value = 0, Color = "#0000FF" },
-            new LUTStepConfig { Value = 50, Color = "#00FF00" },
-            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
         ],
         Interpolate = true,
     },
@@ -658,13 +658,13 @@ new ScatterSeriesConfig
     Y = "temperature-2",
     Name = "Temperature 2",
     ColorBy = "humidity",
-    Palette = new LUTConfig
+    Palette = new PaletteConfig
     {
         Steps =
         [
-            new LUTStepConfig { Value = 0, Color = "#0000FF" },
-            new LUTStepConfig { Value = 50, Color = "#00FF00" },
-            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
         ],
         Interpolate = true,
     },
@@ -682,11 +682,11 @@ ScatterSeriesConfig(
   y: 'temperature-2',
   name: 'Temperature 2',
   colorBy: 'humidity',
-  palette: LUTConfig(
+  palette: PaletteConfig(
     steps: [
-      LUTStepConfig(value: 0, color: '#0000FF'),
-      LUTStepConfig(value: 50, color: '#00FF00'),
-      LUTStepConfig(value: 100, color: '#FF0000'),
+      PaletteStepConfig(value: 0, color: '#0000FF'),
+      PaletteStepConfig(value: 50, color: '#00FF00'),
+      PaletteStepConfig(value: 100, color: '#FF0000'),
     ],
     interpolate: true,
   ),
