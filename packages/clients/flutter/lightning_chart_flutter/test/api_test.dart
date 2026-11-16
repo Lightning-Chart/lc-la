@@ -29,6 +29,57 @@ class _MockTransport implements LclaTransport {
 }
 
 void main() {
+  for (final legendVisible in <bool?>[false, true, null]) {
+    test('serializes legend visibility on creation: $legendVisible', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      await session.createChart(XYChartConfig(legendVisible: legendVisible));
+
+      final message = transport.sentMessages.last;
+      expect(message['action'], 'create');
+
+      final params = message['params']! as Map<String, Object?>;
+
+      if (legendVisible == null) {
+        expect(params.containsKey('legendVisible'), isFalse);
+      } else {
+        expect(params['legendVisible'], legendVisible);
+      }
+    });
+
+    test('serializes legend visibility in updates: $legendVisible', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      final chart = await session.createChart();
+
+      chart.update(
+        UpdateXYChartConfig(
+          title: 'Updated title',
+          legendVisible: legendVisible,
+        ),
+      );
+
+      final message = transport.fireAndForgetMessages.single;
+      expect(message['action'], 'update');
+
+      final params = message['params']! as Map<String, Object?>;
+
+      if (legendVisible == null) {
+        expect(params.containsKey('legendVisible'), isFalse);
+      } else {
+        expect(params['legendVisible'], legendVisible);
+      }
+    });
+  }
+
   test('queues dataset cleanup after chart disposal', () async {
     final transport = _MockTransport();
     final session = LclaChartSession(
@@ -276,6 +327,14 @@ void main() {
               yAxisId: 'axis-y',
               start: const PointConfig(x: 0, y: 0),
               step: const PointConfig(x: 2, y: 5),
+              dataCleaning: const DataCleaningConfig(minDataPointCount: 1000),
+              palette: const LUTConfig(
+                steps: [
+                  LUTStepConfig(value: 0, color: '#0000FF'),
+                  LUTStepConfig(value: 100, color: '#FF0000'),
+                ],
+                interpolate: true,
+              ),
             ),
           ],
         ),
@@ -299,6 +358,14 @@ void main() {
             'yAxisId': 'axis-y',
             'start': {'x': 0, 'y': 0},
             'step': {'x': 2, 'y': 5},
+            'dataCleaning': {'minDataPointCount': 1000},
+            'palette': {
+              'steps': [
+                {'value': 0, 'color': '#0000FF'},
+                {'value': 100, 'color': '#FF0000'},
+              ],
+              'interpolate': true,
+            },
           },
         ],
       });
@@ -324,6 +391,15 @@ void main() {
       ),
     );
 
+    final creationParams =
+        transport.fireAndForgetMessages.single['params']!
+            as Map<String, Object?>;
+    final creationSeries =
+        (creationParams['series']! as List<Object?>).single
+            as Map<String, Object?>;
+
+    expect(creationSeries.containsKey('dataCleaning'), isFalse);
+
     chart.update(
       const UpdateXYChartConfig(
         series: [
@@ -331,6 +407,14 @@ void main() {
             id: 'heatmap',
             name: '',
             start: PointConfig(x: 0, y: 10),
+            dataCleaning: DataCleaningConfig(minDataPointCount: 2000),
+            palette: LUTConfig(
+              steps: [
+                LUTStepConfig(value: 0, color: '#000000'),
+                LUTStepConfig(value: 100, color: '#FFFFFF'),
+              ],
+              interpolate: false,
+            ),
           ),
         ],
       ),
@@ -344,6 +428,14 @@ void main() {
           'type': 'scrollingHeatmap',
           'name': '',
           'start': {'x': 0, 'y': 10},
+          'dataCleaning': {'minDataPointCount': 2000},
+          'palette': {
+            'steps': [
+              {'value': 0, 'color': '#000000'},
+              {'value': 100, 'color': '#FFFFFF'},
+            ],
+            'interpolate': false,
+          },
         },
       ],
     });
@@ -360,6 +452,56 @@ void main() {
     expect(transport.fireAndForgetMessages.last['params'], {
       'series': [
         {'id': 'heatmap', 'type': 'scrollingHeatmap', 'remove': true},
+      ],
+    });
+  });
+
+  test('serializes scatter colorBy and palette', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart();
+    transport.fireAndForgetMessages.clear();
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          ScatterSeriesConfig(
+            id: 'scatter',
+            dataSetId: 'measurements',
+            x: 'time',
+            y: 'pressure',
+            colorBy: 'temperature',
+            palette: LUTConfig(
+              steps: [
+                LUTStepConfig(value: 0, color: '#0000FF'),
+                LUTStepConfig(value: 100, color: '#FF0000'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages.single['params'], {
+      'series': [
+        {
+          'id': 'scatter',
+          'type': 'scatter',
+          'dataSetId': 'measurements',
+          'x': 'time',
+          'y': 'pressure',
+          'colorBy': 'temperature',
+          'palette': {
+            'steps': [
+              {'value': 0, 'color': '#0000FF'},
+              {'value': 100, 'color': '#FF0000'},
+            ],
+          },
+        },
       ],
     });
   });

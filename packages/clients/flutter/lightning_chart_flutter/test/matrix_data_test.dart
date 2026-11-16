@@ -31,6 +31,23 @@ Future<(LclaChart, _FakeTransport)> _createChart() async {
 }
 
 void main() {
+  test('clearMatrixData sends only metadata by series id', () async {
+    final (chart, transport) = await _createChart();
+    transport.sent.clear();
+    chart.clearMatrixData(const ClearMatrixDataOptions(seriesId: 'heatmap'));
+    expect(transport.sent, hasLength(1));
+
+    final message = transport.sent.single;
+    final meta = message['meta']! as Map<String, Object?>;
+    expect(message.keys, unorderedEquals(['meta']));
+    expect(meta['category'], 'data');
+    expect(meta['action'], 'clearMatrix');
+    expect(meta['chartId'], chart.chartId);
+    expect(meta['seriesId'], 'heatmap');
+    expect(meta['clientId'], isNotEmpty);
+    expect(meta.containsKey('params'), isFalse);
+  });
+
   test('setMatrixData sends flat float32 values by series id', () async {
     final (chart, transport) = await _createChart();
     final values = Float32List.fromList([1, 2, 3, 4, 5, 6]);

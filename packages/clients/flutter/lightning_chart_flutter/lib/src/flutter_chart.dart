@@ -20,6 +20,7 @@ class LightningChart extends StatefulWidget {
   LightningChart.xy({
     required LclaLicense license,
     String? title,
+    bool? legendVisible,
     List<DataSetConfig> dataSets = const [],
     List<AxisConfig> axes = const [],
     List<SeriesConfig> series = const [],
@@ -34,6 +35,7 @@ class LightningChart extends StatefulWidget {
          license: license,
          config: XYChartConfig(
            title: title,
+           legendVisible: legendVisible,
            dataSets: dataSets,
            axes: axes,
            series: series,
@@ -86,6 +88,10 @@ class _LightningChartState extends State<LightningChart> {
       title: widget.config.title != oldWidget.config.title
           ? widget.config.title
           : null,
+      legendVisible:
+          widget.config.legendVisible != oldWidget.config.legendVisible
+          ? widget.config.legendVisible
+          : null,
       dataSets: !identical(widget.config.dataSets, oldWidget.config.dataSets)
           ? widget.config.dataSets
           : null,
@@ -98,6 +104,7 @@ class _LightningChartState extends State<LightningChart> {
     );
 
     if (update.title != null ||
+        update.legendVisible != null ||
         update.dataSets != null ||
         update.axes != null ||
         update.series != null) {

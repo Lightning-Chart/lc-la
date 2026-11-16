@@ -70,7 +70,7 @@ export interface AxisDefaultIntervalConfig {
 
 export interface UpdateAxisConfig {
   id?: string
-  // Without an ID, orientation selects the corresponding default axis
+  /** Without an ID, orientation selects the corresponding default axis */
   axis?: AxisTarget
   title?: string
   interval?: AxisIntervalConfig
@@ -93,6 +93,22 @@ export interface AxisConfig {
   parallelIndex?: number
 }
 
+// Palette steps map numeric values to hexadecimal colors
+export interface LUTStepConfig {
+  value: number
+  color: string
+}
+
+export interface LUTConfig {
+  steps: LUTStepConfig[]
+  interpolate?: boolean
+}
+
+export interface DataCleaningConfig {
+  /** Minimum number of samples retained when cleaning out-of-view data. */
+  minDataPointCount: number
+}
+
 // Series configuration
 export interface UpdateLineSeriesConfig {
   id: string
@@ -102,6 +118,8 @@ export interface UpdateLineSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
   remove?: boolean
 }
 
@@ -115,6 +133,8 @@ export interface LineSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
 }
 
 export interface UpdateScatterSeriesConfig {
@@ -125,6 +145,8 @@ export interface UpdateScatterSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
   remove?: boolean
 }
 
@@ -138,6 +160,8 @@ export interface ScatterSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
 }
 
 export interface UpdateLineScatterSeriesConfig {
@@ -148,6 +172,8 @@ export interface UpdateLineScatterSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
   remove?: boolean
 }
 
@@ -161,6 +187,8 @@ export interface LineScatterSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: LUTConfig
 }
 
 // Scrolling heatmaps receive matrix samples directly, without a dataset
@@ -174,6 +202,8 @@ export interface ScrollingHeatmapSeriesConfig {
   yAxisId?: string
   start?: { x: number; y: number }
   step?: { x: number; y: number }
+  palette?: LUTConfig
+  dataCleaning?: DataCleaningConfig
 }
 
 export interface UpdateScrollingHeatmapSeriesConfig {
@@ -182,6 +212,8 @@ export interface UpdateScrollingHeatmapSeriesConfig {
   name?: string
   start?: { x: number; y: number }
   step?: { x: number; y: number }
+  palette?: LUTConfig
+  dataCleaning?: DataCleaningConfig
   remove?: boolean
 }
 
@@ -202,6 +234,7 @@ export interface XYChartConfig {
   title?: string
   containerId?: string
   animationsEnabled?: boolean
+  legendVisible?: boolean
   dataSets?: DataSetConfig[]
   axes?: AxisConfig[]
   series?: SeriesConfig[]
@@ -213,6 +246,7 @@ export interface CreateChartParams extends XYChartConfig {
 
 export interface UpdateXYChartConfig {
   title?: string
+  legendVisible?: boolean
   dataSets?: (DataSetConfig | UpdateDataSetConfig)[]
   axes?: (AxisConfig | UpdateAxisConfig)[]
   series?: (SeriesConfig | UpdateSeriesConfig)[]
@@ -221,7 +255,6 @@ export interface UpdateXYChartConfig {
 // Matrix data actions (data/setMatrix, data/invalidateMatrix, data/appendMatrix).
 // Target a series by seriesId. Values are always a flat float32 BIJ part named "values",
 // interpreted in the dataOrder / scrollDimension the series was created with.
-
 export interface InvalidateMatrixParams {
   iColumn: number
   iRow: number

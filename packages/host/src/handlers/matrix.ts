@@ -1,6 +1,7 @@
 /**
- * Matrix data handler: set, invalidate, and append matrix data on heatmap series.
+ * Matrix data handler: set, invalidate, append, and clear matrix data on heatmap series.
  * Operations target a seriesId. BIJ parts: a single flat float32 "values" part.
+ * Clearing needs no values part.
  *
  * LCJS heatmap series store their own data, so the host keeps no matrix buffers.
  * Values are passed to LCJS as zero-copy views over the received message.
@@ -13,13 +14,28 @@ import { hostState } from './state.js'
 export type MatrixAction = 'setMatrix' | 'invalidateMatrix' | 'appendMatrix'
 
 export function handleMatrixData(envelope: MessageEnvelope, binaryParts: Record<string, unknown>): ResponseEnvelope {
+  const result = findSeries(envelope)
+  if (result.error) return result.error
+
+  // Clearing requires only the series ID, without intensity values.
+  if (envelope.action === 'clearMatrix') {
+    const series = result.series
+
+    if (
+      !(series instanceof HeatmapGridSeriesIntensityValues) &&
+      !(series instanceof HeatmapScrollingGridSeriesIntensityValues)
+    ) {
+      return notSupported(envelope)
+    }
+
+    series.clear()
+    return ok(envelope)
+  }
+
   const values = binaryParts['values']
   if (!(values instanceof Float32Array)) {
     return error(envelope, 'matrix data requires values as Float32Array')
   }
-
-  const result = findSeries(envelope)
-  if (result.error) return result.error
 
   return applyMatrixData(envelope, result.series, values)
 }

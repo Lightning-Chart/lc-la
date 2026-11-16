@@ -41,6 +41,7 @@ export function handleData(envelope: MessageEnvelope, binaryParts: Record<string
     case 'setMatrix':
     case 'invalidateMatrix':
     case 'appendMatrix':
+    case 'clearMatrix':
       return handleMatrixData(envelope, binaryParts)
     default:
       return { id: envelope.id, type: 'error', error: `Unknown data action: ${envelope.action}` }

@@ -122,6 +122,71 @@ public class ApiTests
         Assert.NotNull(chart.ChartId);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [InlineData(null)]
+    public async Task CreateChart_SerializesLegendVisibility(bool? legendVisible)
+    {
+        var transport = new MockTransport();
+        var context = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+
+        await context.CreateChartAsync(new XYChartConfig
+        {
+            LegendVisible = legendVisible,
+        });
+
+        var decoded = BijDecoder.Decode(transport.SentMessages.Last());
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params");
+
+        if (legendVisible.HasValue)
+        {
+            Assert.Equal(
+                legendVisible.Value,
+                options.GetProperty("legendVisible").GetBoolean());
+        }
+        else
+        {
+            Assert.False(options.TryGetProperty("legendVisible", out _));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [InlineData(null)]
+    public async Task Update_SerializesLegendVisibility(bool? legendVisible)
+    {
+        var transport = new MockTransport();
+        var context = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+
+        var chart = await context.CreateChartAsync();
+
+        chart.Update(new UpdateXYChartConfig
+        {
+            Title = "Updated title",
+            LegendVisible = legendVisible,
+        });
+
+        var decoded = BijDecoder.Decode(Assert.Single(transport.FireAndForgetMessages));
+        var meta = (JsonElement)decoded["meta"];
+        var options = meta.GetProperty("params");
+
+        Assert.Equal("update", meta.GetProperty("action").GetString());
+
+        if (legendVisible.HasValue)
+        {
+            Assert.Equal(
+                legendVisible.Value,
+                options.GetProperty("legendVisible").GetBoolean());
+        }
+        else
+        {
+            Assert.False(options.TryGetProperty("legendVisible", out _));
+        }
+    }
+
     [Fact]
     public async Task CreateChart_QueuesSeriesAfterSharedDataSetConfiguration()
     {
@@ -526,6 +591,16 @@ public class ApiTests
                     YAxisId = "axis-y",
                     Start = new PointConfig { X = 0, Y = 0 },
                     Step = new PointConfig { X = 2, Y = 5 },
+                    DataCleaning = new DataCleaningConfig { MinDataPointCount = 1000 },
+                    Palette = new LUTConfig
+                    {
+                        Steps =
+                        [
+                            new LUTStepConfig { Value = 0, Color = "#0000FF" },
+                            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                        ],
+                        Interpolate = true,
+                    },
                 },
             ],
         });
@@ -557,6 +632,17 @@ public class ApiTests
         var step = series.GetProperty("step");
         Assert.Equal(2d, step.GetProperty("x").GetDouble());
         Assert.Equal(5d, step.GetProperty("y").GetDouble());
+        Assert.Equal(1000, series.GetProperty("dataCleaning").GetProperty("minDataPointCount").GetInt32());
+
+        var palette = series.GetProperty("palette");
+        Assert.True(palette.GetProperty("interpolate").GetBoolean());
+
+        var steps = palette.GetProperty("steps");
+        Assert.Equal(2, steps.GetArrayLength());
+        Assert.Equal(0d, steps[0].GetProperty("value").GetDouble());
+        Assert.Equal("#0000FF", steps[0].GetProperty("color").GetString());
+        Assert.Equal(100d, steps[1].GetProperty("value").GetDouble());
+        Assert.Equal("#FF0000", steps[1].GetProperty("color").GetString());
     }
 
     [Fact]
@@ -578,6 +664,13 @@ public class ApiTests
             ],
         });
 
+        var creationMeta = (JsonElement)BijDecoder.Decode(
+            Assert.Single(transport.FireAndForgetMessages))["meta"];
+
+        Assert.False(
+            creationMeta.GetProperty("params").GetProperty("series")[0]
+                .TryGetProperty("dataCleaning", out _));
+
         chart.Update(new UpdateXYChartConfig
         {
             Series =
@@ -587,6 +680,16 @@ public class ApiTests
                     Id = "heatmap",
                     Name = "",
                     Start = new PointConfig { X = 0, Y = 10 },
+                    DataCleaning = new DataCleaningConfig { MinDataPointCount = 2000 },
+                    Palette = new LUTConfig
+                    {
+                        Steps =
+                        [
+                            new LUTStepConfig { Value = 0, Color = "#000000" },
+                            new LUTStepConfig { Value = 100, Color = "#FFFFFF" },
+                        ],
+                        Interpolate = false,
+                    },
                 },
             ],
         });
@@ -594,11 +697,21 @@ public class ApiTests
         var decoded = BijDecoder.Decode(transport.FireAndForgetMessages.Last());
         var meta = (JsonElement)decoded["meta"];
         var series = meta.GetProperty("params").GetProperty("series")[0];
-
         Assert.Equal("scrollingHeatmap", series.GetProperty("type").GetString());
         Assert.Equal("", series.GetProperty("name").GetString());
         Assert.Equal(0d, series.GetProperty("start").GetProperty("x").GetDouble());
         Assert.Equal(10d, series.GetProperty("start").GetProperty("y").GetDouble());
+        Assert.Equal(2000, series.GetProperty("dataCleaning").GetProperty("minDataPointCount").GetInt32());
+
+        var palette = series.GetProperty("palette");
+        Assert.False(palette.GetProperty("interpolate").GetBoolean());
+
+        var steps = palette.GetProperty("steps");
+        Assert.Equal(2, steps.GetArrayLength());
+        Assert.Equal(0d, steps[0].GetProperty("value").GetDouble());
+        Assert.Equal("#000000", steps[0].GetProperty("color").GetString());
+        Assert.Equal(100d, steps[1].GetProperty("value").GetDouble());
+        Assert.Equal("#FFFFFF", steps[1].GetProperty("color").GetString());
 
         foreach (var property in new[] {
             "resolution", "scrollDimension", "xAxisId", "yAxisId", "step", "remove",
@@ -628,6 +741,80 @@ public class ApiTests
         Assert.True(removal.GetProperty("remove").GetBoolean());
         Assert.False(removal.TryGetProperty("name", out _));
         Assert.False(removal.TryGetProperty("start", out _));
+        Assert.False(removal.TryGetProperty("dataCleaning", out _));
+    }
+
+    [Fact]
+    public async Task Update_SendsScatterColorByAndPalette()
+    {
+        var transport = new MockTransport();
+        var context = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+        var chart = await context.CreateChartAsync();
+        transport.FireAndForgetMessages.Clear();
+
+        chart.Update(new UpdateXYChartConfig
+        {
+            Series =
+            [
+                new ScatterSeriesConfig
+                {
+                    Id = "scatter",
+                    DataSetId = "measurements",
+                    X = "time",
+                    Y = "pressure",
+                    ColorBy = "temperature",
+                    Palette = new LUTConfig
+                    {
+                        Steps =
+                        [
+                            new LUTStepConfig { Value = 0, Color = "#0000FF" },
+                            new LUTStepConfig { Value = 100, Color = "#FF0000" },
+                        ],
+                    },
+                },
+            ],
+        });
+
+        var decoded = BijDecoder.Decode(Assert.Single(transport.FireAndForgetMessages));
+        var meta = (JsonElement)decoded["meta"];
+        var series = meta.GetProperty("params").GetProperty("series")[0];
+        Assert.Equal("scatter", series.GetProperty("type").GetString());
+        Assert.Equal("temperature", series.GetProperty("colorBy").GetString());
+
+        var palette = series.GetProperty("palette");
+        Assert.False(palette.TryGetProperty("interpolate", out _));
+
+        var steps = palette.GetProperty("steps");
+        Assert.Equal(2, steps.GetArrayLength());
+        Assert.Equal(0d, steps[0].GetProperty("value").GetDouble());
+        Assert.Equal("#0000FF", steps[0].GetProperty("color").GetString());
+        Assert.Equal(100d, steps[1].GetProperty("value").GetDouble());
+        Assert.Equal("#FF0000", steps[1].GetProperty("color").GetString());
+    }
+
+    [Fact]
+    public async Task ClearMatrixData_SendsOnlyMetadataBySeriesId()
+    {
+        var transport = new MockTransport();
+        var client = new LclaContext(transport, new LclaLicense { Key = "test-license" });
+        var chart = await client.CreateChartAsync();
+
+        transport.FireAndForgetMessages.Clear();
+
+        chart.ClearMatrixData(new ClearMatrixDataOptions
+        {
+            SeriesId = "heatmap",
+        });
+
+        var decoded = BijDecoder.Decode(Assert.Single(transport.FireAndForgetMessages));
+        var meta = (JsonElement)decoded["meta"];
+        Assert.Single(decoded);
+        Assert.Equal("data", meta.GetProperty("category").GetString());
+        Assert.Equal("clearMatrix", meta.GetProperty("action").GetString());
+        Assert.Equal(chart.ChartId, meta.GetProperty("chartId").GetString());
+        Assert.Equal("heatmap", meta.GetProperty("seriesId").GetString());
+        Assert.False(string.IsNullOrEmpty(meta.GetProperty("clientId").GetString()));
+        Assert.False(meta.TryGetProperty("params", out _));
     }
 
     [Fact]

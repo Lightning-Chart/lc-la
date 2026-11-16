@@ -175,6 +175,7 @@ function handleCreate(envelope: MessageEnvelope): ResponseEnvelope {
     chartId,
     params: {
       title: params?.title,
+      legendVisible: params?.legendVisible,
       dataSets: params?.dataSets,
       axes,
       series: params?.series,

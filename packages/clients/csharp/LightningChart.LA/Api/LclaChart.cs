@@ -33,6 +33,8 @@ public class LclaChart : IAsyncDisposable
         
         if (config.Title != null)
             p["title"] = config.Title;
+        if (config.LegendVisible.HasValue)
+            p["legendVisible"] = config.LegendVisible.Value;
         // Reuse the creation serializers to convert configs to protocol fields, omitting unspecified properties.
         if (config.DataSets != null)
             p["dataSets"] = config.DataSets.Select(LclaContext.DataSetToObject).ToArray();
@@ -163,7 +165,16 @@ public class LclaChart : IAsyncDisposable
         SendMatrixData("appendMatrix", options.SeriesId, parameters, values);
     }
 
-    private void SendMatrixData(string action, string seriesId, object? parameters, float[] values)
+    /// <summary>
+    /// Clear all matrix data while retaining the heatmap series and its settings.
+    /// </summary>
+    public void ClearMatrixData(ClearMatrixDataOptions options)
+    {
+        ThrowIfDisposed();
+        SendMatrixData("clearMatrix", options.SeriesId, null);
+    }
+
+    private void SendMatrixData(string action, string seriesId, object? parameters, float[]? values = null)
     {
         var meta = new Dictionary<string, object?>
         {
@@ -175,8 +186,9 @@ public class LclaChart : IAsyncDisposable
             ["seriesId"] = seriesId,
         };
         if (parameters != null) meta["params"] = parameters;
-
-        _client.SendFireAndForget(BijEncoder.Encode([BijPart.Json("meta", meta), BijPart.Float32("values", values)]));
+        List<BijPart> parts = [BijPart.Json("meta", meta)];
+        if (values != null) parts.Add(BijPart.Float32("values", values));
+        _client.SendFireAndForget(BijEncoder.Encode(parts));
     }
 
     public async ValueTask DisposeAsync()
@@ -249,4 +261,9 @@ public class AppendMatrixDataOptions
     /// Starting grid sample index. Omit to append after existing samples.
     /// </summary>
     public int? ISample { get; set; }
+}
+
+public class ClearMatrixDataOptions
+{
+    public required string SeriesId { get; set; }
 }

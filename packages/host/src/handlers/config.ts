@@ -13,6 +13,8 @@ import {
   ColorHEX,
   emptyFill,
   emptyLine,
+  LUT,
+  PalettedFill,
   type PointLineAreaSeries,
 } from '@lightningchart/lcjs'
 import type {
@@ -35,6 +37,7 @@ import type {
   ScrollStrategy,
   ScrollingHeatmapSeriesConfig,
   UpdateScrollingHeatmapSeriesConfig,
+  LUTConfig,
 } from '../types.js'
 import { hostState, type DataSetState, type AxisState, type ChartState, } from './state.js'
 
@@ -92,6 +95,10 @@ function handleChartUpdate(envelope: MessageEnvelope): ResponseEnvelope {
 
   if (params.title !== undefined) {
     chartState.chart.setTitle(params.title)
+  }
+
+  if (params.legendVisible !== undefined) {
+    chartState.chart.legend.setOptions({ visible: params.legendVisible })
   }
 
   return { id: envelope.id, type: 'response' }
@@ -272,6 +279,7 @@ function configurePointLineAreaSeries(
   const dataSetId = seriesConfig.dataSetId ?? existing?.config.dataSetId
   const x = seriesConfig.x ?? existing?.config.x
   const y = seriesConfig.y ?? existing?.config.y
+  const colorBy = seriesConfig.colorBy ?? existing?.config.colorBy
 
   if (dataSetId === undefined || x === undefined || y === undefined) {
     return { id: envelopeId, type: 'error', error: 'A new series requires DataSetId, X, and Y' }
@@ -282,8 +290,8 @@ function configurePointLineAreaSeries(
     return { id: envelopeId, type: 'error', error: `DataSet not found: ${dataSetId}` }
   }
 
-  for (const column of [x, y]) {
-    if (!dsState.columns.includes(column)) {
+  for (const column of [x, y, colorBy]) {
+    if (column !== undefined && !dsState.columns.includes(column)) {
       return { id: envelopeId, type: 'error', error: `Column "${column}" not found in dataset "${dataSetId}"` }
     }
   }
@@ -296,6 +304,11 @@ function configurePointLineAreaSeries(
     y,
     name: seriesConfig.name ?? existing?.config.name,
     color: seriesConfig.color ?? existing?.config.color,
+    colorBy,
+    // A supplied Color selects solid coloring, a supplied palette replaces the previous one, omitted palette remains unchanged
+    palette: seriesConfig.color !== undefined
+      ? undefined
+      : seriesConfig.palette ?? existing?.config.palette,
     xAxisId: existing
       ? existing.config.xAxisId
       : 'xAxisId' in seriesConfig ? seriesConfig.xAxisId : undefined,
@@ -309,9 +322,10 @@ function configurePointLineAreaSeries(
     if (
       existing.config.dataSetId !== config.dataSetId ||
       existing.config.x !== config.x ||
-      existing.config.y !== config.y
+      existing.config.y !== config.y ||
+      existing.config.colorBy !== config.colorBy
     ) {
-      existing.series.setDataSet(dsState.dataSet, { x, y })
+      existing.series.setDataSet(dsState.dataSet, { x, y, lookupValue: colorBy ?? y })
     }
 
     applySeriesStyle(existing.series, config)
@@ -330,7 +344,7 @@ function configurePointLineAreaSeries(
     xAxis: xAxis.axis,
     yAxis: yAxis.axis,
   })
-  series.setDataSet(dsState.dataSet, { x, y })
+  series.setDataSet(dsState.dataSet, { x, y, lookupValue: colorBy ?? y })
   series.setAreaFillStyle(emptyFill)
   applySeriesStyle(series, config)
 
@@ -390,6 +404,14 @@ function configureScrollingHeatmapSeries(
     if (seriesConfig.name !== undefined) existing.series.setName(seriesConfig.name)
     if (seriesConfig.start !== undefined) existing.series.setStart(seriesConfig.start)
     if (seriesConfig.step !== undefined) existing.series.setStep(seriesConfig.step)
+    if (seriesConfig.palette !== undefined) {
+      existing.series.setFillStyle(createPalettedFill(seriesConfig.palette))
+      existing.config.palette = seriesConfig.palette
+    }
+    if (seriesConfig.dataCleaning !== undefined) {
+      existing.series.setDataCleaning(seriesConfig.dataCleaning)
+      existing.config.dataCleaning = seriesConfig.dataCleaning
+    }
 
     return { id: envelopeId, type:'response' }
   }
@@ -421,6 +443,12 @@ function configureScrollingHeatmapSeries(
   if (seriesConfig.name !== undefined) series.setName(seriesConfig.name)
   if (seriesConfig.start !== undefined) series.setStart(seriesConfig.start)
   if (seriesConfig.step !== undefined) series.setStep(seriesConfig.step)
+  if (seriesConfig.palette !== undefined) {
+    series.setFillStyle(createPalettedFill(seriesConfig.palette))
+  }
+  if (seriesConfig.dataCleaning !== undefined) {
+    series.setDataCleaning(seriesConfig.dataCleaning)
+  }
 
   chartState.series.set(seriesConfig.id, {
     type: 'scrollingHeatmap',
@@ -434,13 +462,31 @@ function configureScrollingHeatmapSeries(
   return {id: envelopeId, type: 'response' }
 }
 
+function createPalettedFill(palette: LUTConfig): PalettedFill {
+  return new PalettedFill({
+    lookUpProperty: 'value',
+    lut: new LUT({
+      steps: palette.steps.map((step) => ({
+        value: step.value,
+        color: ColorHEX(step.color),
+      })),
+      ...(palette.interpolate !== undefined ? { interpolate: palette.interpolate } : {}),
+    }),
+  })
+}
+
 function applySeriesStyle(series: PointLineAreaSeries, config: LineSeriesConfig | ScatterSeriesConfig | LineScatterSeriesConfig) {
   if (config.name !== undefined) series.setName(config.name)
   const color = config.color ? ColorHEX(config.color) : undefined
   const type = config.type ?? 'line'
 
-  if (color) {
-    const fill = new SolidFill({ color })
+  const fill = config.palette !== undefined
+    ? createPalettedFill(config.palette)
+    : color
+      ? new SolidFill({ color })
+      : undefined
+
+  if (fill) {
     series.setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: fill }))
     series.setPointFillStyle(fill)
   }

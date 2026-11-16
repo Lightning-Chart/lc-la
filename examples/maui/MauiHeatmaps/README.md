@@ -1,6 +1,6 @@
 # LightningChart MAUI Example
 
-This .NET MAUI example demonstrates static and scrolling heatmaps with value-based coloring using lookup tables (LUTs).
+This .NET MAUI example demonstrates a scrolling heatmap with value-based coloring using a lookup table (LUT).
 
 Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs/)
 
