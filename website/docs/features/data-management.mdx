@@ -6,11 +6,12 @@ sidebar_position: 3
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Data is organized into datasets containing named numeric columns. Series select columns for their X and Y values. Multiple series can use the same dataset.
+Line, scatter, and line-scatter series use datasets containing named numeric columns. Series select columns for their X and Y values, and multiple series can use the same dataset.
 
 Dataset and column IDs connect the dataset definition, series bindings, and supplied data. Use matching IDs across these operations.
 
-The following continues the example from [Adding charts](./charts). Apply updates and supply data through `_chart` after chart creation has completed.
+Scrolling heatmaps receive matrix samples directly. Each sample contains the intensity values for one column or row.
+
 
 ## Adding datasets
 
@@ -948,3 +949,306 @@ Create and update datasets through the stored `_chart` controller's `update()` m
 
 </TabItem>
 </Tabs>
+
+## Matrix data
+
+Supply matrix data directly to a heatmap using its series ID. A scrolling heatmap receives samples containing intensity values. Each sample becomes a column or row, according to the series's scrolling dimension.
+
+Every sample must contain the number of values specified by the series resolution.
+
+### Appending samples
+
+The following supplies samples to a scrolling heatmap with the ID `"heatmap"`.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Here, `samples` is an `IReadOnlyList<float[]>` containing the received samples:
+
+```csharp
+_chart.AppendMatrixData(new AppendMatrixDataOptions
+{
+    SeriesId = "heatmap",
+    Samples = samples,
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Here, `samples` is an `IReadOnlyList<float[]>` containing the received samples:
+
+```csharp
+_chart.AppendMatrixData(new AppendMatrixDataOptions
+{
+    SeriesId = "heatmap",
+    Samples = samples,
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+Here, `samples` is an `IReadOnlyList<float[]>` containing the received samples:
+
+```csharp
+_chart.AppendMatrixData(new AppendMatrixDataOptions
+{
+    SeriesId = "heatmap",
+    Samples = samples,
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Here, `samples` is a `List<Float32List>`. Import `dart:typed_data` to use `Float32List`.
+
+```dart
+chart.appendMatrixData(
+  AppendMatrixDataOptions(
+    seriesId: 'heatmap',
+    samples: samples,
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+Without a starting sample index, samples are appended after the existing data. The same operation can supply a historical recording as a batch or append batches as they arrive.
+
+### Using timestamps
+
+Incoming samples are not always evenly spaced in time. To display their timing correctly, configure the heatmap's step along the scrolling axis as the smallest time interval you need to represent.
+
+Set the grid's start position to the first sample's timestamp. Each incoming timestamp then identifies a position relative to that starting time:
+
+```text
+sample index = round((timestamp − first timestamp) / time step)
+```
+
+For example, with a 5 ms step, a sample acquired 10 ms after the first sample belongs at index 2.
+
+The following example uses a heatmap scrolling by columns, configured with a 5 ms X step. Timestamps are Unix timestamps in milliseconds. Use a DateTime tick strategy on the X axis to display dates and times.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+Add the field and method to the component. Call `HandleIncomingSample()` with each sample's acquisition timestamp and intensity values after chart creation:
+
+```csharp
+private long? _firstTimestampMs;
+
+private void HandleIncomingSample(long timestampMs, float[] sample)
+{
+    if (_chart is null) return;
+    const double stepMs = 5;
+
+    if (_firstTimestampMs is null)
+    {
+        _firstTimestampMs = timestampMs;
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Series =
+            [
+                new UpdateScrollingHeatmapSeriesConfig
+                {
+                    Id = "heatmap",
+                    Start = new PointConfig { X = timestampMs, Y = 0 },
+                },
+            ],
+        });
+    }
+
+    var iSample = (int)Math.Round(
+        (timestampMs - _firstTimestampMs.Value) / stepMs,
+        MidpointRounding.AwayFromZero);
+
+    _chart.AppendMatrixData(new AppendMatrixDataOptions
+    {
+        SeriesId = "heatmap",
+        ISample = iSample,
+        Samples = [sample],
+    });
+}
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+Add the field and method to the page. Call `HandleIncomingSample()` with each sample's acquisition timestamp and intensity values after chart creation:
+
+```csharp
+private long? _firstTimestampMs;
+
+private void HandleIncomingSample(long timestampMs, float[] sample)
+{
+    if (_chart is null) return;
+    const double stepMs = 5;
+
+    if (_firstTimestampMs is null)
+    {
+        _firstTimestampMs = timestampMs;
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Series =
+            [
+                new UpdateScrollingHeatmapSeriesConfig
+                {
+                    Id = "heatmap",
+                    Start = new PointConfig { X = timestampMs, Y = 0 },
+                },
+            ],
+        });
+    }
+
+    var iSample = (int)Math.Round(
+        (timestampMs - _firstTimestampMs.Value) / stepMs,
+        MidpointRounding.AwayFromZero);
+
+    _chart.AppendMatrixData(new AppendMatrixDataOptions
+    {
+        SeriesId = "heatmap",
+        ISample = iSample,
+        Samples = [sample],
+    });
+}
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+Add the field and method to the page. Call `HandleIncomingSample()` with each sample's acquisition timestamp and intensity values after chart creation:
+
+```csharp
+private long? _firstTimestampMs;
+
+private void HandleIncomingSample(long timestampMs, float[] sample)
+{
+    if (_chart is null) return;
+    const double stepMs = 5;
+
+    if (_firstTimestampMs is null)
+    {
+        _firstTimestampMs = timestampMs;
+        _chart.Update(new UpdateXYChartConfig
+        {
+            Series =
+            [
+                new UpdateScrollingHeatmapSeriesConfig
+                {
+                    Id = "heatmap",
+                    Start = new PointConfig { X = timestampMs, Y = 0 },
+                },
+            ],
+        });
+    }
+
+    var iSample = (int)Math.Round(
+        (timestampMs - _firstTimestampMs.Value) / stepMs,
+        MidpointRounding.AwayFromZero);
+
+    _chart.AppendMatrixData(new AppendMatrixDataOptions
+    {
+        SeriesId = "heatmap",
+        ISample = iSample,
+        Samples = [sample],
+    });
+}
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+Add the field and method to `_SignalChartState`. Call `_handleIncomingSample()` with each sample's acquisition timestamp and intensity values after chart creation:
+
+```dart
+int? _firstTimestampMs;
+
+void _handleIncomingSample(int timestampMs, Float32List sample) {
+  final chart = _chart;
+  if (chart == null) return;
+  const stepMs = 5.0;
+
+  if (_firstTimestampMs == null) {
+    _firstTimestampMs = timestampMs;
+    chart.update(UpdateXYChartConfig(
+      series: [
+        UpdateScrollingHeatmapSeriesConfig(
+          id: 'heatmap',
+          start: PointConfig(x: timestampMs.toDouble(), y: 0),
+        ),
+      ],
+    ));
+  }
+
+  final iSample =
+      ((timestampMs - _firstTimestampMs!) / stepMs).round();
+
+  chart.appendMatrixData(AppendMatrixDataOptions(
+    seriesId: 'heatmap',
+    iSample: iSample,
+    samples: [sample],
+  ));
+}
+```
+
+</TabItem>
+</Tabs>
+
+Supplying a sample index places the values at that grid position. Gaps between samples are filled by repeating the preceding sample.
+
+For a heatmap scrolling by rows, use the Y coordinate for the start position and time step.
+
+When sending multiple samples in one call, they occupy consecutive indices. Send samples separately when their timestamps require different spacing.
+
+### Clearing matrix data
+
+Clear a heatmap's data using its series ID. The series and its configuration, including the palette, grid start, and step, remain unchanged.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.ClearMatrixData(new ClearMatrixDataOptions
+{
+    SeriesId = "heatmap",
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.ClearMatrixData(new ClearMatrixDataOptions
+{
+    SeriesId = "heatmap",
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.ClearMatrixData(new ClearMatrixDataOptions
+{
+    SeriesId = "heatmap",
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.clearMatrixData(
+  const ClearMatrixDataOptions(
+    seriesId: 'heatmap',
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
+New samples can be supplied to the same series after clearing. Clearing does not stop an active data stream.

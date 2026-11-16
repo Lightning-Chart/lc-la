@@ -29,6 +29,81 @@ class _MockTransport implements LclaTransport {
 }
 
 void main() {
+  for (final legendVisible in <bool?>[false, true, null]) {
+    test('serializes legend visibility on creation: $legendVisible', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      await session.createChart(XYChartConfig(legendVisible: legendVisible));
+
+      final message = transport.sentMessages.last;
+      expect(message['action'], 'create');
+
+      final params = message['params']! as Map<String, Object?>;
+
+      if (legendVisible == null) {
+        expect(params.containsKey('legendVisible'), isFalse);
+      } else {
+        expect(params['legendVisible'], legendVisible);
+      }
+    });
+
+    test('serializes legend visibility in updates: $legendVisible', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      final chart = await session.createChart();
+
+      chart.update(
+        UpdateXYChartConfig(
+          title: 'Updated title',
+          legendVisible: legendVisible,
+        ),
+      );
+
+      final message = transport.fireAndForgetMessages.single;
+      expect(message['action'], 'update');
+
+      final params = message['params']! as Map<String, Object?>;
+
+      if (legendVisible == null) {
+        expect(params.containsKey('legendVisible'), isFalse);
+      } else {
+        expect(params['legendVisible'], legendVisible);
+      }
+    });
+  }
+
+  test('queues dataset cleanup after chart disposal', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart();
+    transport.fireAndForgetMessages.clear();
+
+    await session.dispose();
+
+    final messages = transport.fireAndForgetMessages;
+    expect(messages, hasLength(2));
+
+    for (final message in messages) {
+      expect(message['category'], 'lifecycle');
+      expect(message['action'], 'dispose');
+      expect(message['clientId'], messages.first['clientId']);
+    }
+
+    expect(messages.first['chartId'], chart.chartId);
+    expect(messages.last.containsKey('chartId'), isFalse);
+  });
   test('creates axes before queuing title, datasets, and series', () async {
     final transport = _MockTransport();
     final session = LclaChartSession(
@@ -220,6 +295,212 @@ void main() {
           'type': 'line',
           'dataSetId': 'new-data',
           'color': '#FFD400',
+        },
+      ],
+    });
+  });
+
+  for (final entry in {
+    ScrollDimension.columns: 'columns',
+    ScrollDimension.rows: 'rows',
+  }.entries) {
+    test('serializes scrolling heatmap creation: ${entry.value}', () async {
+      final transport = _MockTransport();
+      final session = LclaChartSession(
+        transport,
+        const LclaLicense(key: 'test-license'),
+      );
+
+      final chart = await session.createChart(
+        XYChartConfig(
+          axes: const [
+            AxisConfig(id: 'axis-x', axis: AxisTarget.x),
+            AxisConfig(id: 'axis-y', axis: AxisTarget.y),
+          ],
+          series: [
+            ScrollingHeatmapSeriesConfig(
+              id: 'heatmap',
+              name: 'Intensity',
+              resolution: 3,
+              scrollDimension: entry.key,
+              xAxisId: 'axis-x',
+              yAxisId: 'axis-y',
+              start: const PointConfig(x: 0, y: 0),
+              step: const PointConfig(x: 2, y: 5),
+              dataCleaning: const DataCleaningConfig(minDataPointCount: 1000),
+              palette: const PaletteConfig(
+                steps: [
+                  PaletteStepConfig(value: 0, color: '#0000FF'),
+                  PaletteStepConfig(value: 100, color: '#FF0000'),
+                ],
+                interpolate: true,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      expect(transport.fireAndForgetMessages, hasLength(1));
+      final meta = transport.fireAndForgetMessages.single;
+
+      expect(meta['category'], 'config');
+      expect(meta['action'], 'update');
+      expect(meta['chartId'], chart.chartId);
+      expect(meta['params'], {
+        'series': [
+          {
+            'id': 'heatmap',
+            'type': 'scrollingHeatmap',
+            'name': 'Intensity',
+            'resolution': 3,
+            'scrollDimension': entry.value,
+            'xAxisId': 'axis-x',
+            'yAxisId': 'axis-y',
+            'start': {'x': 0, 'y': 0},
+            'step': {'x': 2, 'y': 5},
+            'dataCleaning': {'minDataPointCount': 1000},
+            'palette': {
+              'steps': [
+                {'value': 0, 'color': '#0000FF'},
+                {'value': 100, 'color': '#FF0000'},
+              ],
+              'interpolate': true,
+            },
+          },
+        ],
+      });
+    });
+  }
+
+  test('serializes scrolling heatmap updates and removal', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart(
+      const XYChartConfig(
+        series: [
+          ScrollingHeatmapSeriesConfig(
+            id: 'heatmap',
+            resolution: 3,
+            scrollDimension: ScrollDimension.columns,
+          ),
+        ],
+      ),
+    );
+
+    final creationParams =
+        transport.fireAndForgetMessages.single['params']!
+            as Map<String, Object?>;
+    final creationSeries =
+        (creationParams['series']! as List<Object?>).single
+            as Map<String, Object?>;
+
+    expect(creationSeries.containsKey('dataCleaning'), isFalse);
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          UpdateScrollingHeatmapSeriesConfig(
+            id: 'heatmap',
+            name: '',
+            start: PointConfig(x: 0, y: 10),
+            dataCleaning: DataCleaningConfig(minDataPointCount: 2000),
+            palette: PaletteConfig(
+              steps: [
+                PaletteStepConfig(value: 0, color: '#000000'),
+                PaletteStepConfig(value: 100, color: '#FFFFFF'),
+              ],
+              interpolate: false,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages, hasLength(2));
+    expect(transport.fireAndForgetMessages.last['params'], {
+      'series': [
+        {
+          'id': 'heatmap',
+          'type': 'scrollingHeatmap',
+          'name': '',
+          'start': {'x': 0, 'y': 10},
+          'dataCleaning': {'minDataPointCount': 2000},
+          'palette': {
+            'steps': [
+              {'value': 0, 'color': '#000000'},
+              {'value': 100, 'color': '#FFFFFF'},
+            ],
+            'interpolate': false,
+          },
+        },
+      ],
+    });
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          UpdateScrollingHeatmapSeriesConfig(id: 'heatmap', remove: true),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages, hasLength(3));
+    expect(transport.fireAndForgetMessages.last['params'], {
+      'series': [
+        {'id': 'heatmap', 'type': 'scrollingHeatmap', 'remove': true},
+      ],
+    });
+  });
+
+  test('serializes scatter colorBy and palette', () async {
+    final transport = _MockTransport();
+    final session = LclaChartSession(
+      transport,
+      const LclaLicense(key: 'test-license'),
+    );
+
+    final chart = await session.createChart();
+    transport.fireAndForgetMessages.clear();
+
+    chart.update(
+      const UpdateXYChartConfig(
+        series: [
+          ScatterSeriesConfig(
+            id: 'scatter',
+            dataSetId: 'measurements',
+            x: 'time',
+            y: 'pressure',
+            colorBy: 'temperature',
+            palette: PaletteConfig(
+              steps: [
+                PaletteStepConfig(value: 0, color: '#0000FF'),
+                PaletteStepConfig(value: 100, color: '#FF0000'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(transport.fireAndForgetMessages.single['params'], {
+      'series': [
+        {
+          'id': 'scatter',
+          'type': 'scatter',
+          'dataSetId': 'measurements',
+          'x': 'time',
+          'y': 'pressure',
+          'colorBy': 'temperature',
+          'palette': {
+            'steps': [
+              {'value': 0, 'color': '#0000FF'},
+              {'value': 100, 'color': '#FF0000'},
+            ],
+          },
         },
       ],
     });

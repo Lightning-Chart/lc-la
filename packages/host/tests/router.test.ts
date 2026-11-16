@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { bijEncode, bijDecode } from '../src/bij/index.js'
+import { bijEncode } from '../src/bij/index.js'
 import type { SeriesConfig, UpdateSeriesConfig, AxisDefaultIntervalConfig } from '../src/types.js'
 
 let handleMessage: typeof import('../src/handlers/router.js').handleMessage
@@ -36,11 +36,26 @@ vi.mock('@lightningchart/lcjs', () => {
     dispose: vi.fn(),
   })
 
+  class MockScrollingHeatmapSeries {
+    setName = vi.fn().mockReturnThis()
+    setStart = vi.fn().mockReturnThis()
+    setStep = vi.fn().mockReturnThis()
+    setFillStyle = vi.fn().mockReturnThis()
+    setDataCleaning = vi.fn().mockReturnThis()
+    addIntensityValues = vi.fn().mockReturnThis()
+    clear = vi.fn().mockReturnThis()
+    dispose = vi.fn()
+    }
+
   const mockChart = () => ({
     addPointLineAreaSeries: vi.fn(() => mockSeries()),
+    addHeatmapScrollingGridSeries: vi.fn(() => new MockScrollingHeatmapSeries()),
     addAxisX: vi.fn(() => mockAxis()),
     addAxisY: vi.fn(() => mockAxis()),
     setTitle: vi.fn().mockReturnThis(),
+    legend: {
+      setOptions: vi.fn().mockReturnThis(),
+    },
     setAnimationsEnabled: vi.fn().mockReturnThis(),
     dispose: vi.fn(),
     axisX: mockAxis(),
@@ -63,9 +78,13 @@ vi.mock('@lightningchart/lcjs', () => {
     },
     SolidLine: vi.fn(),
     SolidFill: vi.fn(),
-    ColorHEX: vi.fn(),
+    LUT: vi.fn(),
+    PalettedFill: vi.fn(),
+    ColorHEX: vi.fn((hex: string) => ({ hex })),
     emptyFill: {},
     emptyLine: {},
+    HeatmapGridSeriesIntensityValues: class {},
+    HeatmapScrollingGridSeriesIntensityValues: MockScrollingHeatmapSeries,
   }
 })
 
@@ -247,6 +266,8 @@ describe('Message Router', () => {
     const chartState = hostState.getChart(chartId)!
     const first = chartState.series.get('series-1')!
 
+    if (first.type !== 'line') throw new Error('Expected a line series')
+
     // Adding another series must preserve the first.
     configureSeries(chartId, [
       {
@@ -264,11 +285,7 @@ describe('Message Router', () => {
 
     // Updating the first must leave the second unchanged.
     configureSeries(chartId, [
-      {
-        id: 'series-1',
-        name: 'Updated series',
-        color: '#FFFFFF',
-      },
+      { id: 'series-1', name: 'Updated series', color: '#FFFFFF' },
     ])
 
     expect(chartState.series.get('series-1')).toBe(first)
@@ -297,7 +314,7 @@ describe('Message Router', () => {
     expect(hostState.getDataSet('default', 'sensors')).toBeDefined()
   })
 
-  it('preserves client datasets until its final chart is disposed', () => {
+  it('preserves client datasets after all its charts are disposed', () => {
     const clientId = 'dataset-lifecycle-test'
     const firstChartId = createChart(clientId)
     const secondChartId = createChart(clientId)
@@ -337,9 +354,47 @@ describe('Message Router', () => {
 
     expect(secondDisposeResponse.type).toBe('response')
 
-    // The final client chart is gone, so its datasets are released
+    // Removing the last chart must not remove the context's datasets
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+    expect(hostState.getDataSet(clientId, 'signals')).toBeDefined()
+  })
+
+  it('removes only the disposed context datasets', () => {
+    const clientId = 'context-disposal-test'
+    const otherClientId = 'other-context-disposal-test'
+    const chartId = createChart(clientId)
+    const otherChartId = createChart(otherClientId)
+
+    configureDataSet(chartId, 'sensors', ['temperature'], clientId)
+    configureDataSet(otherChartId, 'sensors', ['temperature'], otherClientId)
+
+    const chartResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-chart',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+        chartId,
+      },
+    }))
+
+    expect(chartResponse.type).toBe('response')
+    expect(hostState.getChart(chartId)).toBeUndefined()
+    expect(hostState.getDataSet(clientId, 'sensors')).toBeDefined()
+
+    const contextResponse = handleMessage(bijEncode({
+      meta: {
+        id: 'dispose-context',
+        category: 'lifecycle',
+        action: 'dispose',
+        clientId,
+      },
+    }))
+
+    expect(contextResponse.type).toBe('response')
     expect(hostState.getDataSet(clientId, 'sensors')).toBeUndefined()
-    expect(hostState.getDataSet(clientId, 'signals')).toBeUndefined()
+    expect(hostState.getDataSet(otherClientId, 'sensors')).toBeDefined()
+    expect(hostState.getChart(otherChartId)).toBeDefined()
   })
 
   it('handles config/series with stacked axes', () => {
@@ -411,6 +466,69 @@ describe('Message Router', () => {
     const res = handleMessage(buf)
     expect(res.type).toBe('error')
     expect(res.error).toContain('Column')
+  })
+
+  it.each([false, true, undefined])(
+    'applies legend visibility during creation when supplied: %s',
+    (legendVisible) => {
+      const response = handleMessage(bijEncode({
+        meta: {
+          id: 'create-legend',
+          category: 'lifecycle',
+          action: 'create',
+          params: {
+            type: 'xy',
+            legendVisible,
+          },
+        },
+      }))
+
+      expect(response.type).toBe('response')
+
+      const { chartId } = response.result as { chartId: string }
+      const legend = hostState.getChart(chartId)!.chart.legend
+
+      if (legendVisible === undefined) {
+        expect(legend.setOptions).not.toHaveBeenCalled()
+      } else {
+        expect(legend.setOptions).toHaveBeenCalledExactlyOnceWith({
+          visible: legendVisible,
+        })
+      }
+    },
+  )
+
+  it('hides and shows the legend, preserving visibility when omitted', () => {
+    const chartId = createChart()
+    const legend = hostState.getChart(chartId)!.chart.legend
+
+    for (const visible of [false, true]) {
+      const response = handleMessage(bijEncode({
+        meta: {
+          id: `legend-${visible}`,
+          category: 'config',
+          action: 'update',
+          chartId,
+          params: { legendVisible: visible },
+        },
+      }))
+
+      expect(response.type).toBe('response')
+      expect(legend.setOptions).toHaveBeenLastCalledWith({ visible })
+    }
+
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'title-only',
+        category: 'config',
+        action: 'update',
+        chartId,
+        params: { title: 'Updated title' },
+      },
+    }))
+
+    expect(response.type).toBe('response')
+    expect(legend.setOptions).toHaveBeenCalledTimes(2)
   })
 
   it('updates the chart title', () => {
@@ -715,6 +833,8 @@ describe('Message Router', () => {
     const chartState = hostState.getChart(chartId)!
     const existing = chartState.series.get('series-1')!
 
+    if (existing.type !== 'line') throw new Error('Expected a line series')
+
     const response = handleMessage(bijEncode({
       meta: {
         id: 'replace-data',
@@ -740,7 +860,7 @@ describe('Message Router', () => {
     expect(chartState.series.get('series-1')).toBe(existing)
     expect(existing.series.dispose).not.toHaveBeenCalled()
     expect(existing.series.setDataSet)
-      .toHaveBeenLastCalledWith(newDataSet.dataSet, { x: 'new-x', y: 'new-y' })
+      .toHaveBeenLastCalledWith(newDataSet.dataSet, { x: 'new-x', y: 'new-y', lookupValue: 'new-y' })
     expect(existing.config)
       .toMatchObject({ name: 'Original name', dataSetId: 'new-data', x: 'new-x', y: 'new-y' })
   })
@@ -1070,9 +1190,484 @@ describe('Message Router', () => {
 
   it('handles lifecycle/init with theme', () => {
     const buf = bijEncode({
-      meta: { id: '0', category: 'lifecycle', action: 'init', params: { license: 'test-key', theme: 'light' } },
+      meta: { 
+        id: '0', 
+        category: 'lifecycle', 
+        action: 'init', 
+        params: { license: 'test-key', theme: 'light' } 
+      },
     })
     // init is idempotent (already initialized in beforeEach), so this succeeds silently
     expect(handleMessage(buf).type).toBe('response')
+  })
+
+  it('updates scatter palette bindings and switches back to solid coloring', async () => {
+    const lcjs = await import('@lightningchart/lcjs')
+    vi.mocked(lcjs.LUT).mockClear()
+    vi.mocked(lcjs.SolidFill).mockClear()
+
+    const chartId = createChart()
+    configureDataSet(chartId, 'measurements', ['time', 'pressure', 'temperature'])
+
+    const palette = {
+      steps: [
+        { value: 0, color: '#0000FF' },
+        { value: 100, color: '#FF0000' },
+      ],
+    }
+
+    configureSeries(chartId, [
+      {
+        id: 'signal',
+        type: 'scatter',
+        dataSetId: 'measurements',
+        x: 'time',
+        y: 'pressure',
+        palette,
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const state = chartState.series.get('signal')
+    if (!state || state.type !== 'scatter') {
+      throw new Error('Expected a stored scatter series')
+    }
+
+    // Omitted interpolation is left to LCJS.
+    expect(lcjs.LUT).toHaveBeenLastCalledWith({
+      steps: [
+        { value: 0, color: { hex: '#0000FF' } },
+        { value: 100, color: { hex: '#FF0000' } },
+      ],
+    })
+
+    configureSeries(chartId, [
+      { id: 'signal', type: 'scatter', colorBy: 'temperature' },
+    ])
+
+    const dataSet = hostState.getDataSet('default', 'measurements')!
+    expect(state.series.setDataSet).toHaveBeenLastCalledWith(dataSet.dataSet, {
+      x: 'time',
+      y: 'pressure',
+      lookupValue: 'temperature',
+    })
+    expect(state.config.palette).toEqual(palette)
+
+    // An unrelated update retains the palette and selected column.
+    configureSeries(chartId, [
+      { id: 'signal', type: 'scatter', name: 'Updated signal' },
+    ])
+    expect(state.config.palette).toEqual(palette)
+    expect(state.config.colorBy).toBe('temperature')
+    expect(state.series.setDataSet).toHaveBeenCalledTimes(2)
+
+    // Supplying Color switches back to a solid fill.
+    configureSeries(chartId, [
+      { id: 'signal', type: 'scatter', color: '#FFFFFF' },
+    ])
+
+    expect(state.config.palette).toBeUndefined()
+    expect(lcjs.SolidFill).toHaveBeenLastCalledWith({ color: { hex: '#FFFFFF' } })
+    expect(state.series.setPointFillStyle).toHaveBeenLastCalledWith(vi.mocked(lcjs.SolidFill).mock.instances[0])
+
+    // These updates reuse the existing series.
+    expect(chartState.series.get('signal')).toBe(state)
+    expect(chartState.chart.addPointLineAreaSeries).toHaveBeenCalledTimes(1)
+    expect(state.series.dispose).not.toHaveBeenCalled()
+  })
+
+  it('creates and updates a heatmap palette, retaining it when omitted', async () => {
+    const lcjs = await import('@lightningchart/lcjs')
+    vi.mocked(lcjs.LUT).mockClear()
+    vi.mocked(lcjs.PalettedFill).mockClear()
+    vi.mocked(lcjs.ColorHEX).mockClear()
+
+    const chartId = createChart()
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        resolution: 3,
+        scrollDimension: 'columns',
+        palette: {
+          steps: [
+            { value: 0, color: '#0000FF' },
+            { value: 100, color: '#FF0000' },
+          ],
+          interpolate: true,
+        },
+      },
+    ])
+
+    const state = hostState.getChart(chartId)!.series.get('heatmap')
+    if (!state || state.type !== 'scrollingHeatmap') {
+      throw new Error('Expected a stored scrolling heatmap')
+    }
+    expect(lcjs.ColorHEX).toHaveBeenCalledWith('#0000FF')
+    expect(lcjs.ColorHEX).toHaveBeenCalledWith('#FF0000')
+    expect(lcjs.LUT).toHaveBeenLastCalledWith({
+      steps: [
+        expect.objectContaining({ value: 0 }),
+        expect.objectContaining({ value: 100 }),
+      ],
+      interpolate: true,
+    })
+
+    const lut = vi.mocked(lcjs.LUT).mock.instances[0]
+    const fill = vi.mocked(lcjs.PalettedFill).mock.instances[0]
+    expect(lcjs.PalettedFill).toHaveBeenLastCalledWith({ lookUpProperty: 'value', lut })
+    expect(state.series.setFillStyle).toHaveBeenLastCalledWith(fill)
+
+    const replacementPalette = {
+      steps: [
+        { value: 0, color: '#000000' },
+        { value: 100, color: '#FFFFFF' },
+      ],
+      interpolate: false,
+    }
+
+    configureSeries(chartId, [
+      { id: 'heatmap', type: 'scrollingHeatmap', palette: replacementPalette },
+    ])
+
+    expect(lcjs.LUT).toHaveBeenLastCalledWith({
+      steps: [
+        expect.objectContaining({ value: 0 }),
+        expect.objectContaining({ value: 100 }),
+      ],
+      interpolate: false,
+    })
+    expect(state.series.setFillStyle).toHaveBeenCalledTimes(2)
+    expect(state.config.palette).toEqual(replacementPalette)
+
+    configureSeries(chartId, [
+      { id: 'heatmap', type: 'scrollingHeatmap', name: 'Updated name' },
+    ])
+
+    expect(state.series.setFillStyle).toHaveBeenCalledTimes(2)
+    expect(state.config.palette).toEqual(replacementPalette)
+  })
+
+  it.each([
+    { type: 'line', colorBy: undefined },
+    { type: 'line', colorBy: 'temperature' },
+    { type: 'scatter', colorBy: undefined },
+    { type: 'scatter', colorBy: 'temperature' },
+    { type: 'line+scatter', colorBy: undefined },
+    { type: 'line+scatter', colorBy: 'temperature' },
+  ] as const)('binds palette values for %j', ({ type, colorBy }) => {
+    const chartId = createChart()
+    configureDataSet(chartId, 'measurements', ['time', 'pressure', 'temperature'])
+
+    configureSeries(chartId, [
+      {
+        id: 'signal',
+        type,
+        dataSetId: 'measurements',
+        x: 'time',
+        y: 'pressure',
+        colorBy,
+        palette: {
+          steps: [
+            { value: 0, color: '#0000FF' },
+            { value: 100, color: '#FF0000' },
+          ],
+        },
+      },
+    ])
+
+    const state = hostState.getChart(chartId)!.series.get('signal')
+    if (!state || state.type === 'scrollingHeatmap') {
+      throw new Error('Expected a dataset-backed series')
+    }
+
+    const dataSet = hostState.getDataSet('default', 'measurements')!
+    expect(state.series.setDataSet).toHaveBeenLastCalledWith(dataSet.dataSet, {
+      x: 'time',
+      y: 'pressure',
+      lookupValue: colorBy ?? 'pressure',
+    })
+    expect(state.series.setPointFillStyle).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['columns', 'rows'] as const)('creates a %s-scrolling heatmap and delivers matrix samples',
+    (scrollDimension) => {
+      const chartId = createChart()
+
+      configureSeries(chartId, [
+        {
+          id: 'heatmap',
+          type: 'scrollingHeatmap',
+          name: 'Intensity',
+          resolution: 3,
+          scrollDimension,
+          start: { x: 0, y: 0 },
+          step: { x: 2, y: 5 },
+        },
+      ])
+
+      const chartState = hostState.getChart(chartId)!
+      const state = chartState.series.get('heatmap')
+      if (!state || state.type !== 'scrollingHeatmap') {
+        throw new Error('Expected a stored scrolling heatmap')
+      }
+
+      // Heatmap creation uses the selected axes without creating a dataset.
+      expect(chartState.chart.addHeatmapScrollingGridSeries).toHaveBeenCalledWith({
+        heatmapDataType: 'intensity',
+        resolution: 3,
+        scrollDimension,
+        xAxis: chartState.defaultXAxis.axis,
+        yAxis: chartState.defaultYAxis.axis,
+      })
+      expect(hostState.getDataSets('default').size).toBe(0)
+      expect(state.xAxis).toBe(chartState.defaultXAxis)
+      expect(state.yAxis).toBe(chartState.defaultYAxis)
+      expect(state.series.setName).toHaveBeenCalledWith('Intensity')
+      expect(state.series.setStart).toHaveBeenCalledWith({ x: 0, y: 0 })
+      expect(state.series.setStep).toHaveBeenCalledWith({ x: 2, y: 5 })
+
+      // Send two samples through the actual BIJ decoding and routing path.
+      const response = handleMessage(bijEncode([
+        {
+          key: 'meta',
+          value: {
+            id: 'append-heatmap',
+            category: 'data',
+            action: 'appendMatrix',
+            chartId,
+            seriesId: 'heatmap',
+            params: { sampleLength: 3 },
+          },
+        },
+        {
+          key: 'values',
+          value: new Float32Array([1, 2, 3, 4, 5, 6]),
+        },
+      ]))
+
+      expect(response.type).toBe('response')
+      expect(state.series.addIntensityValues).toHaveBeenCalledTimes(1)
+      expect(state.series.addIntensityValues).toHaveBeenCalledWith([
+        new Float32Array([1, 2, 3]),
+        new Float32Array([4, 5, 6]),
+      ])
+    },
+  )
+
+  it('configures heatmap data cleaning and retains it when omitted', () => {
+    const chartId = createChart()
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        resolution: 3,
+        scrollDimension: 'columns',
+        dataCleaning: { minDataPointCount: 1000 },
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const state = chartState.series.get('heatmap')
+    if (!state || state.type !== 'scrollingHeatmap') {
+      throw new Error('Expected a stored scrolling heatmap')
+    }
+    expect(state.series.setDataCleaning).toHaveBeenCalledTimes(1)
+    expect(state.series.setDataCleaning).toHaveBeenLastCalledWith({
+      minDataPointCount: 1000,
+    })
+    expect(state.config.dataCleaning).toEqual({ minDataPointCount: 1000, })
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        dataCleaning: { minDataPointCount: 2000 },
+      },
+    ])
+    expect(state.series.setDataCleaning).toHaveBeenCalledTimes(2)
+    expect(state.series.setDataCleaning).toHaveBeenLastCalledWith({
+      minDataPointCount: 2000,
+    })
+    expect(state.config.dataCleaning).toEqual({ minDataPointCount: 2000, })
+
+    configureSeries(chartId, [
+      { id: 'heatmap', type: 'scrollingHeatmap', name: 'Updated heatmap' },
+    ])
+    expect(state.series.setDataCleaning).toHaveBeenCalledTimes(2)
+    expect(state.config.dataCleaning).toEqual({ minDataPointCount: 2000, })
+    expect(chartState.series.get('heatmap')).toBe(state)
+    expect(chartState.chart.addHeatmapScrollingGridSeries).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates a scrolling heatmap without recreating it, then removes it explicitly', () => {
+    const chartId = createChart()
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        name: 'Intensity',
+        resolution: 3,
+        scrollDimension: 'columns',
+        start: { x: 0, y: 0 },
+        step: { x: 1, y: 1 },
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const state = chartState.series.get('heatmap')
+    if (!state || state.type !== 'scrollingHeatmap') {
+      throw new Error('Expected a stored scrolling heatmap')
+    }
+
+    configureSeries(chartId, [
+      { id: 'heatmap', type: 'scrollingHeatmap', name: '', start: { x: 10, y: 20 } },
+    ])
+    expect(chartState.series.get('heatmap')).toBe(state)
+    expect(chartState.chart.addHeatmapScrollingGridSeries).toHaveBeenCalledTimes(1)
+    expect(state.series.setName).toHaveBeenLastCalledWith('')
+    expect(state.series.setStart).toHaveBeenLastCalledWith({ x: 10, y: 20 })
+    expect(state.series.setDataCleaning).not.toHaveBeenCalled()
+
+    // An omitted setting is not reapplied or reset.
+    expect(state.series.setStep).toHaveBeenCalledTimes(1)
+    expect(state.series.dispose).not.toHaveBeenCalled()
+
+    // Omitting the series from an update does not remove it.
+    configureSeries(chartId, [])
+    expect(chartState.series.get('heatmap')).toBe(state)
+
+    configureSeries(chartId, [
+      { id: 'heatmap', type: 'scrollingHeatmap', remove: true },
+    ])
+    expect(state.series.dispose).toHaveBeenCalledTimes(1)
+    expect(chartState.series.has('heatmap')).toBe(false)
+  })
+
+  it.each([
+    { resolution: 4 },
+    { scrollDimension: 'rows' },
+    { xAxisId: 'another-x' },
+    { yAxisId: 'another-y' },
+    { type: 'line' },
+  ])('rejects changes to heatmap creation settings: %j', (change) => {
+    const chartId = createChart()
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        name: 'Original name',
+        resolution: 3,
+        scrollDimension: 'columns',
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const state = chartState.series.get('heatmap')
+    if (!state || state.type !== 'scrollingHeatmap') {
+      throw new Error('Expected a stored scrolling heatmap')
+    }
+
+    const originalConfig = state.config
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'change-heatmap',
+        category: 'config',
+        action: 'update',
+        chartId,
+        params: {
+          series: [
+            { id: 'heatmap', type: 'scrollingHeatmap', name: 'Changed name', ...change },
+          ],
+        },
+      },
+    }))
+    expect(response.type).toBe('error')
+    expect(response.error).toContain('cannot be changed after creation')
+    expect(chartState.series.get('heatmap')).toBe(state)
+    expect(state.config).toBe(originalConfig)
+    expect(state.series.setName).toHaveBeenLastCalledWith('Original name')
+    expect(state.series.dispose).not.toHaveBeenCalled()
+    expect(chartState.chart.addHeatmapScrollingGridSeries).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears heatmap data without values and retains the series configuration', () => {
+    const chartId = createChart()
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        resolution: 3,
+        scrollDimension: 'rows',
+        palette: {
+          steps: [
+            { value: 0, color: '#000000' },
+            { value: 100, color: '#FFFFFF' },
+          ],
+        },
+      },
+    ])
+
+    const chartState = hostState.getChart(chartId)!
+    const state = chartState.series.get('heatmap')
+    if (!state || state.type !== 'scrollingHeatmap') {
+      throw new Error('Expected a stored scrolling heatmap')
+    }
+
+    const originalConfig = state.config
+
+    const response = handleMessage(bijEncode({
+      meta: {
+        id: 'clear-heatmap',
+        category: 'data',
+        action: 'clearMatrix',
+        chartId,
+        seriesId: 'heatmap',
+      },
+    }))
+    expect(response.type).toBe('response')
+    expect(state.series.clear).toHaveBeenCalledTimes(1)
+    expect(state.series.clear).toHaveBeenCalledWith()
+    expect(chartState.series.get('heatmap')).toBe(state)
+    expect(state.config).toBe(originalConfig)
+    expect(state.series.dispose).not.toHaveBeenCalled()
+    expect(chartState.chart.addHeatmapScrollingGridSeries).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes matrix data by seriesId', () => {
+    const chartId = createChart()
+
+    const buf = bijEncode([
+      { key: 'meta', value: { id: '2', category: 'data', action: 'setMatrix', chartId, seriesId: 'heatmap' } },
+      { key: 'values', value: new Float32Array(4) },
+    ])
+    const res = handleMessage(buf)
+    expect(res.type).toBe('error')
+    expect(res.error).toContain('Series not found: heatmap')
+  })
+
+  it('returns error for matrix data without float32 values', () => {
+    const chartId = createChart()
+
+    configureSeries(chartId, [
+      {
+        id: 'heatmap',
+        type: 'scrollingHeatmap',
+        resolution: 4,
+        scrollDimension: 'columns',
+      },
+    ])
+
+    const buf = bijEncode([
+      { key: 'meta', value: { id: '2', category: 'data', action: 'setMatrix', chartId, seriesId: 'heatmap' } },
+      { key: 'values', value: new Float64Array(4) },
+    ])
+    const res = handleMessage(buf)
+    expect(res.type).toBe('error')
+    expect(res.error).toContain('Float32Array')
   })
 })

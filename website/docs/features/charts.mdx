@@ -8,10 +8,13 @@ import TabItem from '@theme/TabItem';
 
 LightningChart LA creates interactive XY charts with panning and zooming enabled by default. Use your application's normal layout components to position and size each chart.
 
+
 ## Creating a chart
 
-Set the chart title and animation settings when creating a chart. You can also supply datasets, axes, and series in the initial configuration.
+Set the chart title, legend visibility, and animation settings when creating a chart. You can also supply datasets, axes, and series in the initial configuration.
 See [Data management](./data-management), [Adding series](./series), and [Configuring axes](./axes) for complete configuration examples.
+
+The examples throughout the Features guides build on the chart created here.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
@@ -46,7 +49,15 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
 }
 ```
 
-Animations are enabled by default. Omit the setting to keep that default. To disable animations, set `AnimationsEnabled = false` in `XYChartConfig`.
+Set these properties in `XYChartConfig`:
+
+- **`ContainerId`** — The ID of the existing HTML element containing the chart. Size and position that element using your application's layout. The container cannot be changed after chart creation.
+- **`Title`** — The title displayed above the plotting area. Omit it to use the default title, or set `Title = ""` to hide it.
+- **`LegendVisible`** — Show or hide the chart legend, including any LUT color scales. The legend is visible by default; set `LegendVisible = false` to hide it.
+- **`AnimationsEnabled`** — Enable or disable chart animations. Animations are enabled by default; set `AnimationsEnabled = false` to disable them. This setting cannot be changed after chart creation.
+- **`DataSets`** — Create datasets containing named data columns. See [Data management](./data-management).
+- **`Axes`** — Configure the default axes and create additional axes. Omit the list to use the normal default X and Y axes. See [Configuring axes](./axes).
+- **`Series`** — Create the series that display your data. See [Adding series](./series).
 
 </TabItem>
 <TabItem value="maui" label="MAUI">
@@ -90,10 +101,16 @@ _webView.Navigated += async (_, args) =>
 
 Keep the existing `Loaded` event subscription. Size and position the chart through the WebView's native layout.
 
-Animations are enabled by default. To disable them, set `AnimationsEnabled = false` in `XYChartConfig`.
+Set these properties in `XYChartConfig`:
+
+- **`Title`** — The title displayed above the plotting area. Omit it to use the default title, or set `Title = ""` to hide it.
+- **`LegendVisible`** — Show or hide the chart legend, including any LUT color scales. The legend is visible by default; set `LegendVisible = false` to hide it.
+- **`AnimationsEnabled`** — Enable or disable chart animations. Animations are enabled by default; set `AnimationsEnabled = false` to disable them. This setting cannot be changed after chart creation.
+- **`DataSets`** — Create datasets containing named data columns. See [Data management](./data-management).
+- **`Axes`** — Configure the default axes and create additional axes. Omit the list to use the normal default X and Y axes. See [Configuring axes](./axes).
+- **`Series`** — Create the series that display your data. See [Adding series](./series).
 
 </TabItem>
-
 <TabItem value="uno" label="Uno">
 
 The following continues the page from [Creating a context](./context).
@@ -135,10 +152,16 @@ _webView.NavigationCompleted += async (_, args) =>
 
 Keep the existing `Loaded` event subscription. Size and position the chart through the WebView's native layout.
 
-Animations are enabled by default. To disable them, set `AnimationsEnabled = false` in `XYChartConfig`.
+Set these properties in `XYChartConfig`:
+
+- **`Title`** — The title displayed above the plotting area. Omit it to use the default title, or set `Title = ""` to hide it.
+- **`LegendVisible`** — Show or hide the chart legend, including any LUT color scales. The legend is visible by default; set `LegendVisible = false` to hide it.
+- **`AnimationsEnabled`** — Enable or disable chart animations. Animations are enabled by default; set `AnimationsEnabled = false` to disable them. This setting cannot be changed after chart creation.
+- **`DataSets`** — Create datasets containing named data columns. See [Data management](./data-management).
+- **`Axes`** — Configure the default axes and create additional axes. Omit the list to use the normal default X and Y axes. See [Configuring axes](./axes).
+- **`Series`** — Create the series that display your data. See [Adding series](./series).
 
 </TabItem>
-
 <TabItem value="flutter" label="Flutter">
 
 Continue with the `license` configuration from [Creating a context](./context).
@@ -178,27 +201,29 @@ class _SignalChartState extends State<SignalChart> {
 }
 ```
 
-Place `const SignalChart()` in your application's widget tree.
+Place `const SignalChart()` in your application's widget tree. `onChartCreated` receives the controller when the chart is ready.
+The example stores it in `_chart` so other methods in `_SignalChartState` can update the chart or supply data.
 
-`onChartCreated` receives the controller when the chart is ready. The example stores it in `_chart` so other methods in `_SignalChartState` can update the chart or supply data.
+Set these parameters in `LightningChart.xy`:
 
-Animations are enabled by default. To disable them, set `animationsEnabled: false` in `LightningChart.xy`.
+- **`title`** — The title displayed above the plotting area. Omit it to use the default title, or set `title: ''` to hide it.
+- **`legendVisible`** — Show or hide the chart legend, including any LUT color scales. The legend is visible by default; set `legendVisible: false` to hide it.
+- **`animationsEnabled`** — Enable or disable chart animations. Animations are enabled by default; set `animationsEnabled: false` to disable them. This setting cannot be changed after chart creation.
+- **`dataSets`** — Create datasets containing named data columns. See [Data management](./data-management).
+- **`axes`** — Configure the default axes and create additional axes. Omit the list to use the normal default X and Y axes. See [Configuring axes](./axes).
+- **`series`** — Create the visualizations that display your data. See [Adding series](./series).
+- **`initialData`** — Supply dataset data to load when the chart is ready. See [Data management](./data-management).
 
 </TabItem>
 </Tabs>
 
-Without an axes list, the chart uses its normal default X and Y axes. Add series to connect the chart to data.
-
-The following examples use the `_chart` reference introduced above. Apply updates and supply data after chart creation has completed.
 
 ## Updating a chart
 
-Use an update configuration to change the chart title or configure datasets, axes, and series after creation. Omitted objects and properties remain unchanged.
+Use an update configuration to change the chart title, legend visibility, or configure datasets, axes, and series after creation. Omitted objects and properties remain unchanged.
 The chart's container and animation setting cannot be changed after creation.
 
-
-
-The following changes only the chart title:
+The following changes the chart title and hides the legend:
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
@@ -207,6 +232,7 @@ The following changes only the chart title:
 _chart.Update(new UpdateXYChartConfig
 {
     Title = "Updated signal chart",
+    LegendVisible = false,
 });
 ```
 
@@ -217,6 +243,7 @@ _chart.Update(new UpdateXYChartConfig
 _chart.Update(new UpdateXYChartConfig
 {
     Title = "Updated signal chart",
+    LegendVisible = false,
 });
 ```
 
@@ -228,6 +255,7 @@ _chart.Update(new UpdateXYChartConfig
 _chart.Update(new UpdateXYChartConfig
 {
     Title = "Updated signal chart",
+    LegendVisible = false,
 });
 ```
 
@@ -244,6 +272,7 @@ if (chart == null) return;
 chart.update(
   const UpdateXYChartConfig(
     title: 'Updated signal chart',
+    legendVisible: false,
   ),
 );
 ```

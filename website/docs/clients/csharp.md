@@ -18,7 +18,7 @@ The [Blazor Server example on GitHub](https://github.com/Lightning-Chart/lc-la-e
 
 ## License key
 
-LightningChart for Blazor requires a license key. Get a free trial key or use your commercial key, then configure it in your application before creating a chart:
+LightningChart for Blazor requires a license key. [Get a free trial key](https://lightningchart.com/js-charts/) or use your commercial key, then configure it in your application before creating a chart:
 
 ```csharp
 var license = new LclaLicense

@@ -9,6 +9,7 @@ export interface MessageEnvelope {
   clientId?: string
   chartId?: string
   dataSetId?: string
+  seriesId?: string
   params?: Record<string, unknown>
 }
 
@@ -69,7 +70,7 @@ export interface AxisDefaultIntervalConfig {
 
 export interface UpdateAxisConfig {
   id?: string
-  // Without an ID, orientation selects the corresponding default axis
+  /** Without an ID, orientation selects the corresponding default axis */
   axis?: AxisTarget
   title?: string
   interval?: AxisIntervalConfig
@@ -92,6 +93,22 @@ export interface AxisConfig {
   parallelIndex?: number
 }
 
+// Palette steps map numeric values to hexadecimal colors
+export interface PaletteStepConfig {
+  value: number
+  color: string
+}
+
+export interface PaletteConfig {
+  steps: PaletteStepConfig[]
+  interpolate?: boolean
+}
+
+export interface DataCleaningConfig {
+  /** Minimum number of samples retained when cleaning out-of-view data. */
+  minDataPointCount: number
+}
+
 // Series configuration
 export interface UpdateLineSeriesConfig {
   id: string
@@ -101,6 +118,8 @@ export interface UpdateLineSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -114,6 +133,8 @@ export interface LineSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
 }
 
 export interface UpdateScatterSeriesConfig {
@@ -124,6 +145,8 @@ export interface UpdateScatterSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -137,6 +160,8 @@ export interface ScatterSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
 }
 
 export interface UpdateLineScatterSeriesConfig {
@@ -147,6 +172,8 @@ export interface UpdateLineScatterSeriesConfig {
   x?: string
   y?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
   remove?: boolean
 }
 
@@ -160,23 +187,54 @@ export interface LineScatterSeriesConfig {
   xAxisId?: string
   yAxisId?: string
   color?: string
+  colorBy?: string
+  palette?: PaletteConfig
+}
+
+// Scrolling heatmaps receive matrix samples directly, without a dataset
+export interface ScrollingHeatmapSeriesConfig {
+  id: string
+  type: 'scrollingHeatmap'
+  name?: string
+  resolution: number
+  scrollDimension: 'columns' | 'rows'
+  xAxisId?: string
+  yAxisId?: string
+  start?: { x: number; y: number }
+  step?: { x: number; y: number }
+  palette?: PaletteConfig
+  dataCleaning?: DataCleaningConfig
+}
+
+export interface UpdateScrollingHeatmapSeriesConfig {
+  id: string
+  type: 'scrollingHeatmap'
+  name?: string
+  start?: { x: number; y: number }
+  step?: { x: number; y: number }
+  palette?: PaletteConfig
+  dataCleaning?: DataCleaningConfig
+  remove?: boolean
 }
 
 export type SeriesConfig =
   | LineSeriesConfig
   | ScatterSeriesConfig
   | LineScatterSeriesConfig
+  | ScrollingHeatmapSeriesConfig
 
 export type UpdateSeriesConfig =
   | UpdateLineSeriesConfig
   | UpdateScatterSeriesConfig
   | UpdateLineScatterSeriesConfig
+  | UpdateScrollingHeatmapSeriesConfig
 
 // Chart creation
 export interface XYChartConfig {
   title?: string
   containerId?: string
   animationsEnabled?: boolean
+  legendVisible?: boolean
   dataSets?: DataSetConfig[]
   axes?: AxisConfig[]
   series?: SeriesConfig[]
@@ -188,7 +246,25 @@ export interface CreateChartParams extends XYChartConfig {
 
 export interface UpdateXYChartConfig {
   title?: string
+  legendVisible?: boolean
   dataSets?: (DataSetConfig | UpdateDataSetConfig)[]
   axes?: (AxisConfig | UpdateAxisConfig)[]
   series?: (SeriesConfig | UpdateSeriesConfig)[]
+}
+
+// Matrix data actions (data/setMatrix, data/invalidateMatrix, data/appendMatrix).
+// Target a series by seriesId. Values are always a flat float32 BIJ part named "values",
+// interpreted in the dataOrder / scrollDimension the series was created with.
+export interface InvalidateMatrixParams {
+  iColumn: number
+  iRow: number
+  columns: number
+  rows: number
+}
+
+export interface AppendMatrixParams {
+  /** Number of values per appended sample (= series resolution). values.length must be a multiple of it. */
+  sampleLength: number
+  /** Starting grid sample index. Omit to append after existing samples. */
+  iSample?: number
 }

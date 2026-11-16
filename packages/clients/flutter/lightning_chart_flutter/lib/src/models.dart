@@ -51,6 +51,7 @@ enum LclaTheme {
 class XYChartConfig {
   const XYChartConfig({
     this.title,
+    this.legendVisible,
     this.containerId,
     this.dataSets,
     this.axes,
@@ -59,6 +60,7 @@ class XYChartConfig {
   });
 
   final String? title;
+  final bool? legendVisible;
   final String? containerId;
   final List<DataSetConfig>? dataSets;
 
@@ -71,6 +73,7 @@ class XYChartConfig {
 
   XYChartConfig copyWith({
     String? title,
+    bool? legendVisible,
     String? containerId,
     List<DataSetConfig>? dataSets,
     List<AxisConfig>? axes,
@@ -79,6 +82,7 @@ class XYChartConfig {
   }) {
     return XYChartConfig(
       title: title ?? this.title,
+      legendVisible: legendVisible ?? this.legendVisible,
       containerId: containerId ?? this.containerId,
       dataSets: dataSets ?? this.dataSets,
       axes: axes ?? this.axes,
@@ -94,12 +98,14 @@ class XYChartConfig {
 class UpdateXYChartConfig {
   const UpdateXYChartConfig({
     this.title,
+    this.legendVisible,
     this.dataSets,
     this.axes,
     this.series,
   });
 
   final String? title;
+  final bool? legendVisible;
   final List<IDataSetConfig>? dataSets;
   final List<IAxisConfig>? axes;
   final List<ISeriesConfig>? series;
@@ -229,6 +235,27 @@ class UpdateAxisConfig implements IAxisConfig {
   final bool? remove;
 }
 
+class PaletteStepConfig {
+  const PaletteStepConfig({required this.value, required this.color});
+
+  final double value;
+  final String color;
+}
+
+class PaletteConfig {
+  const PaletteConfig({required this.steps, this.interpolate});
+
+  final List<PaletteStepConfig> steps;
+  final bool? interpolate;
+}
+
+class DataCleaningConfig {
+  const DataCleaningConfig({required this.minDataPointCount});
+
+  /// Minimum number of samples retained when cleaning out-of-view data.
+  final int minDataPointCount;
+}
+
 /// Series creation or update configuration.
 abstract interface class ISeriesConfig {}
 
@@ -259,6 +286,8 @@ class LineSeriesConfig extends SeriesConfig {
     this.xAxisId,
     this.yAxisId,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String dataSetId;
@@ -267,6 +296,8 @@ class LineSeriesConfig extends SeriesConfig {
   final String? xAxisId;
   final String? yAxisId;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
 }
 
 class UpdateLineSeriesConfig extends UpdateSeriesConfig {
@@ -278,12 +309,16 @@ class UpdateLineSeriesConfig extends UpdateSeriesConfig {
     this.x,
     this.y,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String? dataSetId;
   final String? x;
   final String? y;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
 }
 
 class ScatterSeriesConfig extends SeriesConfig {
@@ -296,6 +331,8 @@ class ScatterSeriesConfig extends SeriesConfig {
     this.xAxisId,
     this.yAxisId,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String dataSetId;
@@ -304,6 +341,8 @@ class ScatterSeriesConfig extends SeriesConfig {
   final String? xAxisId;
   final String? yAxisId;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
 }
 
 class UpdateScatterSeriesConfig extends UpdateSeriesConfig {
@@ -315,12 +354,16 @@ class UpdateScatterSeriesConfig extends UpdateSeriesConfig {
     this.x,
     this.y,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String? dataSetId;
   final String? x;
   final String? y;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
 }
 
 class LineScatterSeriesConfig extends SeriesConfig {
@@ -333,6 +376,8 @@ class LineScatterSeriesConfig extends SeriesConfig {
     this.xAxisId,
     this.yAxisId,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String dataSetId;
@@ -341,6 +386,8 @@ class LineScatterSeriesConfig extends SeriesConfig {
   final String? xAxisId;
   final String? yAxisId;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
 }
 
 class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
@@ -352,12 +399,73 @@ class UpdateLineScatterSeriesConfig extends UpdateSeriesConfig {
     this.x,
     this.y,
     this.color,
+    this.colorBy,
+    this.palette,
   });
 
   final String? dataSetId;
   final String? x;
   final String? y;
   final String? color;
+  final String? colorBy;
+  final PaletteConfig? palette;
+}
+
+class ScrollingHeatmapSeriesConfig extends SeriesConfig {
+  const ScrollingHeatmapSeriesConfig({
+    required super.id,
+    super.name,
+    required this.resolution,
+    required this.scrollDimension,
+    this.xAxisId,
+    this.yAxisId,
+    this.start,
+    this.step,
+    this.palette,
+    this.dataCleaning,
+  });
+
+  final int resolution;
+  final ScrollDimension scrollDimension;
+  final String? xAxisId;
+  final String? yAxisId;
+  final PointConfig? start;
+  final PointConfig? step;
+  final PaletteConfig? palette;
+  final DataCleaningConfig? dataCleaning;
+}
+
+class UpdateScrollingHeatmapSeriesConfig extends UpdateSeriesConfig {
+  const UpdateScrollingHeatmapSeriesConfig({
+    required super.id,
+    super.name,
+    super.remove,
+    this.start,
+    this.step,
+    this.palette,
+    this.dataCleaning,
+  });
+
+  final PointConfig? start;
+  final PointConfig? step;
+  final PaletteConfig? palette;
+  final DataCleaningConfig? dataCleaning;
+}
+
+class PointConfig {
+  const PointConfig({required this.x, required this.y});
+
+  final double x;
+  final double y;
+}
+
+enum ScrollDimension {
+  columns('columns'),
+  rows('rows');
+
+  const ScrollDimension(this.wireValue);
+
+  final String wireValue;
 }
 
 enum ScrollStrategy {
@@ -417,4 +525,49 @@ class ClearDataOptions {
   const ClearDataOptions({required this.dataSetId});
 
   final String dataSetId;
+}
+
+class SetMatrixDataOptions {
+  const SetMatrixDataOptions({required this.seriesId, required this.values});
+
+  final String seriesId;
+  final Float32List values;
+}
+
+class InvalidateMatrixDataOptions {
+  const InvalidateMatrixDataOptions({
+    required this.seriesId,
+    required this.iColumn,
+    required this.iRow,
+    required this.columns,
+    required this.rows,
+    required this.values,
+  });
+
+  final String seriesId;
+  final int iColumn;
+  final int iRow;
+  final int columns;
+  final int rows;
+  final Float32List values;
+}
+
+class AppendMatrixDataOptions {
+  const AppendMatrixDataOptions({
+    required this.seriesId,
+    required this.samples,
+    this.iSample,
+  });
+
+  final String seriesId;
+  final List<Float32List> samples;
+
+  /// Starting grid sample index. Omit to append after existing samples.
+  final int? iSample;
+}
+
+class ClearMatrixDataOptions {
+  const ClearMatrixDataOptions({required this.seriesId});
+
+  final String seriesId;
 }

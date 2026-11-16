@@ -353,6 +353,8 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = line.X;
                 value["y"] = line.Y;
                 value["color"] = line.Color;
+                value["colorBy"] = line.ColorBy;
+                value["palette"] = line.Palette;
                 value["xAxisId"] = line.XAxisId;
                 value["yAxisId"] = line.YAxisId;
                 break;
@@ -365,6 +367,8 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = line.X;
                 value["y"] = line.Y;
                 value["color"] = line.Color;
+                value["colorBy"] = line.ColorBy;
+                value["palette"] = line.Palette;
                 value["remove"] = line.Remove;
                 break;
 
@@ -376,6 +380,8 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = scatter.X;
                 value["y"] = scatter.Y;
                 value["color"] = scatter.Color;
+                value["colorBy"] = scatter.ColorBy;
+                value["palette"] = scatter.Palette;
                 value["xAxisId"] = scatter.XAxisId;
                 value["yAxisId"] = scatter.YAxisId;
                 break;
@@ -388,6 +394,8 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = scatter.X;
                 value["y"] = scatter.Y;
                 value["color"] = scatter.Color;
+                value["colorBy"] = scatter.ColorBy;
+                value["palette"] = scatter.Palette;
                 value["remove"] = scatter.Remove;
                 break;
 
@@ -399,6 +407,8 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = lineScatter.X;
                 value["y"] = lineScatter.Y;
                 value["color"] = lineScatter.Color;
+                value["colorBy"] = lineScatter.ColorBy;
+                value["palette"] = lineScatter.Palette;
                 value["xAxisId"] = lineScatter.XAxisId;
                 value["yAxisId"] = lineScatter.YAxisId;
                 break;
@@ -411,15 +421,72 @@ public class LclaContext : IAsyncDisposable
                 value["x"] = lineScatter.X;
                 value["y"] = lineScatter.Y;
                 value["color"] = lineScatter.Color;
+                value["colorBy"] = lineScatter.ColorBy;
+                value["palette"] = lineScatter.Palette;
                 value["remove"] = lineScatter.Remove;
+                break;
+
+            case ScrollingHeatmapSeriesConfig scrollingHeatmap:
+                value["id"] = scrollingHeatmap.Id;
+                value["type"] = "scrollingHeatmap";
+                value["name"] = scrollingHeatmap.Name;
+                value["resolution"] = scrollingHeatmap.Resolution;
+                value["scrollDimension"] = 
+                    scrollingHeatmap.ScrollDimension == ScrollDimension.Rows ? "rows" : "columns";
+                value["xAxisId"] = scrollingHeatmap.XAxisId;
+                value["yAxisId"] = scrollingHeatmap.YAxisId;
+                value["start"] = PointToObject(scrollingHeatmap.Start);
+                value["step"] = PointToObject(scrollingHeatmap.Step);
+                value["palette"] = scrollingHeatmap.Palette;
+                value["dataCleaning"] = scrollingHeatmap.DataCleaning;
+                break;
+
+            case UpdateScrollingHeatmapSeriesConfig scrollingHeatmap:
+                value["id"] = scrollingHeatmap.Id;
+                value["type"] = "scrollingHeatmap";
+                value["name"] = scrollingHeatmap.Name;
+                value["start"] = PointToObject(scrollingHeatmap.Start);
+                value["step"] = PointToObject(scrollingHeatmap.Step);
+                value["palette"] = scrollingHeatmap.Palette;
+                value["dataCleaning"] = scrollingHeatmap.DataCleaning;
+                value["remove"] = scrollingHeatmap.Remove;
                 break;
 
             default:
                 throw new NotSupportedException($"Serialization is not implemented for {config.GetType().Name}.");
         }
 
+        // Serialize palette settings using the host's property names.
+        if (value.TryGetValue("palette", out var paletteValue) &&
+            paletteValue is PaletteConfig palette)
+        {
+            value["palette"] = new Dictionary<string, object?>
+            {
+                ["steps"] = palette.Steps.Select(step => new
+                {
+                    value = step.Value,
+                    color = step.Color,
+                }).ToArray(),
+                ["interpolate"] = palette.Interpolate,
+            }.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        // Serialize data-cleaning settings using the host's property names.
+        if (value.TryGetValue("dataCleaning", out var dataCleaningValue) &&
+            dataCleaningValue is DataCleaningConfig dataCleaning)
+        {
+            value["dataCleaning"] = new
+            {
+                minDataPointCount = dataCleaning.MinDataPointCount,
+            };
+        }
+
         return value.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
     }
+
+    // Convert coordinates to the lowercase property names expected by the host.
+    private static object? PointToObject(PointConfig? point) =>
+        point is null ? null : new { x = point.X, y = point.Y };
 
     private static string? DataPatternToString(DataPattern? pattern) => pattern switch
     {
@@ -435,6 +502,7 @@ public class LclaContext : IAsyncDisposable
         var id = NextId();
         var p = new Dictionary<string, object?> { ["type"] = "xy" };
         if (config?.ContainerId != null) p["containerId"] = config.ContainerId;
+        if (config?.LegendVisible.HasValue == true) p["legendVisible"] = config.LegendVisible.Value;
         if (config?.AnimationsEnabled.HasValue == true) p["animationsEnabled"] = config.AnimationsEnabled.Value;
         if (config?.Axes != null) p["axes"] = config.Axes.Select(AxisToObject).ToArray();
         var createParams = (object)p;
@@ -499,6 +567,16 @@ public class LclaContext : IAsyncDisposable
             _ = chart.DisposeAsync();
         }
         _charts.Clear();
+
+        // Queue context dataset cleanup after the chart-disposal messages.
+        SendFireAndForget(new
+        {
+            id = NextId(),
+            category = "lifecycle",
+            action = "dispose",
+            clientId = _clientId,
+        });
+
         return ValueTask.CompletedTask;
     }
 
@@ -519,6 +597,7 @@ public class LclaContext : IAsyncDisposable
 public class XYChartConfig
 {
     public string? Title { get; set; }
+    public bool? LegendVisible { get; set; }
     public string? ContainerId { get; set; }
     public List<DataSetConfig>? DataSets { get; set; }
     /// <summary>
@@ -543,6 +622,7 @@ public class XYChartConfig
 public class UpdateXYChartConfig
 {
     public string? Title { get; set; }
+    public bool? LegendVisible { get; set; }
     public List<IDataSetConfig>? DataSets { get; set; }
     public List<IAxisConfig>? Axes { get; set; }
     public List<ISeriesConfig>? Series { get; set; }
@@ -658,6 +738,24 @@ public class UpdateAxisConfig : IAxisConfig
     public bool? Remove { get; set; }
 }
 
+public class PaletteStepConfig
+{
+    public required double Value { get; set; }
+    public required string Color { get; set; }
+}
+
+public class PaletteConfig
+{
+    public required List<PaletteStepConfig> Steps { get; set; }
+    public bool? Interpolate { get; set; }
+}
+
+public class DataCleaningConfig
+{
+    /// <summary>Minimum number of samples retained when cleaning out-of-view data.</summary>
+    public required int MinDataPointCount { get; set; }
+}
+
 /// <summary>Series creation or update configuration.</summary>
 public interface ISeriesConfig
 {
@@ -670,8 +768,7 @@ public abstract class SeriesConfig : ISeriesConfig
 }
 
 /// <summary>
-/// Update an existing series by ID.
-/// Omitted settings remain unchanged.
+/// Update an existing series by ID. Omitted settings remain unchanged.
 /// </summary>
 public abstract class UpdateSeriesConfig : ISeriesConfig
 {
@@ -688,6 +785,8 @@ public class LineSeriesConfig : SeriesConfig
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateLineSeriesConfig : UpdateSeriesConfig
@@ -696,6 +795,8 @@ public class UpdateLineSeriesConfig : UpdateSeriesConfig
     public string? X { get; set; }
     public string? Y { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class ScatterSeriesConfig : SeriesConfig
@@ -706,6 +807,8 @@ public class ScatterSeriesConfig : SeriesConfig
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateScatterSeriesConfig : UpdateSeriesConfig
@@ -714,6 +817,8 @@ public class UpdateScatterSeriesConfig : UpdateSeriesConfig
     public string? X { get; set; }
     public string? Y { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class LineScatterSeriesConfig : SeriesConfig
@@ -724,6 +829,8 @@ public class LineScatterSeriesConfig : SeriesConfig
     public string? XAxisId { get; set; }
     public string? YAxisId { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
 }
 
 public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
@@ -732,6 +839,47 @@ public class UpdateLineScatterSeriesConfig : UpdateSeriesConfig
     public string? X { get; set; }
     public string? Y { get; set; }
     public string? Color { get; set; }
+    public string? ColorBy { get; set; }
+    public PaletteConfig? Palette { get; set; }
+}
+
+public class PointConfig
+{
+    public required double X { get; set; }
+    public required double Y { get; set; }
+}
+
+public enum ScrollDimension
+{
+    Columns,
+    Rows
+}
+
+
+/// <summary>
+/// Create a scrolling heatmap that receives matrix samples directly.
+/// </summary>
+public class ScrollingHeatmapSeriesConfig : SeriesConfig
+{
+    public required int Resolution { get; set; }
+    public required ScrollDimension ScrollDimension { get; set; }
+    public string? XAxisId { get; set; }
+    public string? YAxisId { get; set; }
+    public PointConfig? Start { get; set; }
+    public PointConfig? Step { get; set; }
+    public PaletteConfig? Palette { get; set; }
+    public DataCleaningConfig? DataCleaning { get; set; }
+}
+
+/// <summary>
+/// Update editable settings or explicitly remove a scrolling heatmap.
+/// </summary>
+public class UpdateScrollingHeatmapSeriesConfig : UpdateSeriesConfig
+{
+    public PointConfig? Start { get; set; }
+    public PointConfig? Step { get; set; }
+    public PaletteConfig? Palette { get; set; }
+    public DataCleaningConfig? DataCleaning { get; set; }
 }
 
 /// <summary>

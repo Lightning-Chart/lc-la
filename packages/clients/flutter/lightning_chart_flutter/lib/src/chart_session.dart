@@ -36,6 +36,7 @@ class LclaChartSession {
         _removeNulls({
           'containerId': config.containerId,
           'animationsEnabled': config.animationsEnabled,
+          'legendVisible': config.legendVisible,
           'axes': config.axes?.map(_axisToJson).toList(growable: false),
         }),
       );
@@ -80,6 +81,16 @@ class LclaChartSession {
       chart.dispose();
     }
     _charts.clear();
+
+    // Queue context dataset cleanup after the chart-disposal messages.
+    _sendFireAndForget([
+      BijPart.json('meta', {
+        'id': _nextMessageId(),
+        'category': 'lifecycle',
+        'action': 'dispose',
+        'clientId': _clientId,
+      }),
+    ]);
   }
 
   void configureDataSets(List<IDataSetConfig> dataSets) {
@@ -102,6 +113,7 @@ class LclaChartSession {
     options.columns,
     options.maxSampleCount,
   );
+
   void appendData(AppendDataOptions options) => _sendData(
     'append',
     options.dataSetId,
@@ -215,6 +227,7 @@ class LclaChart {
 
     final params = _removeNulls({
       'title': config.title,
+      'legendVisible': config.legendVisible,
       'dataSets': config.dataSets?.map(_dataSetToJson).toList(growable: false),
       'axes': config.axes?.map(_axisToJson).toList(growable: false),
       'series': config.series?.map(_seriesToJson).toList(growable: false),
@@ -245,6 +258,83 @@ class LclaChart {
   void clearData(ClearDataOptions options) {
     _throwIfDisposed();
     _client.clearData(options);
+  }
+
+  /// Replaces all matrix data of a heatmap series. [SetMatrixDataOptions.values]
+  /// is a flat columns × rows matrix in the data order the series was created
+  /// with.
+  void setMatrixData(SetMatrixDataOptions options) {
+    _throwIfDisposed();
+    _sendMatrixData('setMatrix', options.seriesId, null, options.values);
+  }
+
+  /// Replaces a rectangular region of a heatmap series' matrix data.
+  void invalidateMatrixData(InvalidateMatrixDataOptions options) {
+    _throwIfDisposed();
+    if (options.values.length != options.columns * options.rows) {
+      throw ArgumentError(
+        'values must contain columns * rows (${options.columns * options.rows}) items.',
+      );
+    }
+    _sendMatrixData('invalidateMatrix', options.seriesId, {
+      'iColumn': options.iColumn,
+      'iRow': options.iRow,
+      'columns': options.columns,
+      'rows': options.rows,
+    }, options.values);
+  }
+
+  /// Appends samples, or writes samples starting at iSample when supplied.
+  /// Every sample must have the same length, matching the series resolution.
+  void appendMatrixData(AppendMatrixDataOptions options) {
+    _throwIfDisposed();
+    final samples = options.samples;
+    if (samples.isEmpty) {
+      return;
+    }
+
+    final sampleLength = samples.first.length;
+    final values = Float32List(samples.length * sampleLength);
+    for (var i = 0; i < samples.length; i++) {
+      if (samples[i].length != sampleLength) {
+        throw ArgumentError('All samples must have the same length.');
+      }
+      values.setAll(i * sampleLength, samples[i]);
+    }
+
+    _sendMatrixData('appendMatrix', options.seriesId, {
+      'sampleLength': sampleLength,
+      if (options.iSample != null) 'iSample': options.iSample,
+    }, values);
+  }
+
+  /// Clears all matrix data while retaining the heatmap series and its settings.
+  void clearMatrixData(ClearMatrixDataOptions options) {
+    _throwIfDisposed();
+    _sendMatrixData('clearMatrix', options.seriesId, null);
+  }
+
+  void _sendMatrixData(
+    String action,
+    String seriesId,
+    Map<String, Object?>? params, [
+    Float32List? values,
+  ]) {
+    final meta = <String, Object?>{
+      'id': _client._nextMessageId(),
+      'category': 'data',
+      'action': action,
+      'clientId': _client._clientId,
+      'chartId': chartId,
+      'seriesId': seriesId,
+    };
+    if (params != null) {
+      meta['params'] = params;
+    }
+    _client._sendFireAndForget([
+      BijPart.json('meta', meta),
+      if (values != null) BijPart.float32('values', values),
+    ]);
   }
 
   void dispose() {
@@ -372,6 +462,8 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'xAxisId': config.xAxisId,
         'yAxisId': config.yAxisId,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
       });
 
     case UpdateLineSeriesConfig():
@@ -383,6 +475,8 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'x': config.x,
         'y': config.y,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
         'remove': config.remove,
       });
 
@@ -397,6 +491,8 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'xAxisId': config.xAxisId,
         'yAxisId': config.yAxisId,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
       });
 
     case UpdateScatterSeriesConfig():
@@ -408,6 +504,8 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'x': config.x,
         'y': config.y,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
         'remove': config.remove,
       });
 
@@ -422,6 +520,8 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'xAxisId': config.xAxisId,
         'yAxisId': config.yAxisId,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
       });
 
     case UpdateLineScatterSeriesConfig():
@@ -433,6 +533,35 @@ Map<String, Object?> _seriesToJson(ISeriesConfig config) {
         'x': config.x,
         'y': config.y,
         'color': config.color,
+        'colorBy': config.colorBy,
+        'palette': _paletteToJson(config.palette),
+        'remove': config.remove,
+      });
+
+    case ScrollingHeatmapSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'scrollingHeatmap',
+        'name': config.name,
+        'resolution': config.resolution,
+        'scrollDimension': config.scrollDimension.wireValue,
+        'xAxisId': config.xAxisId,
+        'yAxisId': config.yAxisId,
+        'start': _pointToJson(config.start),
+        'step': _pointToJson(config.step),
+        'palette': _paletteToJson(config.palette),
+        'dataCleaning': _dataCleaningToJson(config.dataCleaning),
+      });
+
+    case UpdateScrollingHeatmapSeriesConfig():
+      return _removeNulls({
+        'id': config.id,
+        'type': 'scrollingHeatmap',
+        'name': config.name,
+        'start': _pointToJson(config.start),
+        'step': _pointToJson(config.step),
+        'palette': _paletteToJson(config.palette),
+        'dataCleaning': _dataCleaningToJson(config.dataCleaning),
         'remove': config.remove,
       });
 
@@ -449,3 +578,25 @@ Map<String, Object?> _removeNulls(Map<String, Object?> source) {
       if (entry.value != null) entry.key: entry.value,
   };
 }
+
+// Convert coordinates to the property names expected by the host.
+Map<String, Object?>? _pointToJson(PointConfig? point) =>
+    point == null ? null : {'x': point.x, 'y': point.y};
+
+// Convert palette settings to the property names expected by the host.
+Map<String, Object?>? _paletteToJson(PaletteConfig? palette) {
+  if (palette == null) return null;
+
+  return _removeNulls({
+    'steps': palette.steps
+        .map((step) => {'value': step.value, 'color': step.color})
+        .toList(),
+    'interpolate': palette.interpolate,
+  });
+}
+
+// Convert data cleaning settings to the property names expected by the host.
+Map<String, Object?>? _dataCleaningToJson(DataCleaningConfig? dataCleaning) =>
+    dataCleaning == null
+    ? null
+    : {'minDataPointCount': dataCleaning.minDataPointCount};

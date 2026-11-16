@@ -15,6 +15,7 @@ Choose the configuration class for the visualization you need:
 - [`LineSeriesConfig`](./series#line-scatter-line-scatter) displays a line.
 - [`ScatterSeriesConfig`](./series#line-scatter-line-scatter) displays scatter points.
 - [`LineScatterSeriesConfig`](./series#line-scatter-line-scatter) displays a line with scatter points.
+- [`ScrollingHeatmapSeriesConfig`](./series#scrolling-heatmap) displays incoming matrix samples as a scrolling heatmap.
 
 The configuration class determines the series type. A series's ID, type, and assigned axes cannot be changed after creation.
 
@@ -24,17 +25,20 @@ The configuration class determines the series type. A series's ID, type, and ass
 Add series when creating a chart through its series list. To add a series afterward, include its creation configuration with a new unique ID in a chart update.
 A new series can reference datasets and axes created in the same chart configuration or update. Adding a series does not remove existing series.
 
+The series name identifies it in the legend and cursor information. It is separate from the ID used to select the series in updates.
+Names can be changed after creation. Omitting the name from an update preserves it; an empty name clears the custom name, allowing an automatically determined name to appear.
+
 Omitted series and properties remain unchanged during updates. Removal must be requested explicitly.
 
 The examples continue [Adding charts](./charts), using the chart reference introduced there.
 
 ### Line, Scatter, Line-Scatter
 
+Line, scatter, and line with scatter points series select dataset columns for their X and Y values. Multiple series can share the same dataset and columns.
+
 #### At chart creation
 
 Add series to the chart's series list. Define their datasets in the same chart configuration or create the datasets beforehand.
-
-Line, scatter, and line with scatter points series select dataset columns for their X and Y values. Multiple series can share the same dataset and columns.
 
 The example below creates a dataset containing time, three temperature measurements, and humidity. A line series displays `"temperature-1"` and a scatter series displays `"temperature-2"`, both against `"time"` using the default axes.
 
@@ -328,13 +332,378 @@ chart.update(
 A new series can reference a dataset and axes created in the same chart update.
 
 
-## Series name and color
+### Scrolling heatmap
 
-The series name identifies it in the legend and cursor information. It is separate from the ID used to select the series in updates.
+A scrolling heatmap displays incoming matrix samples, with intensity values mapped to colors through a palette. It receives data directly rather than selecting dataset columns.
 
-Specify a hexadecimal color to choose the series color. Omit it when creating the series to use the automatically assigned color.
+Set the resolution and scrolling dimension when creating the series:
 
-Names and colors can be changed after creation. Omitting either property from an update preserves its existing value. An empty name clears the displayed name.
+- `Columns`: each sample forms a column, progressing along the X axis.
+- `Rows`: each sample forms a row, progressing along the Y axis.
+
+The resolution is the number of intensity values in each sample. The start position defines the grid origin, and the step defines the cell size along each axis.
+
+#### At chart creation
+
+The following chart displays samples containing 512 intensity values. Each column represents 5 milliseconds, and the X axis shows a scrolling 10-second interval.
+
+The palette maps intensity values from blue at 0 to red at 100, interpolating colors between them.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    ContainerId = "signal-chart",
+    Axes =
+    [
+        new AxisConfig
+        {
+            Axis = AxisTarget.X,
+            Title = "Time",
+            TickStrategy = TickStrategy.DateTime,
+            ScrollStrategy = ScrollStrategy.Scrolling,
+            DefaultInterval = new AxisDefaultIntervalConfig
+            {
+                Length = 10_000,
+            },
+        },
+        new AxisConfig
+        {
+            Axis = AxisTarget.Y,
+            Title = "Sample position",
+            Interval = new AxisIntervalConfig { Start = 0, End = 512 },
+        },
+    ],
+    Series =
+    [
+        new ScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Intensity",
+            Resolution = 512,
+            ScrollDimension = ScrollDimension.Columns,
+            Step = new PointConfig { X = 5, Y = 1 },
+            Palette = new PaletteConfig
+            {
+                Steps =
+                [
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+                ],
+                Interpolate = true,
+            },
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 1000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    Axes =
+    [
+        new AxisConfig
+        {
+            Axis = AxisTarget.X,
+            Title = "Time",
+            TickStrategy = TickStrategy.DateTime,
+            ScrollStrategy = ScrollStrategy.Scrolling,
+            DefaultInterval = new AxisDefaultIntervalConfig
+            {
+                Length = 10_000,
+            },
+        },
+        new AxisConfig
+        {
+            Axis = AxisTarget.Y,
+            Title = "Sample position",
+            Interval = new AxisIntervalConfig { Start = 0, End = 512 },
+        },
+    ],
+    Series =
+    [
+        new ScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Intensity",
+            Resolution = 512,
+            ScrollDimension = ScrollDimension.Columns,
+            Step = new PointConfig { X = 5, Y = 1 },
+            Palette = new PaletteConfig
+            {
+                Steps =
+                [
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+                ],
+                Interpolate = true,
+            },
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 1000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart = await _context.CreateChartAsync(new XYChartConfig
+{
+    Axes =
+    [
+        new AxisConfig
+        {
+            Axis = AxisTarget.X,
+            Title = "Time",
+            TickStrategy = TickStrategy.DateTime,
+            ScrollStrategy = ScrollStrategy.Scrolling,
+            DefaultInterval = new AxisDefaultIntervalConfig
+            {
+                Length = 10_000,
+            },
+        },
+        new AxisConfig
+        {
+            Axis = AxisTarget.Y,
+            Title = "Sample position",
+            Interval = new AxisIntervalConfig { Start = 0, End = 512 },
+        },
+    ],
+    Series =
+    [
+        new ScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Intensity",
+            Resolution = 512,
+            ScrollDimension = ScrollDimension.Columns,
+            Step = new PointConfig { X = 5, Y = 1 },
+            Palette = new PaletteConfig
+            {
+                Steps =
+                [
+                    new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+                    new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+                ],
+                Interpolate = true,
+            },
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 1000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+LightningChart.xy(
+  license: license,
+  axes: const [
+    AxisConfig(
+      axis: AxisTarget.x,
+      title: 'Time',
+      tickStrategy: TickStrategy.dateTime,
+      scrollStrategy: ScrollStrategy.scrolling,
+      defaultInterval: AxisDefaultIntervalConfig(
+        length: 10_000,
+      ),
+    ),
+    AxisConfig(
+      axis: AxisTarget.y,
+      title: 'Sample position',
+      interval: AxisIntervalConfig(
+        start: 0,
+        end: 512,
+      ),
+    ),
+  ],
+  series: const [
+    ScrollingHeatmapSeriesConfig(
+      id: 'heatmap',
+      name: 'Intensity',
+      resolution: 512,
+      scrollDimension: ScrollDimension.columns,
+      step: PointConfig(x: 5, y: 1),
+      palette: PaletteConfig(
+        steps: [
+          PaletteStepConfig(value: 0, color: '#0000FF'),
+          PaletteStepConfig(value: 100, color: '#FF0000'),
+        ],
+        interpolate: true,
+      ),
+      dataCleaning: DataCleaningConfig(
+        minDataPointCount: 1000,
+      ),
+    ),
+  ],
+  onChartCreated: (chart) {
+    _chart = chart;
+  },
+);
+```
+
+</TabItem>
+</Tabs>
+
+For timestamped samples, use Unix timestamps in milliseconds. Set the grid's start position to the first sample's timestamp, then calculate each sample index from its timestamp and the grid step. The DateTime tick strategy formats the axis; it does not perform this positioning. See [Data management](./data-management) for the data-handling code.
+
+Choose the step along the scrolling dimension according to the time precision needed. Smaller steps allow finer timestamp positioning but require more memory for the same visible duration.
+
+#### After chart creation
+
+To add a scrolling heatmap to an existing chart, include a `ScrollingHeatmapSeriesConfig` with a new unique ID in a chart update. Set its resolution, scrolling dimension, and any selected axis IDs in that creation configuration.
+
+Configure the scrolling axis for the heatmap's coordinates and time range. See [Configuring axes](./axes).
+
+#### Data cleaning
+
+Data cleaning removes out-of-view samples lazily while retaining at least `MinDataPointCount` samples. A sample is one column or row, depending on the scrolling dimension.
+
+This is a minimum retained count, not a maximum history limit. Visible samples are retained even when the visible interval contains more samples than this setting.
+
+Data cleaning can be configured during creation or changed through `UpdateScrollingHeatmapSeriesConfig`. Omitting it from an update preserves the existing setting.
+
+
+## Series coloring
+
+For line, scatter, and line-scatter series, specify a hexadecimal color during creation or omit it to use the automatically assigned color.
+
+Colors can be changed after creation. Omitting the color from an update preserves the current coloring.
+
+### Palette coloring
+
+
+A palette colors a series according to its data values. Define the colors using a lookup table (LUT), where each step pairs a numeric value with a color. Interpolation blends the colors between steps.
+
+Line, scatter, and line-scatter series use their Y values for coloring unless a different dataset column is selected with `ColorBy`. Scrolling heatmaps use each cell's intensity value.
+
+This scatter series plots temperature against time and uses the humidity column for coloring.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+new ScatterSeriesConfig
+{
+    Id = "series-2",
+    DataSetId = "measurements",
+    X = "time",
+    Y = "temperature-2",
+    Name = "Temperature 2",
+    ColorBy = "humidity",
+    Palette = new PaletteConfig
+    {
+        Steps =
+        [
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+        ],
+        Interpolate = true,
+    },
+},
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+new ScatterSeriesConfig
+{
+    Id = "series-2",
+    DataSetId = "measurements",
+    X = "time",
+    Y = "temperature-2",
+    Name = "Temperature 2",
+    ColorBy = "humidity",
+    Palette = new PaletteConfig
+    {
+        Steps =
+        [
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+        ],
+        Interpolate = true,
+    },
+},
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+new ScatterSeriesConfig
+{
+    Id = "series-2",
+    DataSetId = "measurements",
+    X = "time",
+    Y = "temperature-2",
+    Name = "Temperature 2",
+    ColorBy = "humidity",
+    Palette = new PaletteConfig
+    {
+        Steps =
+        [
+            new PaletteStepConfig { Value = 0, Color = "#0000FF" },
+            new PaletteStepConfig { Value = 50, Color = "#00FF00" },
+            new PaletteStepConfig { Value = 100, Color = "#FF0000" },
+        ],
+        Interpolate = true,
+    },
+},
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+ScatterSeriesConfig(
+  id: 'series-2',
+  dataSetId: 'measurements',
+  x: 'time',
+  y: 'temperature-2',
+  name: 'Temperature 2',
+  colorBy: 'humidity',
+  palette: PaletteConfig(
+    steps: [
+      PaletteStepConfig(value: 0, color: '#0000FF'),
+      PaletteStepConfig(value: 50, color: '#00FF00'),
+      PaletteStepConfig(value: 100, color: '#FF0000'),
+    ],
+    interpolate: true,
+  ),
+),
+```
+
+</TabItem>
+</Tabs>
+
+
+The coloring column must belong to the series's dataset. Supply its values together with the X and Y columns when loading or appending data.
+
+After creation, use the matching series update configuration to change the palette or coloring column. Omitted properties retain their current settings. A supplied palette replaces the previous palette definition.
+
+For line, scatter, and line-scatter series, supplying a solid color switches off palette coloring. A solid color takes precedence if both are supplied together.
+
+The palette's color scale appears in the chart legend and is hidden when the legend is hidden.
 
 
 ## Assigning axes
@@ -442,14 +811,17 @@ Use an update configuration matching the existing series type:
 - [`UpdateLineSeriesConfig`](./series#line-scatter-line-scatter-1) updates a line series.
 - [`UpdateScatterSeriesConfig`](./series#line-scatter-line-scatter-1) updates a scatter series.
 - [`UpdateLineScatterSeriesConfig`](./series#line-scatter-line-scatter-1) updates a line with scatter points.
+- [`UpdateScrollingHeatmapSeriesConfig`](./series#scrolling-heatmap-1) updates a scrolling heatmap.
 
-Select the series by its ID and supply the properties to change. Its name, color, dataset ID, and X/Y column bindings are editable. Omitted properties and series remain unchanged.
+Select the series by its ID and supply the properties to change. Editable properties depend on the series type. Omitted properties and series remain unchanged.
 
 A series's ID, type, and assigned axes cannot be changed after creation. To use another series type or different axes, remove the old series and create a new one.
 
-The following example changes the name and color of the first line series. Its dataset, column bindings, and assigned axes remain unchanged.
-
 ### Line, Scatter, Line-Scatter
+
+The name, color, palette, coloring column, dataset ID, and X/Y column bindings can be changed after creation.
+
+The following example changes the name and color of the first line series. Its dataset, column bindings, and assigned axes remain unchanged.
 
 <Tabs groupId="lcla-client" defaultValue="blazor">
 <TabItem value="blazor" label="Blazor">
@@ -526,6 +898,98 @@ chart.update(
 </Tabs>
 
 Changing a dataset or column binding reconnects the existing series to the selected data. The selected columns must exist in that dataset.
+
+### Scrolling heatmap
+
+The name, grid start position, grid step, palette, and data cleaning settings can be changed after creation. The resolution and scrolling dimension are creation-only settings.
+
+The following example changes the series name and minimum number of samples retained during data cleaning. Its grid settings and palette remain unchanged.
+
+<Tabs groupId="lcla-client" defaultValue="blazor">
+<TabItem value="blazor" label="Blazor">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Updated intensity",
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 2000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="maui" label="MAUI">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Updated intensity",
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 2000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="uno" label="Uno">
+
+```csharp
+_chart.Update(new UpdateXYChartConfig
+{
+    Series =
+    [
+        new UpdateScrollingHeatmapSeriesConfig
+        {
+            Id = "heatmap",
+            Name = "Updated intensity",
+            DataCleaning = new DataCleaningConfig
+            {
+                MinDataPointCount = 2000,
+            },
+        },
+    ],
+});
+```
+
+</TabItem>
+<TabItem value="flutter" label="Flutter">
+
+```dart
+chart.update(
+  const UpdateXYChartConfig(
+    series: [
+      UpdateScrollingHeatmapSeriesConfig(
+        id: 'heatmap',
+        name: 'Updated intensity',
+        dataCleaning: DataCleaningConfig(
+          minDataPointCount: 2000,
+        ),
+      ),
+    ],
+  ),
+);
+```
+
+</TabItem>
+</Tabs>
+
 
 ## Removing series
 
@@ -609,3 +1073,9 @@ chart.update(
 ### Dataset data
 
 Use dataset operations to replace historical data or append incoming samples. Series bound to that dataset display the updated data without requiring another series configuration call. See [Data management](./data-management).
+
+### Matrix data
+
+Scrolling heatmaps receive intensity samples directly through their series ID. Append samples after existing data, or supply a sample index to position them on the grid.
+
+Use matrix-data operations to supply or clear values without recreating the series. See [Matrix data](./data-management#matrix-data) for appending samples, using timestamps, and clearing data.

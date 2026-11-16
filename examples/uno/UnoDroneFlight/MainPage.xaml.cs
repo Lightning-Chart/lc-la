@@ -147,6 +147,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
             {
                 ContainerId = "lcla-root",
                 Title = "",
+                LegendVisible = false,
                 DataSets =
                 [
                     new DataSetConfig
@@ -250,6 +251,7 @@ public sealed partial class MainPage : Page, IAsyncDisposable
             {
                 ContainerId = "lcla-root",
                 Title = "",
+                LegendVisible = false,
                 DataSets =
                 [
                     new DataSetConfig
