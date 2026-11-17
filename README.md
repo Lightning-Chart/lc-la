@@ -41,9 +41,10 @@ npm run verify:examples -- ExampleName       # build one registered example (rep
 1. Use "rc/v0.1" syntax for release branch name
 2. For a major or minor release: set `releaseLine` in `versions.json`, and add the version entry to `CHANGELOG.md`. Patch releases skip this step.
    - Do not edit `packages` in `versions.json` manually!
-3. Run `bash scripts/release.sh` and select targets. Each client gets the next patch on `releaseLine`, bundles a fresh host build, and is published.
-4. If documentation was selected, copy `docs/build` to the deployment server.
-5. After everything has been released and tested to be functioning, commit code changes and create + push a git tag marking the release point in history
+3. Ensure `CHANGELOG.md` is good to go
+4. Run `bash scripts/release.sh` and select targets. Each client gets the next patch on `releaseLine`, bundles a fresh host build, and is published.
+5. If documentation was selected, copy `docs/build` to the deployment server.
+6. After everything has been released and tested to be functioning, commit code changes and create + push a git tag marking the release point in history
    - `git tag v0.1`
    - `git push --tags`
 
