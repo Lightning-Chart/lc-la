@@ -44,4 +44,4 @@ Run:
 bash scripts/release.sh
 ```
 
-The release process is interactive. Root `versions.json` records the shared major/minor release line and the current published version of every package. Each selected package calculates its own next patch on that line and records it only after publication succeeds. The root changelog covers major and minor releases; client packages maintain any required patch entries. Update `releaseLine` before a coordinated major or minor release.
+The release process is interactive and publishes the client packages (NuGet, pub.dev) and builds the website. The host is not published on its own: each client release rebuilds it and bundles `lcla-host.js` into its package. Root `versions.json` records the shared major/minor release line and the current published version of every client package. Each selected package calculates its own next patch on that line and records it only after publication succeeds. The root changelog covers major and minor releases; client packages maintain any required patch entries. Update `releaseLine` before a coordinated major or minor release.

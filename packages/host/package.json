@@ -1,16 +1,8 @@
 {
   "name": "@lcla/host",
-  "version": "0.0.6",
+  "private": true,
   "type": "module",
   "description": "LightningChart LA host bundle — runs in-browser alongside LCJS",
-  "files": [
-    "dist",
-    "CHANGELOG.md"
-  ],
-  "main": "./dist/lcla-host.js",
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

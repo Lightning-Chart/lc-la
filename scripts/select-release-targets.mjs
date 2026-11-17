@@ -10,24 +10,19 @@ if (!outputPath) {
 
 intro('LightningChart LA release')
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const releaseDirectories = [
-    resolve(rootDirectory, 'packages'),
-    resolve(rootDirectory, 'packages', 'clients'),
-]
-const options = releaseDirectories.flatMap((directory) =>
-    readdirSync(directory, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => resolve(directory, entry.name, 'release.sh'))
-        .filter(existsSync)
-        .map((releaseScript) => {
-            const packageDirectory = relative(rootDirectory, dirname(releaseScript))
-            return {
-                value: relative(rootDirectory, releaseScript),
-                label: packageDirectory,
-                hint: 'publish',
-            }
-        }),
-)
+const clientsDirectory = resolve(rootDirectory, 'packages', 'clients')
+const options = readdirSync(clientsDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => resolve(clientsDirectory, entry.name, 'release.sh'))
+    .filter(existsSync)
+    .map((releaseScript) => {
+        const packageDirectory = relative(rootDirectory, dirname(releaseScript))
+        return {
+            value: relative(rootDirectory, releaseScript),
+            label: packageDirectory,
+            hint: 'publish',
+        }
+    })
 options.push({
     value: 'website',
     label: 'website',

@@ -35,7 +35,8 @@ require_command git
 
 echo "Preparing C# release..."
 echo
-(cd "$ROOT_DIR" && node scripts/prepare-release.mjs csharp)
+echo "Updating C# version and refreshing bundled host..."
+(cd "$ROOT_DIR" && node scripts/prepare-release.mjs csharp && npm run build:host)
 VERSION="$(sed -nE 's/.*<Version>([^<]+)<\/Version>.*/\1/p' "$PROJECT_DIR/LightningChart.LA.csproj")"
 PACKAGE="$PROJECT_DIR/bin/Release/LCLA.$VERSION.nupkg"
 echo "C# release for LCLA $VERSION"

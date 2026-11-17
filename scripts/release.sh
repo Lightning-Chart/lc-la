@@ -48,9 +48,6 @@ copy_changelog_to_target() {
   fi
   local package_directory
   case "$release_script" in
-    packages/host/release.sh)
-      package_directory="packages/host"
-      ;;
     packages/clients/csharp/release.sh)
       package_directory="packages/clients/csharp/LightningChart.LA"
       ;;
@@ -73,7 +70,6 @@ is_website_target() {
 
 release_target_name() {
   case "${1//\\//}" in
-    packages/host/release.sh) echo "host release" ;;
     packages/clients/csharp/release.sh) echo "csharp release" ;;
     packages/clients/flutter/release.sh) echo "flutter release" ;;
     website) echo "website build" ;;

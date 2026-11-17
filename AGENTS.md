@@ -6,7 +6,7 @@ Language Agnostic data visualization. Brings LightningChart JS to non-JS runtime
 
 ## Architecture
 
-- `packages/host/` - TypeScript host library. Runs in browser alongside LCJS (`@lightningchart/lcjs`). Receives BIJ messages, maps high-level commands to LCJS API internally.
+- `packages/host/` - TypeScript host library (private, not published; bundled into every client package as `lcla-host.js`). Runs in browser alongside LCJS (`@lightningchart/lcjs`). Receives BIJ messages, maps high-level commands to LCJS API internally.
 - `packages/clients/csharp/` - C# client library. Sends BIJ messages. Initially targets Blazor Server.
 - `examples/` - Per-framework example projects. Each must have a README.md with instructions to run locally.
 
