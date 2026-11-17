@@ -76,7 +76,7 @@ If you change BIJ encoding, update BOTH host and C# implementations and run `npm
 
 ## Documentation
 
-- The single user-facing documentation site lives in `website/` and is built with Docusaurus.
+- The single user-facing documentation site lives in `docs/` and is built with Docusaurus.
 - Public documentation must describe only the user-facing path. Never mention, contrast with, or reassure readers about internal tooling, repository workflows, agent decisions, or removed alternatives unless that information is required for the user to complete the documented task.
 - Write public documentation with release-ready, customer-facing language. Do not mention unpublished/internal states like "after the package is published"; if docs describe package-manager installation, the release process must make that installation path real before the docs are published.
 - Treat public docs and package READMEs as product onboarding and technical marketing material. Every sentence must help a first-time evaluator install, run, understand value, or resolve a real concern.

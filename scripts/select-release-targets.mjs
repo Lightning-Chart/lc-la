@@ -24,8 +24,8 @@ const options = readdirSync(clientsDirectory, { withFileTypes: true })
         }
     })
 options.push({
-    value: 'website',
-    label: 'website',
+    value: 'docs',
+    label: 'documentation',
     hint: 'build for manual deployment',
 })
 const targets = await multiselect({

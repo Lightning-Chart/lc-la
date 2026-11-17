@@ -17,20 +17,20 @@ require_command dart
 require_command flutter
 require_command git
 
-ensure_changelog_entry() {
-  local changelog_path="$PACKAGE_DIR/CHANGELOG.md"
-  if grep -q "^## $VERSION$" "$changelog_path"; then
+# pub.dev requires CHANGELOG.md to mention the published version. The root changelog
+# only lists major/minor releases, so patch releases get a generated entry.
+write_publish_changelog() {
+  local source_path="$ROOT_DIR/CHANGELOG.md"
+  local target_path="$PUBLISH_DIR/CHANGELOG.md"
+  if grep -q "^## $VERSION$" "$source_path"; then
+    cp "$source_path" "$target_path"
     return
   fi
-
-  local temporary_path
-  temporary_path="$(mktemp)"
-  {
-    head -n 1 "$changelog_path"
-    printf '\n## %s\n\nPatch\n' "$VERSION"
-    tail -n +2 "$changelog_path"
-  } > "$temporary_path"
-  mv "$temporary_path" "$changelog_path"
+  awk -v version="$VERSION" '
+    !inserted && /^## / { printf "## %s\n\nPatch release.\n\n", version; inserted = 1 }
+    { print }
+    END { if (!inserted) printf "\n## %s\n\nPatch release.\n", version }
+  ' "$source_path" > "$target_path"
 }
 
 PUBLISH_ROOT="$(mktemp -d)"
@@ -48,7 +48,6 @@ echo "Updating Flutter version and refreshing bundled host..."
 (cd "$ROOT_DIR" && node scripts/prepare-release.mjs flutter && npm run build:host)
 VERSION="$(sed -nE 's/^version:[[:space:]]*//p' "$PACKAGE_DIR/pubspec.yaml" | head -n 1)"
 echo "Flutter release for lightning_chart_flutter $VERSION"
-ensure_changelog_entry
 
 echo
 echo "Resolving Flutter package dependencies..."
@@ -69,6 +68,7 @@ echo "Running Flutter tests..."
 echo
 echo "Running pub.dev dry run..."
 (mkdir -p "$PUBLISH_DIR" && cp -a "$PACKAGE_DIR/." "$PUBLISH_DIR/" && rm -rf "$PUBLISH_DIR/.dart_tool" "$PUBLISH_DIR/build" "$PUBLISH_DIR/example/.dart_tool" "$PUBLISH_DIR/example/build")
+write_publish_changelog
 (cd "$PUBLISH_DIR" && flutter pub publish --dry-run)
 
 echo
