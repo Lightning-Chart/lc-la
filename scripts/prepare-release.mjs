@@ -58,16 +58,6 @@ const replaceFile = (path, expression, value) => {
     if (updated !== content) writeFileSync(path, updated)
 }
 
-const prepareHost = async () => {
-    const metadata = await fetchJson('https://registry.npmjs.org/@lcla%2fhost')
-    const version = nextPatch(Object.keys(metadata.versions ?? {}))
-    const path = resolve(root, 'packages/host/package.json')
-    const manifest = JSON.parse(readFileSync(path, 'utf8'))
-    manifest.version = version
-    writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
-    return version
-}
-
 const prepareCsharp = async () => {
     const metadata = await fetchJson('https://api.nuget.org/v3-flatcontainer/lcla/index.json')
     const version = nextPatch(metadata.versions ?? [])
@@ -110,9 +100,9 @@ const prepareFlutter = async () => {
     return version
 }
 
-const prepare = { host: prepareHost, csharp: prepareCsharp, flutter: prepareFlutter }[target]
+const prepare = { csharp: prepareCsharp, flutter: prepareFlutter }[target]
 if (!prepare) {
-    throw new Error('Usage: node scripts/prepare-release.mjs <host|csharp|flutter>')
+    throw new Error('Usage: node scripts/prepare-release.mjs <csharp|flutter>')
 }
 
 const version = await prepare()

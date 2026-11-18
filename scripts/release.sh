@@ -48,9 +48,6 @@ copy_changelog_to_target() {
   fi
   local package_directory
   case "$release_script" in
-    packages/host/release.sh)
-      package_directory="packages/host"
-      ;;
     packages/clients/csharp/release.sh)
       package_directory="packages/clients/csharp/LightningChart.LA"
       ;;
@@ -67,16 +64,15 @@ copy_changelog_to_target() {
   copied_changelogs+=("$target_path")
 }
 
-is_website_target() {
-  [[ "$1" == "website" ]]
+is_docs_target() {
+  [[ "$1" == "docs" ]]
 }
 
 release_target_name() {
   case "${1//\\//}" in
-    packages/host/release.sh) echo "host release" ;;
     packages/clients/csharp/release.sh) echo "csharp release" ;;
     packages/clients/flutter/release.sh) echo "flutter release" ;;
-    website) echo "website build" ;;
+    docs) echo "documentation build" ;;
     *) fail "No release checkpoint name is configured for $1." ;;
   esac
 }
@@ -94,9 +90,9 @@ publish_target() {
   bash "$ROOT_DIR/$release_script"
 }
 
-build_website() {
+build_docs() {
   echo
-  echo "==> Building website"
+  echo "==> Building documentation"
   npm run docs:build
 }
 
@@ -121,17 +117,17 @@ echo
 echo "Preparing selected releases on shared major/minor line $release_line.x: $targets"
 
 for release_script in $targets; do
-  if ! is_website_target "$release_script"; then
+  if ! is_docs_target "$release_script"; then
     copy_changelog_to_target "$release_script"
   fi
 done
 
 for release_script in $targets; do
   target_name="$(release_target_name "$release_script")"
-  if is_website_target "$release_script"; then
-    if ! build_website; then
+  if is_docs_target "$release_script"; then
+    if ! build_docs; then
       checkpoint FAILURE "$target_name"
-      fail "Website build failed; release stopped."
+      fail "Documentation build failed; release stopped."
     fi
     checkpoint COMPLETED "$target_name"
   elif ! publish_target "$release_script"; then
@@ -142,7 +138,7 @@ for release_script in $targets; do
   fi
 done
 
-if [[ " $targets " == *" website "* ]]; then
+if [[ " $targets " == *" docs "* ]]; then
   echo
-  echo "Manual action required: copy $ROOT_DIR/website/build to the deployment server."
+  echo "Manual action required: copy the documentation build ($ROOT_DIR/docs/build) to the deployment server."
 fi
