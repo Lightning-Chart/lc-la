@@ -17,6 +17,22 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
 ## Build and Run
 
+### Standalone repository
+
+1. Clone the standalone example with:
+   ```bash
+   git clone https://github.com/Lightning-Chart/lc-la-example-flutter.git
+   cd lc-la-example-flutter
+   ```
+
+2. Fetch packages and run in Chrome with your license key:
+   ```bash
+   flutter pub get
+   flutter run -d chrome --dart-define=LCJS_LICENSE_KEY=your-license-key
+   ```
+
+### From the lc-la repository
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/Lightning-Chart/lc-la.git
@@ -55,29 +71,32 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
 ## Android
 
-To create the Android platform, run these commands from the repository root:
+Connect an Android device with USB debugging enabled, or start an emulator.
+
+### Standalone repository
+
+From the example folder, list available devices:
 ```bash
-cd examples/flutter/example-patient-dashboard
-flutter create . --platforms=android --project-name=lightning_chart_flutter_example
-cd ../../..
+flutter devices
 ```
 
-Add internet permission to `android/app/src/main/AndroidManifest.xml`:
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
+Replace `DEVICE_ID` with your Android device's identifier and supply your license key:
+
+```bash
+flutter run -d DEVICE_ID --dart-define=LCJS_LICENSE_KEY=your-license-key
 ```
 
-If Android blocks cleartext loopback traffic, add
-`android:usesCleartextTraffic="true"` to the `<application>` element, or use a
-network-security configuration that allows `127.0.0.1`.
+### From the lc-la repository
 
-Connect an Android device or start an emulator, then run `npm run dev` and select
-the Flutter example and Android device.
+Run `npm run dev` from the repository root and select
+"Flutter", "Patient dashboard", and the Android device.
 
 ## Troubleshooting
 
 If Chrome is not listed by `flutter devices`, run `flutter doctor -v` and enable
 Flutter web support with `flutter config --enable-web`.
 
-If the chart reports a license error, check `LCJS_LICENSE_KEY` in the repository
-root `.env` and restart the example.
+If the chart reports a license error, verify the key passed with
+`--dart-define` when running the standalone example, or check `LCJS_LICENSE_KEY`
+in the repository root `.env` when using the lc-la runner. Restart the example
+after correcting the key.

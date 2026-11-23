@@ -28,13 +28,17 @@ C# examples, `examples/Directory.Build.targets` swaps in the local library when
 Examples are grouped by client under `examples/`, with each example in its own
 project folder. Each project's README explains how to run it locally.
 
-From the repository root:
+Selected examples are also standalone repositories (`Lightning-Chart/lc-la-example-*`) and must build from a plain clone.
 
 ```bash
-npm run dev                                  # choose a client and example to run
-npm run verify:examples                      # build all supported examples against local client libraries
-npm run verify:examples -- ExampleName       # build one registered example (replace `ExampleName` with its `name` in `scripts/examples.mjs`)
+npm run dev                                  # choose and run an example against local source
+npm run verify:examples -- --local           # clean-copy build against the local, unpublished packages
+npm run verify:examples                      # clean-copy build against the published packages
+npm run sync:examples                        # dry run: what would change in the standalone repos
+npm run sync:examples -- --push              # verify against published packages, then push
 ```
+
+The release scripts do not touch the example repositories. Run these by hand.
 
 ## Release
 

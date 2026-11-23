@@ -1,6 +1,6 @@
 name: lightning_chart_flutter
 description: Flutter charts powered by LightningChart, with binary transport for high-performance historical and real-time visualization.
-version: 0.0.0
+version: 0.1.0
 homepage: https://lightningchart.com
 repository: https://github.com/lightningchart/lightningchart-la
 issue_tracker: https://github.com/lightningchart/lightningchart-la/issues

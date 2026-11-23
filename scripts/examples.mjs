@@ -1,18 +1,22 @@
 import { spawnSync } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
+import { copyFileSync, mkdirSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
+const org = 'git@github.com:Lightning-Chart'
+
 /**
  * Examples contained in this repository.
+ * Entries with a repo are also published to a standalone repository.
+ * * `steps` are run in a clean copy to prove the example works against the released package.
  */
 export const examples = [
     {
         name: 'BlazorServerComparison',
         client: 'blazor-server',
         label: 'Charting tool comparison',
-        directory: 'examples/blazor-server/BlazorServerComparison',
         project: 'BlazorServerComparison.csproj',
         steps: [['dotnet', 'build']],
     },
@@ -20,7 +24,7 @@ export const examples = [
         name: 'BlazorServerEcg',
         client: 'blazor-server',
         label: 'Multiple ECG streams',
-        directory: 'examples/blazor-server/BlazorServerEcg',
+        repo: `${org}/lc-la-example-blazor-server.git`,
         project: 'BlazorServerEcg.csproj',
         steps: [['dotnet', 'build']],
     },
@@ -28,7 +32,7 @@ export const examples = [
         name: 'BlazorWasmVehicleTelemetry',
         client: 'blazor-wasm',
         label: 'Vehicle telemetry dashboard',
-        directory: 'examples/blazor-wasm/BlazorWasmVehicleTelemetry',
+        repo: `${org}/lc-la-example-blazor-wasm.git`,
         project: 'BlazorWasmVehicleTelemetry.csproj',
         steps: [['dotnet', 'build']],
     },
@@ -36,7 +40,6 @@ export const examples = [
         name: 'MauiHeatmaps',
         client: 'maui',
         label: 'Heatmaps',
-        directory: 'examples/maui/MauiHeatmaps',
         project: 'MauiHeatmaps.csproj',
         framework: 'net10.0-windows10.0.19041.0',
         steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
@@ -46,7 +49,6 @@ export const examples = [
         name: 'MauiMultipleAxes',
         client: 'maui',
         label: 'Multiple axes',
-        directory: 'examples/maui/MauiMultipleAxes',
         project: 'MauiMultipleAxes.csproj',
         framework: 'net10.0-windows10.0.19041.0',
         steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
@@ -56,7 +58,7 @@ export const examples = [
         name: 'MauiVitalSigns',
         client: 'maui',
         label: 'Patient vital signs',
-        directory: 'examples/maui/MauiVitalSigns',
+        repo: `${org}/lc-la-example-maui.git`,
         project: 'MauiVitalSigns.csproj',
         framework: 'net10.0-windows10.0.19041.0',
         steps: [['dotnet', 'build', '-f', 'net10.0-windows10.0.19041.0']],
@@ -66,7 +68,7 @@ export const examples = [
         name: 'UnoDroneFlight',
         client: 'uno',
         label: 'Drone flight dashboard',
-        directory: 'examples/uno/UnoDroneFlight',
+        repo: `${org}/lc-la-example-uno.git`,
         project: 'UnoDroneFlight.csproj',
         steps: [['dotnet', 'build']],
         platform: 'win32',
@@ -75,7 +77,7 @@ export const examples = [
         name: 'example-patient-dashboard',
         client: 'flutter',
         label: 'Patient dashboard',
-        directory: 'examples/flutter/example-patient-dashboard',
+        repo: `${org}/lc-la-example-flutter.git`,
         steps: [
             ['flutter', 'pub', 'get'],
             ['flutter', 'build', 'web'],
@@ -107,4 +109,30 @@ export const exec = (command, args, options = {}) => {
     const result = spawnSync(file, finalArgs, { stdio: 'inherit', ...options })
     if (result.error) throw result.error
     if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited with status ${result.status}.`)
+}
+
+export const capture = (command, args, options = {}) => {
+    const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...options })
+    if (result.error) throw result.error
+    if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed: ${result.stderr}`)
+    return result.stdout
+}
+
+/** Copy the files a standalone clone of the example would contain: tracked and untracked, minus ignored. */
+export const exportExample = (example, destination) => {
+    const directory = `examples/${example.client}/${example.name}`
+    const files = capture('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', directory], {
+        cwd: root,
+    })
+        .split('\0')
+        .filter(Boolean)
+        // Never copy environment files.
+        .filter(file => !file.split('/').some(part => part.startsWith('.env')))
+
+    for (const file of files) {
+        const target = resolve(destination, relative(directory, file))
+        mkdirSync(dirname(target), { recursive: true })
+        copyFileSync(resolve(root, file), target)
+    }
+    return files.length
 }

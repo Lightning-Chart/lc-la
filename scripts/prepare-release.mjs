@@ -68,7 +68,7 @@ const prepareCsharp = async () => {
     )
     for (const example of examples.filter(example => example.client !== 'flutter',)) {
         replaceFile(
-            resolve(root, example.directory, example.project),
+            resolve(root, 'examples', example.client, example.name, example.project),
             /(<PackageReference Include="LCLA" Version=")[^"]*(")/,
             `$1${version}$2`,
         )
@@ -92,7 +92,7 @@ const prepareFlutter = async () => {
     )
     for (const example of examples.filter(example => example.client === 'flutter')) {
         replaceFile(
-            resolve(root, example.directory, 'pubspec.yaml'),
+            resolve(root, 'examples', example.client, example.name, 'pubspec.yaml'),
             /(lightning_chart_flutter:\s*)\^[\w.+-]+/,
             `$1^${version}`,
         )

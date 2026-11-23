@@ -1,7 +1,7 @@
 {
   "releaseLine": "0.1",
   "packages": {
-    "csharp": "0.0.10",
-    "flutter": "0.0.0"
+    "csharp": "0.1.0",
+    "flutter": "0.1.0"
   }
 }

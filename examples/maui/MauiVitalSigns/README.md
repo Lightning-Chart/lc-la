@@ -19,6 +19,28 @@ dotnet workload install maui
 
 ## Build and Run
 
+### Standalone repository
+
+1. Clone the standalone example with:
+   ```powershell
+   git clone https://github.com/Lightning-Chart/lc-la-example-maui.git
+   cd lc-la-example-maui
+   ```
+
+2. Set your license key:
+   ```powershell
+   $env:LCJS_LICENSE_KEY="your-license-key"
+   ```
+
+3. Run the Windows example from that same PowerShell session:
+   ```powershell
+   dotnet build .\MauiVitalSigns.csproj -t:Run -f net10.0-windows10.0.19041.0
+   ```
+
+   You can also open `MauiVitalSigns.csproj` in Visual Studio, select the Windows target, and run the project from the same environment.
+
+### From the lc-la repository
+
 1. Clone the repository:
    ```powershell
    git clone https://github.com/Lightning-Chart/lc-la.git
@@ -41,6 +63,8 @@ dotnet workload install maui
 
    Select ".NET MAUI", then "Patient vital signs".
 
-5. The app initially loads the historical recording. Select **Start replay** to replay the measurements. 
+## Using the Example
+
+The app initially loads the historical recording. Select **Start replay** to replay the measurements.
 Select **Pause replay**, then **Resume replay**, to pause and continue. 
 Select **Load historical** to stop replay and display the historical recording.

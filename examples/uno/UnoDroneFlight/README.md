@@ -15,6 +15,26 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
 ## Build and Run
 
+### Standalone repository
+
+1. Clone the standalone example with:
+   ```powershell
+   git clone https://github.com/Lightning-Chart/lc-la-example-uno.git
+   cd lc-la-example-uno
+   ```
+
+2. Set your license key:
+   ```powershell
+   $env:LCJS_LICENSE_KEY="your-license-key"
+   ```
+
+3. Run the project from that same PowerShell session:
+   ```powershell
+   dotnet run --project .\UnoDroneFlight.csproj
+   ```
+
+### From the lc-la repository
+
 1. Clone the repository:
    ```powershell
    git clone https://github.com/Lightning-Chart/lc-la.git
@@ -36,5 +56,7 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
    Select "Uno Platform", then "Drone flight dashboard".
 
-5. Playback starts automatically after both charts initialize. Select **Pause**
+## Using the Example
+
+Playback starts automatically after both charts initialize. Select **Pause**
 to pause, then **Play** to resume.
