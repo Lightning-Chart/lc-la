@@ -10,7 +10,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LCLA" Version="0.0.10" />
+    <PackageReference Include="LCLA" Version="0.1.0" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\drone_data_timestamp_added.CSV" LogicalName="DroneFlightData" />

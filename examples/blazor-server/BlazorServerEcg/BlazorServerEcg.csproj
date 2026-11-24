@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LCLA" Version="0.0.10" />
+    <PackageReference Include="LCLA" Version="0.1.0" />
   </ItemGroup>
 
     <ItemGroup>

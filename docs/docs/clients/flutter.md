@@ -201,7 +201,7 @@ void dispose() {
 
 The chart widget releases its chart resources automatically.
 
-On Android, add the `INTERNET` permission. If loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` as described in the example README.
+On Android, add the `INTERNET` permission. If loopback traffic is blocked, allow cleartext traffic to `127.0.0.1` through your application's [network security configuration](https://developer.android.com/privacy-and-security/security-config).
 
 ## More features
 

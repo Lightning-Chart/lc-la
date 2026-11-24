@@ -13,6 +13,30 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
 ## Build and Run
 
+### Standalone repository
+
+1. Clone the standalone example with:
+   ```bash
+   git clone https://github.com/Lightning-Chart/lc-la-example-blazor-wasm.git
+   cd lc-la-example-blazor-wasm
+   ```
+
+2. Supply your license key and run the example:
+
+   ```powershell
+   # PowerShell:
+   $env:LCJS_LICENSE_KEY="your-license-key"; dotnet run
+   ```
+
+   ```bash
+   # Git Bash:
+   LCJS_LICENSE_KEY="your-license-key" dotnet run
+   ```
+
+3. Open the URL shown in the terminal and select "LightningChart Blazor".
+
+### From the lc-la repository
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/Lightning-Chart/lc-la.git
@@ -36,5 +60,7 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
 5. Open the URL shown in the terminal and navigate to "LightningChart Blazor".
 
-6. Click **Run** to replay the recording using its timestamps. Click **Pause** to pause, then **Run** to resume. 
+## Using the Example
+
+Click **Run** to replay the recording using its timestamps. Click **Pause** to pause, then **Run** to resume.
 When playback completes, select **Run** to replay from the beginning.

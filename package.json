@@ -15,12 +15,13 @@
     "test:flutter": "cd packages/clients/flutter/lightning_chart_flutter && flutter test",
     "release:flutter:check": "npm run build:host && npm run prepare:flutter && npm run format:flutter && npm run analyze:flutter && npm run test:flutter && npm run publish:flutter:dry-run",
     "publish:flutter:dry-run": "cd packages/clients/flutter/lightning_chart_flutter && flutter pub publish --dry-run",
-    "docs:start": "cd website && npm run start",
-    "docs:build": "cd website && npm run build",
+    "docs:start": "cd docs && npm run start",
+    "docs:build": "cd docs && npm run build",
     "build:host": "cd packages/host && npm run build && cd ../.. && npm run copy:host",
     "copy:host": "node scripts/copy-host.mjs",
     "dev": "node scripts/run-example.mjs",
-    "verify:examples": "node scripts/verify-examples.mjs"
+    "verify:examples": "node scripts/verify-examples.mjs",
+    "sync:examples": "node scripts/sync-examples.mjs"
   },
   "devDependencies": {
     "@clack/prompts": "^1.7.0"

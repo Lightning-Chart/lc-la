@@ -12,6 +12,32 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 - LightningChart JS license key ([get one here](https://lightningchart.com/js-charts/))
 
 ## Build and Run
+
+### Standalone repository
+
+1. Clone the standalone example with:
+
+   ```bash
+   git clone https://github.com/Lightning-Chart/lc-la-example-blazor-server.git
+   cd lc-la-example-blazor-server
+   ```
+
+2. Supply your license key and run the example:
+
+   ```powershell
+    # PowerShell:
+    $env:LCJS_LICENSE_KEY="your-license-key"; dotnet run
+   ```
+
+   ```bash
+    # Git Bash:
+    LCJS_LICENSE_KEY="your-license-key" dotnet run
+   ```
+
+3. Open the URL shown in the terminal and navigate to "LightningChart Blazor".
+
+### From the lc-la repository
+
 1. Clone the repository:
 
    ```bash
@@ -37,7 +63,9 @@ Learn more: [LightningChart documentation](https://lightningchart.com/lc-la/docs
 
    Select "Blazor Server", then "Multiple ECG streams".
 
-5. Open https://localhost:5001 (or the URL shown in terminal) and navigate to "LightningChart Blazor".
+5. Open the URL shown in the terminal and navigate to "LightningChart Blazor".
 
-6. Click **Play** to start ECG playback and **Pause** to pause it.
-   Use the chart's mouse interactions to zoom and pan.
+## Using the Example
+
+Click **Play** to start ECG playback and **Pause** to pause it.
+Use the chart's mouse interactions to zoom and pan.

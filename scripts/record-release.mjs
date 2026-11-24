@@ -5,9 +5,9 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const [target, version] = process.argv.slice(2)
-const validTargets = new Set(['host', 'csharp', 'flutter'])
+const validTargets = new Set(['csharp', 'flutter'])
 if (!validTargets.has(target) || !/^\d+\.\d+\.\d+$/.test(version ?? '')) {
-    throw new Error('Usage: node scripts/record-release.mjs <host|csharp|flutter> <major.minor.patch>')
+    throw new Error('Usage: node scripts/record-release.mjs <csharp|flutter> <major.minor.patch>')
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')

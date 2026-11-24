@@ -151,7 +151,7 @@ if (selectedExample.platform && selectedExample.platform !== process.platform) {
     process.exit(1)
 }
 
-const exampleDirectory = resolve(root, selectedExample.directory)
+const exampleDirectory = resolve(root, 'examples', selectedExample.client, selectedExample.name)
 
 const buildSpinner = spinner()
 buildSpinner.start('Building the local host bundle')

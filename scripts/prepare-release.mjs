@@ -58,16 +58,6 @@ const replaceFile = (path, expression, value) => {
     if (updated !== content) writeFileSync(path, updated)
 }
 
-const prepareHost = async () => {
-    const metadata = await fetchJson('https://registry.npmjs.org/@lcla%2fhost')
-    const version = nextPatch(Object.keys(metadata.versions ?? {}))
-    const path = resolve(root, 'packages/host/package.json')
-    const manifest = JSON.parse(readFileSync(path, 'utf8'))
-    manifest.version = version
-    writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
-    return version
-}
-
 const prepareCsharp = async () => {
     const metadata = await fetchJson('https://api.nuget.org/v3-flatcontainer/lcla/index.json')
     const version = nextPatch(metadata.versions ?? [])
@@ -78,7 +68,7 @@ const prepareCsharp = async () => {
     )
     for (const example of examples.filter(example => example.client !== 'flutter',)) {
         replaceFile(
-            resolve(root, example.directory, example.project),
+            resolve(root, 'examples', example.client, example.name, example.project),
             /(<PackageReference Include="LCLA" Version=")[^"]*(")/,
             `$1${version}$2`,
         )
@@ -102,7 +92,7 @@ const prepareFlutter = async () => {
     )
     for (const example of examples.filter(example => example.client === 'flutter')) {
         replaceFile(
-            resolve(root, example.directory, 'pubspec.yaml'),
+            resolve(root, 'examples', example.client, example.name, 'pubspec.yaml'),
             /(lightning_chart_flutter:\s*)\^[\w.+-]+/,
             `$1^${version}`,
         )
@@ -110,9 +100,9 @@ const prepareFlutter = async () => {
     return version
 }
 
-const prepare = { host: prepareHost, csharp: prepareCsharp, flutter: prepareFlutter }[target]
+const prepare = { csharp: prepareCsharp, flutter: prepareFlutter }[target]
 if (!prepare) {
-    throw new Error('Usage: node scripts/prepare-release.mjs <host|csharp|flutter>')
+    throw new Error('Usage: node scripts/prepare-release.mjs <csharp|flutter>')
 }
 
 const version = await prepare()
