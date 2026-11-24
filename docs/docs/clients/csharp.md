@@ -31,6 +31,8 @@ var license = new LclaLicense
 
 `AppTitle` and `Company` default to trial values. Set both for app deployment licenses.
 
+In Blazor WebAssembly, make the license key available to the client application through configuration or by embedding it during the build. Server environment variables are not automatically available in the browser. The snippets below use application configuration; if your application obtains the key differently, pass that value to `LclaLicense.Key` instead.
+
 ## Creating a chart
 
 In a Blazor component, create the context and the chart after the container has rendered.
